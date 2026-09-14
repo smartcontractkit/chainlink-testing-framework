@@ -1,0 +1,3 @@
+# golangci-lint: keep in sync with devbox.json (used by CI in .github/workflows/linters.yml via `devbox run -- just lint`).
+golang 1.26.6
+golangci-lint 2.12.2

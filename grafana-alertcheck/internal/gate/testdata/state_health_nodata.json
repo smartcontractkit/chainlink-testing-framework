@@ -1,0 +1,62 @@
+{
+  "status": "success",
+  "data": {
+    "groups": [
+      {
+        "name": "example_group",
+        "file": "ExamplePlayground",
+        "folderUid": "folder0000004",
+        "rules": [
+          {
+            "state": "inactive",
+            "name": "Example NoData Rule",
+            "query": "sum(example_satisfied_slo == 1)",
+            "queriedDatasourceUIDs": [
+              "datasource000004"
+            ],
+            "duration": 300,
+            "annotations": {
+              "description": "{{ range $value := query \"sum by (id) (example_satisfied_slo == 1)\" }}\n  - {{ $value.Labels.id }}\n{{ end }}"
+            },
+            "alerts": [
+              {
+                "labels": {
+                  "alertname": "Example NoData Rule",
+                  "datasource_uid": "datasource000004",
+                  "grafana_folder": "ExamplePlayground",
+                  "ref_id": "A"
+                },
+                "annotations": {
+                  "description": ""
+                },
+                "state": "NoData",
+                "activeAt": "2026-08-24T09:06:30Z",
+                "value": ""
+              }
+            ],
+            "totals": {
+              "nodata": 1
+            },
+            "totalsFiltered": {
+              "nodata": 1
+            },
+            "uid": "rule0000004",
+            "folderUid": "folder0000004",
+            "health": "nodata",
+            "type": "alerting",
+            "lastEvaluation": "2026-08-31T09:16:30Z",
+            "evaluationTime": 0.34196819,
+            "isPaused": false
+          }
+        ],
+        "totals": {
+          "inactive": 1,
+          "nodata": 1
+        },
+        "interval": 300,
+        "lastEvaluation": "2026-08-31T09:16:30Z",
+        "evaluationTime": 0.34196819
+      }
+    ]
+  }
+}

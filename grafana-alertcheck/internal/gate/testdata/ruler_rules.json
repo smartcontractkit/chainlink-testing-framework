@@ -1,0 +1,332 @@
+{
+  "Example-Zone-A": [
+    {
+      "name": "Gateway",
+      "interval": "1m",
+      "rules": [
+        {
+          "expr": "",
+          "for": "5m",
+          "keep_firing_for": "0s",
+          "labels": {
+            "env": "production",
+            "severity": "critical",
+            "team": "example-team",
+            "zone": "zone-a"
+          },
+          "annotations": {
+            "description": "Node(s) have no gateways configured.",
+            "runbook_url": "https://example.com/runbook",
+            "summary": "No gateways available for 5m"
+          },
+          "grafana_alert": {
+            "title": "Example No Gateways Available",
+            "condition": "C",
+            "data": [
+              {
+                "refId": "A",
+                "queryType": "",
+                "relativeTimeRange": {
+                  "from": 600,
+                  "to": 0
+                },
+                "datasourceUid": "datasource000006",
+                "model": {
+                  "expr": "sum(example_no_gateways_available_count[5m])",
+                  "refId": "A"
+                }
+              }
+            ],
+            "updated": "2026-08-20T09:54:36Z",
+            "intervalSeconds": 60,
+            "version": 16,
+            "uid": "rule0000006a",
+            "namespace_uid": "folder0000006",
+            "rule_group": "Gateway",
+            "no_data_state": "OK",
+            "exec_err_state": "OK",
+            "is_paused": false,
+            "guid": "example-guid-0006a"
+          }
+        },
+        {
+          "expr": "",
+          "for": "5m",
+          "keep_firing_for": "0s",
+          "labels": {
+            "env": "production",
+            "severity": "critical",
+            "team": "example-team",
+            "zone": "zone-a"
+          },
+          "annotations": {
+            "description": "Node(s) have no gateways configured.",
+            "runbook_url": "https://example.com/runbook",
+            "summary": "No gateways available for 5m"
+          },
+          "grafana_alert": {
+            "title": "Example No Gateways Available",
+            "condition": "C",
+            "data": [
+              {
+                "refId": "A",
+                "queryType": "",
+                "relativeTimeRange": {
+                  "from": 600,
+                  "to": 0
+                },
+                "datasourceUid": "datasource000006",
+                "model": {
+                  "expr": "sum(example_no_gateways_available_count[5m])",
+                  "refId": "A"
+                }
+              }
+            ],
+            "updated": "2026-08-20T09:54:40Z",
+            "intervalSeconds": 60,
+            "version": 3,
+            "uid": "rule0000006b",
+            "namespace_uid": "folder0000006",
+            "rule_group": "Gateway",
+            "no_data_state": "OK",
+            "exec_err_state": "OK",
+            "is_paused": false,
+            "guid": "example-guid-0006b"
+          }
+        }
+      ]
+    },
+    {
+      "name": "EVM Capabilities",
+      "interval": "1m",
+      "rules": [
+        {
+          "expr": "",
+          "for": "1d",
+          "keep_firing_for": "0s",
+          "labels": {
+            "env": "production",
+            "severity": "warning",
+            "team": "example-team"
+          },
+          "annotations": {
+            "description": "Chain has an elevated failure ratio.",
+            "summary": "Failure ratio > 10% for 1d"
+          },
+          "grafana_alert": {
+            "title": "Example Failure Ratio Above 10 Percent",
+            "condition": "C",
+            "data": [
+              {
+                "refId": "A",
+                "queryType": "",
+                "relativeTimeRange": {
+                  "from": 600,
+                  "to": 0
+                },
+                "datasourceUid": "datasource000009",
+                "model": {
+                  "expr": "sum(example_failure_ratio)",
+                  "refId": "A"
+                }
+              }
+            ],
+            "updated": "2026-08-10T17:24:04Z",
+            "intervalSeconds": 60,
+            "version": 5,
+            "uid": "rule0000009",
+            "namespace_uid": "folder0000006",
+            "rule_group": "EVM Capabilities",
+            "no_data_state": "OK",
+            "exec_err_state": "OK",
+            "is_paused": false,
+            "guid": "example-guid-0009"
+          }
+        },
+        {
+          "expr": "",
+          "for": "1w",
+          "keep_firing_for": "0s",
+          "labels": {
+            "env": "production",
+            "severity": "warning",
+            "team": "example-team"
+          },
+          "annotations": {
+            "description": "DERIVED fixture: no real for:1w rule exists in the capture — copied from the for:1d rule above with 'for' changed to exercise the w unit.",
+            "summary": "Failure ratio elevated for 1w"
+          },
+          "grafana_alert": {
+            "title": "Example Failure Ratio Above 10 Percent Weekly",
+            "condition": "C",
+            "data": [
+              {
+                "refId": "A",
+                "queryType": "",
+                "relativeTimeRange": {
+                  "from": 600,
+                  "to": 0
+                },
+                "datasourceUid": "datasource000009",
+                "model": {
+                  "expr": "sum(example_failure_ratio)",
+                  "refId": "A"
+                }
+              }
+            ],
+            "updated": "2026-08-10T17:24:04Z",
+            "intervalSeconds": 60,
+            "version": 1,
+            "uid": "rule0000010",
+            "namespace_uid": "folder0000006",
+            "rule_group": "EVM Capabilities",
+            "no_data_state": "OK",
+            "exec_err_state": "OK",
+            "is_paused": false,
+            "guid": "example-guid-0010"
+          }
+        }
+      ]
+    }
+  ],
+  "ExampleObservability": [
+    {
+      "name": "Example Auth Production",
+      "interval": "1m",
+      "rules": [
+        {
+          "expr": "",
+          "for": "5m",
+          "keep_firing_for": "0s",
+          "labels": {
+            "env": "production"
+          },
+          "annotations": {},
+          "grafana_alert": {
+            "title": "example_workflow_paused_rule",
+            "condition": "C",
+            "data": [
+              {
+                "refId": "A",
+                "queryType": "",
+                "relativeTimeRange": {
+                  "from": 600,
+                  "to": 0
+                },
+                "datasourceUid": "datasource000007",
+                "model": {
+                  "expr": "sum(example_auth_client_requests)",
+                  "refId": "A"
+                }
+              }
+            ],
+            "updated": "2026-08-01T00:00:00Z",
+            "intervalSeconds": 60,
+            "version": 1,
+            "uid": "rule0000007",
+            "namespace_uid": "folder0000007",
+            "rule_group": "Example Auth Production",
+            "no_data_state": "Alerting",
+            "exec_err_state": "Error",
+            "is_paused": true,
+            "guid": "example-guid-0007"
+          }
+        }
+      ]
+    }
+  ],
+  "ExampleFeeds": [
+    {
+      "name": "Example Feeds Annotations",
+      "interval": "30s",
+      "rules": [
+        {
+          "expr": "",
+          "for": "1m",
+          "keep_firing_for": "2m",
+          "labels": {
+            "env": "production",
+            "severity": "critical",
+            "team": "example-feeds-pm"
+          },
+          "annotations": {
+            "summary": "[TEST ONLY] example depeg alert"
+          },
+          "grafana_alert": {
+            "title": "TEMP - Example depeg alert",
+            "condition": "C",
+            "data": [
+              {
+                "refId": "A",
+                "queryType": "",
+                "relativeTimeRange": {
+                  "from": 600,
+                  "to": 0
+                },
+                "datasourceUid": "datasource000008",
+                "model": {
+                  "expr": "avg(example_feed_answer)",
+                  "refId": "A"
+                }
+              }
+            ],
+            "updated": "2026-08-01T00:00:00Z",
+            "intervalSeconds": 30,
+            "version": 1,
+            "uid": "rule0000008",
+            "namespace_uid": "folder0000008",
+            "rule_group": "Example Feeds Annotations",
+            "no_data_state": "NoData",
+            "exec_err_state": "Error",
+            "is_paused": true,
+            "guid": "example-guid-0008"
+          }
+        }
+      ]
+    }
+  ],
+  "ExampleMetrics": [
+    {
+      "name": "Example Paused Rule",
+      "interval": "5m",
+      "rules": [
+        {
+          "expr": "",
+          "for": "5m",
+          "keep_firing_for": "0s",
+          "labels": {},
+          "annotations": {},
+          "grafana_alert": {
+            "title": "Example Paused Rule",
+            "condition": "C",
+            "data": [
+              {
+                "refId": "A",
+                "queryType": "",
+                "relativeTimeRange": {
+                  "from": 600,
+                  "to": 0
+                },
+                "datasourceUid": "datasource000002",
+                "model": {
+                  "expr": "example_metric{env=\"production\"}",
+                  "refId": "A"
+                }
+              }
+            ],
+            "updated": "2026-08-01T00:00:00Z",
+            "intervalSeconds": 300,
+            "version": 1,
+            "uid": "rule0000002",
+            "namespace_uid": "folder0000002",
+            "rule_group": "Example Paused Rule",
+            "no_data_state": "NoData",
+            "exec_err_state": "Error",
+            "is_paused": true,
+            "guid": "example-guid-0002"
+          }
+        }
+      ]
+    }
+  ]
+}

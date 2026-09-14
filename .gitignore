@@ -85,3 +85,5 @@ parrot/parrot
 devenv/
 # Generated TOML definitions
 book/src/framework/developer_environment/**.toml
+
+tmp/

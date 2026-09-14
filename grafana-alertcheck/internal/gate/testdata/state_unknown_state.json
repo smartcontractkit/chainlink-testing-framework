@@ -1,0 +1,74 @@
+{
+  "status": "success",
+  "data": {
+    "groups": [
+      {
+        "name": "Example Service - Prod",
+        "file": "ExampleTeam",
+        "folderUid": "folder0000001",
+        "rules": [
+          {
+            "state": "inactive",
+            "name": "Example High CPU Usage",
+            "query": "max by (app_instance) (example_cpu_utilization_ratio{env=\"prod\", app=\"example-app\"})",
+            "queriedDatasourceUIDs": [
+              "datasource000001"
+            ],
+            "duration": 300,
+            "annotations": {
+              "description": "{{ index $labels \"app_instance\" }} is using {{ index $values \"B\" }} of its CPU limit.",
+              "runbook_url": "https://example.com/runbook",
+              "summary": "{{ index $labels \"app_instance\" }} CPU utilization exceeded 90% of limit"
+            },
+            "alerts": [
+              {
+                "labels": {
+                  "alertname": "Example High CPU Usage",
+                  "env": "prod",
+                  "grafana_folder": "ExampleTeam",
+                  "app_instance": "example-app-instance",
+                  "service": "example-svc",
+                  "severity": "critical",
+                  "team": "example-team"
+                },
+                "annotations": {
+                  "description": "example-app-instance is using 0.0075 of its CPU limit.",
+                  "runbook_url": "https://example.com/runbook",
+                  "summary": "example-app-instance CPU utilization exceeded 90% of limit"
+                },
+                "state": "Weird (NoData)",
+                "activeAt": "2026-08-31T08:02:50Z",
+                "value": ""
+              }
+            ],
+            "totals": {
+              "normal": 1
+            },
+            "totalsFiltered": {
+              "normal": 1
+            },
+            "uid": "rule0000001",
+            "folderUid": "folder0000001",
+            "labels": {
+              "env": "prod",
+              "service": "example-svc",
+              "severity": "critical",
+              "team": "example-team"
+            },
+            "health": "ok",
+            "type": "alerting",
+            "lastEvaluation": "2026-08-31T09:16:50Z",
+            "evaluationTime": 0.003748832,
+            "isPaused": false
+          }
+        ],
+        "totals": {
+          "inactive": 14
+        },
+        "interval": 60,
+        "lastEvaluation": "2026-08-31T09:15:50Z",
+        "evaluationTime": 0.005293504
+      }
+    ]
+  }
+}
