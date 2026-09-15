@@ -32,6 +32,14 @@ const (
 	// The gateway multiplexes by path: Horizon at "/", Soroban RPC at "/rpc", Friendbot at "/friendbot".
 	DefaultStellarRPCPort = "8000"
 
+	// DefaultStellarFriendbotPort is the port the Friendbot faucet is served on.
+	//
+	// Deprecated: Friendbot shares the quickstart unified gateway on DefaultStellarRPCPort
+	// (8000) at path "/friendbot", so this constant is redundant. It is retained for
+	// backwards compatibility with external callers that may reference it. New code should
+	// use DefaultStellarRPCPort, or derive the Friendbot URL from Output.NetworkSpecificData.StellarNetwork.FriendbotURL.
+	DefaultStellarFriendbotPort = "8000"
+
 	// DefaultStellarNetworkPassphrase is the network passphrase for local standalone network
 	// https://stellar.org/developers/guides/concepts/networks
 	DefaultStellarNetworkPassphrase = "Standalone Network ; February 2017"
