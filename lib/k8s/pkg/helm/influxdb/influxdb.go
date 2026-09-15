@@ -8,6 +8,12 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/lib/k8s/environment"
 )
 
+// influxdataChartURL pins the chart version; helm ignores --version for URL refs.
+const (
+	influxdataChartURL   = "https://github.com/influxdata/helm-charts/releases/download/influxdb-4.12.5/influxdb-4.12.5.tgz"
+	defaultImageRegistry = "804282218731.dkr.ecr.us-west-2.amazonaws.com"
+)
+
 type Props struct {
 }
 
@@ -55,59 +61,42 @@ func (m Chart) ExportData(e *environment.Environment) error {
 
 func defaultProps(reg string) map[string]interface{} {
 	return map[string]interface{}{
-		"global": map[string]interface{}{
-			"security": map[string]interface{}{
-				"allowInsecureImages": true,
-			},
-		},
 		"image": map[string]interface{}{
-			"registry":   reg,
-			"repository": "containers/debian-12",
-			"tag":        "3.4.2",
+			"repository": fmt.Sprintf("%s/docker-io/library/influxdb", reg),
+			"tag":        "1.8.10-alpine",
 		},
-		"auth": map[string]interface{}{
-			"enabled": "false",
-		},
-		"influxdb": map[string]interface{}{
-			"readinessProbe": map[string]interface{}{
-				"enabled": false,
+		"resources": map[string]interface{}{
+			"limits": map[string]interface{}{
+				"memory": "19000Mi",
+				"cpu":    "6",
 			},
-			"livenessProbe": map[string]interface{}{
-				"enabled": false,
-			},
-			"startupProbe": map[string]interface{}{
-				"enabled": false,
-			},
-			"resources": map[string]interface{}{
-				"limits": map[string]interface{}{
-					"memory": "19000Mi",
-					"cpu":    "6",
-				},
-				"requests": map[string]interface{}{
-					"memory": "16000Mi",
-					"cpu":    "5",
-				},
+			"requests": map[string]interface{}{
+				"memory": "16000Mi",
+				"cpu":    "5",
 			},
 		},
 	}
+}
+
+func registry() string {
+	if reg := os.Getenv(config.EnvVarInfluxdbImageRegistry); reg != "" {
+		return reg
+	}
+	return defaultImageRegistry
 }
 
 func New(props map[string]interface{}) environment.ConnectedChart {
 	return NewVersioned("", props)
 }
 
-// NewVersioned enables choosing a specific helm chart version
+// NewVersioned keeps its signature for API compatibility; the chart version is pinned in influxdataChartURL and the version argument is ignored.
 func NewVersioned(helmVersion string, props map[string]interface{}) environment.ConnectedChart {
-	reg := os.Getenv("BITNAMI_PRIVATE_REGISTRY")
-	if reg == "" {
-		panic("BITNAMI_PRIVATE_REGISTRY not set, it is required for Helm charts")
-	}
-	dp := defaultProps(reg)
+	dp := defaultProps(registry())
 	config.MustMerge(&dp, props)
 	return Chart{
 		Name:    "influxdb",
-		Path:    fmt.Sprintf("%s/charts/debian-12/influxdb:7.1.47", reg),
+		Path:    influxdataChartURL,
 		Values:  &dp,
-		Version: helmVersion,
+		Version: "",
 	}
 }

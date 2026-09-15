@@ -45,10 +45,10 @@ func TestIsRetryableFaucetErr(t *testing.T) {
 // faucetStub is a configurable /gas handler that can fail the first N requests with
 // either an HTTP 5xx or a connection reset (hijack+close), then succeed.
 type faucetStub struct {
-	failN      int32 // number of requests to fail
-	resetMode  bool  // true: hijack+close (transport reset); false: 503
-	hits       atomic.Int32
-	successOK  atomic.Bool
+	failN     int32 // number of requests to fail
+	resetMode bool  // true: hijack+close (transport reset); false: 503
+	hits      atomic.Int32
+	successOK atomic.Bool
 }
 
 func (f *faucetStub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
