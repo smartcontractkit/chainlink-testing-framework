@@ -2,9 +2,11 @@ package blockchain
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"runtime"
 	"strings"
 	"time"
 
@@ -20,19 +22,27 @@ import (
 )
 
 const (
-	// DefaultStellarImage is the official Stellar quickstart image for local development
+	// DefaultStellarImage is the official Stellar quickstart image for local development.
+	// Pinned to a specific multi-arch (amd64+arm64) per-commit tag instead of :latest so test
+	// runs are reproducible and a quickstart release cannot silently change flags/ports.
 	// https://github.com/stellar/quickstart
-	DefaultStellarImage = "stellar/quickstart:latest"
+	DefaultStellarImage = "stellar/quickstart:v667-b1428.1-latest"
 
-	// DefaultStellarRPCPort is the port Stellar RPC listens on
+	// DefaultStellarRPCPort is the port the quickstart unified HTTP gateway listens on.
+	// The gateway multiplexes by path: Horizon at "/", Soroban RPC at "/rpc", Friendbot at "/friendbot".
 	DefaultStellarRPCPort = "8000"
+
+	// DefaultStellarFriendbotPort is the port the Friendbot faucet is served on.
+	//
+	// Deprecated: Friendbot shares the quickstart unified gateway on DefaultStellarRPCPort
+	// (8000) at path "/friendbot", so this constant is redundant. It is retained for
+	// backwards compatibility with external callers that may reference it. New code should
+	// use DefaultStellarRPCPort, or derive the Friendbot URL from Output.NetworkSpecificData.StellarNetwork.FriendbotURL.
+	DefaultStellarFriendbotPort = "8000"
 
 	// DefaultStellarNetworkPassphrase is the network passphrase for local standalone network
 	// https://stellar.org/developers/guides/concepts/networks
 	DefaultStellarNetworkPassphrase = "Standalone Network ; February 2017"
-
-	// DefaultStellarFriendbotPort is the port for the Friendbot faucet service
-	DefaultStellarFriendbotPort = "8000"
 )
 
 // StellarNetworkInfo contains Stellar network-specific configuration
@@ -61,16 +71,23 @@ func newStellar(ctx context.Context, in *Input) (*Output, error) {
 	// Stellar RPC container always listens on port 8000 internally
 	containerPort := fmt.Sprintf("%s/tcp", DefaultStellarRPCPort)
 
-	// default to amd64
+	// The quickstart image publishes multi-arch (amd64+arm64) manifests, so select the
+	// native platform to avoid amd64 emulation on arm64 hosts (e.g. Apple Silicon).
 	imagePlatform := "linux/amd64"
+	if runtime.GOARCH == "arm64" {
+		imagePlatform = "linux/arm64"
+	}
 	if in.ImagePlatform != nil {
 		imagePlatform = *in.ImagePlatform
 	}
 
-	// Build the command arguments
+	// Build the command arguments. In --local mode the quickstart image runs all services by
+	// default (core, horizon, Soroban RPC, Friendbot, Lab), so no service-enable flag is needed.
+	// The older "--enable-soroban-rpc" flag is no longer valid; the current form is "--enable"
+	// with a comma-separated service list, which is only used to run a subset.
+	// https://github.com/stellar/quickstart#usage
 	cmd := []string{
 		"--local",
-		"--enable-soroban-rpc",
 	}
 
 	// Allow additional command overrides
@@ -106,14 +123,12 @@ func newStellar(ctx context.Context, in *Input) (*Output, error) {
 		},
 		ImagePlatform: imagePlatform,
 		Cmd:           cmd,
-		// Wait for passing health check
-		WaitingFor: wait.ForHTTP("/").
-			WithPort(containerPort).
-			WithStatusCodeMatcher(func(status int) bool {
-				return status >= 200 && status < 500
-			}).
-			WithStartupTimeout(3 * time.Minute).
-			WithPollInterval(2 * time.Second),
+		// Cheap TCP-listening gate on the gateway port. The real readiness check is the
+		// app-level getHealth poll in waitForStellarRPC below (RPC is only healthy after
+		// core+horizon bootstrap), which is why we don't gate on the Horizon "/" root here.
+		WaitingFor: wait.ForListeningPort(containerPort).
+			WithStartupTimeout(1 * time.Minute).
+			WithPollInterval(500 * time.Millisecond),
 	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
@@ -179,7 +194,7 @@ func waitForStellarRPC(ctx context.Context, host, port string) error {
 		case <-timeout:
 			return fmt.Errorf("timeout waiting for Stellar RPC at %s", rpcURL)
 		case <-ticker.C:
-			if checkStellarHealth(rpcURL) {
+			if checkStellarHealth(ctx, rpcURL) {
 				return nil
 			}
 			framework.L.Debug().Str("url", rpcURL).Msg("Waiting for Stellar RPC to be ready...")
@@ -187,23 +202,47 @@ func waitForStellarRPC(ctx context.Context, host, port string) error {
 	}
 }
 
-// checkStellarHealth checks if Stellar RPC responds to getHealth method
-func checkStellarHealth(rpcURL string) bool {
+// checkStellarHealth checks if Stellar RPC reports a healthy getHealth result.
+// Readiness, per the stellar-rpc spec, is getHealth result.status == "healthy" (the RPC only
+// becomes healthy after core+horizon have bootstrapped), so we parse the JSON-RPC envelope
+// rather than substring-matching the body. The request is bound to ctx so an in-flight probe
+// is aborted when the caller's context (or the waitForStellarRPC deadline) is cancelled.
+func checkStellarHealth(ctx context.Context, rpcURL string) bool {
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	reqBody := `{"jsonrpc":"2.0","id":1,"method":"getHealth"}`
-	resp, err := client.Post(rpcURL, "application/json", strings.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, rpcURL, strings.NewReader(reqBody))
+	if err != nil {
+		return false
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := client.Do(req)
 	if err != nil {
 		return false
 	}
 	defer resp.Body.Close()
 
-	// Read response body to check for valid JSON-RPC response
+	if resp.StatusCode != http.StatusOK {
+		return false
+	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return false
 	}
 
-	// Check if we got a valid JSON-RPC response (not an error)
-	return resp.StatusCode == 200 && len(body) > 0 && strings.Contains(string(body), "result")
+	var rpcResp struct {
+		Result struct {
+			Status string `json:"status"`
+		} `json:"result"`
+		Error *struct {
+			Code    int    `json:"code"`
+			Message string `json:"message"`
+		} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(body, &rpcResp); err != nil {
+		return false
+	}
+	return rpcResp.Error == nil && rpcResp.Result.Status == "healthy"
 }

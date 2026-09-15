@@ -22,7 +22,13 @@ import (
 )
 
 const (
-	DefaultImage       = "minio/minio"
+	// DefaultImage is the MinIO server image. Pinned to a specific release tag on quay.io:
+	// the legacy "minio/minio" on Docker Hub is no longer anonymously pullable (the repo
+	// returns 404 and the registry denies anonymous pulls with "requested access to the
+	// resource is denied"), which breaks CI runners that aren't logged in to Docker Hub.
+	// MinIO's official image now lives at quay.io/minio/minio.
+	// https://quay.io/repository/minio/minio
+	DefaultImage       = "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
 	DefaultName        = "minio"
 	DefaultBucket      = "test-bucket"
 	DefaultRegion      = "us-east-1"
