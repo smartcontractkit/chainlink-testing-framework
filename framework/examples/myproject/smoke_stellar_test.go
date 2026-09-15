@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 
@@ -72,26 +73,22 @@ func TestStellarSmoke(t *testing.T) {
 
 	t.Run("fund account via Friendbot", func(t *testing.T) {
 		testAddress := "GAAZI4TCR3TY5OJHCTJC2A4QSY6CJWJH5IAJTGKIN2ER7LBNVKOCCWN7"
-
 		friendbotURL := fmt.Sprintf("%s?addr=%s", networkInfo.FriendbotURL, testAddress)
-		resp, err := http.Get(friendbotURL)
-		require.NoError(t, err)
-		defer resp.Body.Close()
 
-		body, _ := io.ReadAll(resp.Body)
-		t.Logf("Friendbot response status: %d", resp.StatusCode)
-		t.Logf("Friendbot response: %s", string(body))
-
-		switch resp.StatusCode {
-		case http.StatusOK:
-			t.Log("Account funded successfully")
-		case http.StatusBadRequest:
-			t.Log("Account already funded (expected on retry)")
-		case http.StatusBadGateway, http.StatusServiceUnavailable:
-			t.Log("Friendbot still initializing - this is expected shortly after startup")
-		default:
-			t.Errorf("Unexpected Friendbot response: %d", resp.StatusCode)
-		}
+		// Friendbot can still be warming up right after RPC readiness (it returns 502/503
+		// until ready), so retry until it actually accepts the funding request instead of
+		// silently passing on a "still initializing" response.
+		require.Eventually(t, func() bool {
+			resp, err := http.Get(friendbotURL) //nolint:gosec
+			if err != nil {
+				return false
+			}
+			defer resp.Body.Close()
+			t.Logf("Friendbot response status: %d", resp.StatusCode)
+			// 200 = funded, 400 = already funded on a reused/cached network — both are success.
+			return resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusBadRequest
+		}, 2*time.Minute, 5*time.Second, "friendbot never became ready at %s", friendbotURL)
+		t.Log("Account funded successfully via Friendbot")
 	})
 }
 
