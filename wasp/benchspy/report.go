@@ -553,7 +553,7 @@ func NewStandardReport(commitOrTag string, opts ...StandardReportOption) (*Stand
 	}
 
 	if config.reportDirectory != "" {
-		sr.LocalStorage.Directory = config.reportDirectory
+		sr.Directory = config.reportDirectory
 	}
 
 	L.Info().
