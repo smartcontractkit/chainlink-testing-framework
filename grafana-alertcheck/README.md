@@ -9,7 +9,7 @@ watch  → your work → check
 
 `watch` starts a background recorder that polls each named alert into a JSONL log. After the work emits a
 `from`/`to` pair, `check` proves continuous coverage of that window, classifies each alert's state
-timeline, and exits `0`, `1`, or `2`.
+timeline, and exits `0`, `1`, or `2`. If the work fails first, `stop` reaps the recorder.
 
 It **fails closed**: if it cannot get an answer, it stops the release — never a pass on an unproven window.
 
