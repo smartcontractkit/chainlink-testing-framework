@@ -60,6 +60,8 @@ On a clean stop (SIGTERM/SIGINT/`--until`) the child finishes the in-flight writ
 
 `check` signals via the pidfile, waits for the **lock** to release (never the pid), and only then reads the log once. Reading while a writer can still append can only produce a shorter window than was recorded.
 
+`stop` uses the same pidfile-plus-flock protocol, but as a cleanup operation rather than evidence-gathering: it SIGKILLs a recorder that ignores SIGTERM, removes the pidfile, and treats a missing pidfile as "nothing to stop". `check` inherits none of that — a writer that will not exit is a could-not-check, never a silent kill.
+
 ## The log is the source of truth
 
 `watch` records raw evidence, so nothing trusts a state that could become unreachable. Two consequences a maintainer must preserve:

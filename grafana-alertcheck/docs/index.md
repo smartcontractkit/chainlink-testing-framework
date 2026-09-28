@@ -50,6 +50,8 @@ grafana-alertcheck check --in /tmp/run.jsonl --from "$deployed_at" --to "$finish
 
 `watch` returns only after the recorder has observed every named, non-paused alert once and reported ready — so auth, name-resolution, and parse failures surface **before** your deploy runs.
 
+If your work fails before `check` runs and the alert verdict no longer matters, reap the recorder with `grafana-alertcheck stop --out /tmp/run.jsonl`. It is idempotent, so it is safe as an `if: always()` step: after `check` has already stopped the recorder it is a no-op.
+
 ## Quickstart — single-step mode
 
 Skip the recorder and observe the window inline, from inside `check` itself:

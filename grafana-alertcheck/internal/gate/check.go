@@ -21,16 +21,6 @@ import (
 // for; a silent wait is indistinguishable from a hung process.
 const countdownEvery = 30 * time.Second
 
-// recorderStopTimeout bounds the wait for the recorder's exit after SIGTERM.
-// Everything after the signal is local (finish the in-flight write, sentinel,
-// fsync), so this is loose; it stays a hard error because a log a writer still
-// holds cannot be read.
-const recorderStopTimeout = 30 * time.Second
-
-// recorderStopPoll is how often the wait re-checks the lock. With no wait(2)
-// on a detached session leader, its exit is observable only by polling.
-const recorderStopPoll = 100 * time.Millisecond
-
 // Config is check's whole input. It is the CLI's view of a run, and it is
 // deliberately wider than Policy: Policy is the narrowed, pure-layer subset
 // that reaches decide (classify.go), and the token is the field that must
@@ -586,88 +576,15 @@ func collectUntil(ctx context.Context, cfg Config, deadline time.Time, p *livePo
 	}
 }
 
-// stopRecorder signals the recorder and waits for it to go; the log may not be
-// read until the writer has provably gone, so every failure is a hard error.
-// It returns the log held under an exclusive flock, which the caller must keep
-// open across ReadLog — the lock is the proof that no writer exists.
-//
-// Two authorities, only one of which is evidence:
-//
-//   - the PIDFILE says whether a recording ever started (it is written only
-//     after the child reports ready, and removed on failure).
-//   - the FLOCK says whether a writer exists right now. A pidfile can go stale
-//     — nothing removes it on a clean --until stop, so it may name a pid
-//     somebody else now owns — but the kernel drops a flock when the holder
-//     exits, so the lock is always authoritative.
-//
-// So: read the pidfile to learn a recording happened, ask the lock whether it
-// is still running, and signal only if it is.
+// stopRecorder is check's use of StopRecorder: no cleanup semantics, and the
+// log it returns must stay held across ReadLog.
 func stopRecorder(ctx context.Context, cfg Config) (*os.File, error) {
-	pid, err := ReadPidFile(cfg.PidFile)
-	if err != nil {
-		return nil, fmt.Errorf("cannot stop the recorder: %w; a pidfile is written only once a recorder reports that it is running, so an unreadable one means the recording never started", err)
-	}
-
-	log, err := os.Open(cfg.Log)
-	if err != nil {
-		return nil, fmt.Errorf("open %s to check for a writer: %w", cfg.Log, err)
-	}
-
-	held, err := tryLockExclusive(log)
-	if err != nil {
-		log.Close()
-		return nil, err
-	}
-	if held {
-		// No writer. Send no signal, whatever the pidfile says — the pid may
-		// belong to somebody else entirely by now. Which of --until, a clean
-		// stop and a death ended the recording is the sentinel's question,
-		// answered by the coverage proof over the log this unblocks.
-		fmt.Fprintf(cfg.Notes, "note: no writer holds %s; the recorder has already finished\n", cfg.Log)
-		return log, nil
-	}
-
-	// The lock is held, so a writer is alive and the pidfile's pid cannot be
-	// stale — the recorder that took the lock is the one the parent recorded.
-	gone, err := signalRecorder(pid)
-	if err != nil {
-		log.Close()
-		return nil, err
-	}
-	if gone {
-		// A live writer holds the log and the pidfile names a process that
-		// does not exist. That is a broken contract, not a case to reason
-		// around: signalling the real holder would mean guessing who it is.
-		log.Close()
-		return nil, fmt.Errorf("a writer holds %s but pidfile %s names pid %d, which does not exist: the pidfile does not name the process that holds the log",
-			cfg.Log, cfg.PidFile, pid)
-	}
-
-	// Wait on the LOCK, not on the pid: its release is the kernel-guaranteed
-	// writer-is-gone event, and it carries no pid-reuse hazard.
-	deadline := cfg.Clock.Now().Add(recorderStopTimeout)
-	for {
-		select {
-		case <-ctx.Done():
-			log.Close()
-			return nil, ctx.Err()
-		case <-cfg.Clock.After(recorderStopPoll):
-		}
-
-		held, err := tryLockExclusive(log)
-		if err != nil {
-			log.Close()
-			return nil, err
-		}
-		if held {
-			return log, nil
-		}
-		if !cfg.Clock.Now().Before(deadline) {
-			log.Close()
-			return nil, fmt.Errorf("recorder pid %d still holds %s %s after SIGTERM; refusing to read a log a writer can still append to",
-				pid, cfg.Log, recorderStopTimeout)
-		}
-	}
+	return StopRecorder(ctx, StopConfig{
+		Log:     cfg.Log,
+		PidFile: cfg.PidFile,
+		Clock:   cfg.Clock,
+		Notes:   cfg.Notes,
+	})
 }
 
 // drainVerdict is what the drain wait concluded about one rule it could not

@@ -9,7 +9,7 @@ description: "Full reference for the grafana-alertcheck CLI: watch, check, list,
 # CLI reference
 
 ```
-grafana-alertcheck <list|watch|check>
+grafana-alertcheck <list|watch|check|stop>
 ```
 
 Connection details are always from the environment: `GRAFANA_URL` and `GRAFANA_TOKEN`. The token is never a flag and never logged.
@@ -41,6 +41,23 @@ grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
 | `--until` | run until signalled | Optional hard stop |
 
 `watch` writes the header, observes every non-paused rule once, checks the budget, then detaches a background recorder and returns. Recording is **unfiltered** — there is no `--states` here, so the same log can be re-classified later under different `--states` without re-recording.
+
+## `stop` — reap the recorder
+
+```bash
+grafana-alertcheck stop --out <file> [--pidfile F]
+```
+
+| Flag | Default | Meaning |
+| ---- | ------- | ------- |
+| `--out` | — | JSONL log path whose recorder to stop (required) |
+| `--pidfile` | `<out>.pid` | Pidfile of the recorder to stop |
+
+Stops a detached recorder that is still running, or confirms it has already finished. It reads the pidfile, then asks the log's **flock** whether a writer exists right now (the lock is authoritative; a pid can be reused): if a writer is alive it is sent `SIGTERM`, and if it ignores that it is killed, then the pidfile is removed.
+
+It is **idempotent** — after `check` has already stopped the recorder, or after a previous `stop`, it reports that there is nothing to stop and exits `0`. That is what lets an `if: always()` step call it on both the success and failure paths.
+
+Use it when the work failed and the alert verdict no longer matters, but the recorder must still be reaped: the recorder is detached in its own session, so neither `check` nor the runner's cleanup will stop it, and it would keep polling Grafana until its window elapsed.
 
 ## `check` — classify
 
