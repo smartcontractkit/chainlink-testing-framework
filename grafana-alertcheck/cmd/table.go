@@ -40,6 +40,16 @@ func renderTable(w io.Writer, res gate.Result) error {
 	// wall of progress text.
 	fmt.Fprintln(w)
 
+	if te := res.TerminatedEarly; te != nil {
+		detail := string(te.Reason)
+		if detail == "" {
+			detail = string(te.Outcome)
+		}
+		fmt.Fprintf(w, "EARLY EXIT: %s %q at %s (%s); the window [%s, %s] was not fully observed\n\n",
+			te.Kind, te.Alert, te.At.Format(time.RFC3339), detail,
+			res.From.Format(time.RFC3339), res.To.Format(time.RFC3339))
+	}
+
 	fmt.Fprintln(w, "RESULTS")
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
 	fmt.Fprintln(tw, "RULE\tOUTCOME\tBADFOR\tPOLLEVERY\tPROVED\tNOTE")

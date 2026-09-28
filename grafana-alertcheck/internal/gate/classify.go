@@ -135,6 +135,10 @@ type Result struct {
 	Global     GlobalThresholds
 	Verdicts   []RuleVerdict
 	Violations []Violation
+	// TerminatedEarly is set only when fail-fast stopped before the window
+	// closed; the coverage proof is then over [from, At]. To and Global below
+	// still report the requested values. Published JSON output.
+	TerminatedEarly *Termination `json:"terminated_early,omitempty"`
 }
 
 // episode is one contiguous, policy-bad span of one instance's timeline,
@@ -452,6 +456,30 @@ func badStateSet(states []State) map[State]bool {
 	return set
 }
 
+// applyNodataPolicy promotes a sustained health=nodata run to unobservable
+// when the caller has checked Policy.NodataIsUnobservable. proveCoverage never
+// escalates nodata itself (most fleets map no-data to OK), so both the
+// end-of-run decide and the fail-fast guard must apply this identically — one
+// helper, so the two can never drift.
+func applyNodataPolicy(def Definition, polls []Poll, cov *CoverageResult, t RuleTimings, from, windowEnd time.Time) {
+	if cov.Unobservable {
+		return
+	}
+	inWindow := inWindowPolls(pollsForRule(polls, def.UID), from, windowEnd)
+	runLen, sawAny := longestHealthRun(inWindow, "nodata")
+	if !sawAny || runLen <= t.healthGrace {
+		return
+	}
+	cov.Unobservable = true
+	cov.Proved = false
+	if cov.Reason == "" {
+		cov.Reason = ReasonNodata
+	}
+	cov.Notes = append(cov.Notes, fmt.Sprintf(
+		"rule %q: health=nodata for %s exceeds healthGrace %s and --nodata-is-unobservable is set",
+		def.Title, runLen, t.healthGrace))
+}
+
 // decide is the pure seam between the collected evidence and the CLI's exit
 // code, and carries nearly the whole test suite because of it. It combines
 // proveCoverage's nine checks with classifyRule's timelines under one Policy,
@@ -531,18 +559,8 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		t := rt[def.UID]
 		cov := proveCoverage(h, polls, sentinel, t, def, pol.From, pol.To, gt.transitionGrace)
 
-		if pol.NodataIsUnobservable && !cov.Unobservable {
-			inWindow := inWindowPolls(pollsForRule(polls, def.UID), pol.From, windowEnd)
-			if runLen, sawAny := longestHealthRun(inWindow, "nodata"); sawAny && runLen > t.healthGrace {
-				cov.Unobservable = true
-				cov.Proved = false
-				if cov.Reason == "" {
-					cov.Reason = ReasonNodata
-				}
-				cov.Notes = append(cov.Notes, fmt.Sprintf(
-					"rule %q: health=nodata for %s exceeds healthGrace %s and --nodata-is-unobservable is set",
-					def.Title, runLen, t.healthGrace))
-			}
+		if pol.NodataIsUnobservable {
+			applyNodataPolicy(def, polls, &cov, t, pol.From, windowEnd)
 		}
 		result.Coverage[def.UID] = cov
 		result.Thresholds[def.UID] = RuleThresholds{

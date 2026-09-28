@@ -365,13 +365,66 @@ func TestCheckSingleStepFiringInstanceReportsWithoutExitingEarly(t *testing.T) {
 	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)), "exited early; collection must run to to+grace")
 }
 
-// A newly_bad instance at from+30s gives exit 1, but ONLY after
-// to+transitionGrace. The test above covers a rule already bad before the
-// window opened (persistently_bad); this covers a fresh onset just inside the
-// window, which must not release the runner the instant it is first observed.
-func TestCheckSingleStepNewOnsetDoesNotExitEarly(t *testing.T) {
+// A fresh onset ends the run early, well before to+transitionGrace, and still
+// reports the exit-1 shape with the requested window preserved.
+func TestCheckSingleStepNewOnsetExitsEarlyByDefault(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
+	onset := testNow.Add(30 * time.Second)
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		now := clock.Now()
+		if now.Before(onset) {
+			return healthyObservation(now), nil
+		}
+		firing := Instance{
+			Labels:   map[string]string{"alertname": checkTitle, "instance": "a"},
+			State:    StateFiring,
+			ActiveAt: onset,
+		}
+		return healthyObservation(now, firing), nil
+	})
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err, "a violation is exit 1, not an error")
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomeNewlyBad, res.Violations[0].Outcome)
+	require.True(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"the runner was released only after to+grace; fail-fast did not fire")
+	require.NotNil(t, res.TerminatedEarly)
+	require.Equal(t, TerminationViolation, res.TerminatedEarly.Kind)
+	require.Equal(t, OutcomeNewlyBad, res.TerminatedEarly.Outcome)
+	require.True(t, res.To.Equal(cfg.To), "the requested window is still reported")
+	require.Contains(t, notesOf(cfg), "fail-fast")
+}
+
+// A preexisting bad instance can still become `recovered` (a pass), so it is
+// never terminal even with fail-fast on.
+func TestCheckSingleStepPreexistingBadDoesNotExitEarly(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	firing := Instance{
+		Labels:   map[string]string{"alertname": checkTitle, "instance": "a"},
+		State:    StateFiring,
+		ActiveAt: testNow.Add(-10 * time.Minute), // bad before the window opened
+	}
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		return healthyObservation(clock.Now(), firing), nil
+	})
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomePersistentlyBad, res.Violations[0].Outcome)
+	require.Nil(t, res.TerminatedEarly, "a preexisting condition can still recover, so it is not terminal")
+	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"exited early; collection must run to to+grace for a preexisting bad instance")
+}
+
+// --no-fail-fast runs the same fresh onset to to+transitionGrace.
+func TestCheckSingleStepNewOnsetNoFailFastRunsToTheEnd(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.NoFailFast = true
 	onset := testNow.Add(30 * time.Second)
 	src := newCheckSource(func(_ string, _ int) (Observation, error) {
 		now := clock.Now()
@@ -390,8 +443,9 @@ func TestCheckSingleStepNewOnsetDoesNotExitEarly(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, res.Violations, 1)
 	require.Equal(t, OutcomeNewlyBad, res.Violations[0].Outcome)
+	require.Nil(t, res.TerminatedEarly)
 	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
-		"exited early; collection must run to to+grace even for a fresh onset at from+30s")
+		"with --no-fail-fast the loop must run to to+grace")
 }
 
 // An ABSENT `from` in single-step mode (as opposed to recorder mode, which
@@ -601,6 +655,75 @@ func TestCheckRecorderModeCleanWindowPasses(t *testing.T) {
 	// The collection loop still waited out to+transitionGrace even though the
 	// recorder had already finished.
 	require.False(t, clock.Now().Before(windowEnd))
+}
+
+// recordedLogWithOnset records a full window where the rule fires from onset on.
+func recordedLogWithOnset(t *testing.T, dir string, onset time.Time) string {
+	t.Helper()
+	windowEnd := testNow.Add(5*time.Minute + checkGrace)
+	path := filepath.Join(dir, "log.jsonl")
+	w, err := NewWriter(path, newFakeClock(windowEnd.Add(30*time.Second)))
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
+		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
+		Rules: []LoggedRule{{
+			UID: checkUID, Title: checkTitle, Folder: "F", Group: "G",
+			IntervalSeconds: 60, NoDataState: "OK", ExecErrState: "OK",
+			PollEverySeconds: checkPollEvery.Seconds(),
+		}},
+	}))
+	for at := testNow.Add(-time.Minute); !at.After(windowEnd.Add(30 * time.Second)); at = at.Add(checkPollEvery) {
+		p := Poll{RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at}
+		if !at.Before(onset) {
+			p.State = "firing"
+			p.Abnormal = []Instance{{
+				Labels:   map[string]string{"alertname": checkTitle, "instance": "a"},
+				State:    StateFiring,
+				ActiveAt: onset,
+			}}
+		}
+		require.NoError(t, w.WritePoll(p))
+	}
+	require.NoError(t, w.Stop())
+	return path
+}
+
+// Recorder-mode fail-fast reads the recorder's log as it lands, ending the wait
+// on an onset inside the window. No live source is polled.
+func TestCheckRecorderModeExitsEarlyOnANewOnset(t *testing.T) {
+	onset := testNow.Add(time.Minute)
+	logPath := recordedLogWithOnset(t, t.TempDir(), onset)
+	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	clock := newVirtualClock(testNow)
+	cfg := recorderConfig(t, clock, logPath)
+	res, err := check(context.Background(), cfg, newCheckSource(nil))
+	require.NoError(t, err)
+	require.NotNil(t, res.TerminatedEarly)
+	require.Equal(t, TerminationViolation, res.TerminatedEarly.Kind)
+	require.Equal(t, OutcomeNewlyBad, res.TerminatedEarly.Outcome)
+	require.Len(t, res.Violations, 1)
+	require.True(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"the runner was held to the window; fail-fast did not fire")
+	require.True(t, res.To.Equal(cfg.To), "the requested window is still reported")
+}
+
+// --no-fail-fast over the same recording runs to to+transitionGrace.
+func TestCheckRecorderModeNoFailFastRunsToTheEnd(t *testing.T) {
+	onset := testNow.Add(time.Minute)
+	logPath := recordedLogWithOnset(t, t.TempDir(), onset)
+	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	clock := newVirtualClock(testNow)
+	cfg := recorderConfig(t, clock, logPath)
+	cfg.NoFailFast = true
+	res, err := check(context.Background(), cfg, newCheckSource(nil))
+	require.NoError(t, err)
+	require.Nil(t, res.TerminatedEarly)
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomeNewlyBad, res.Violations[0].Outcome)
+	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"with --no-fail-fast the loop must run to to+grace")
 }
 
 // The identity of the log is not correct. The check runs against the header

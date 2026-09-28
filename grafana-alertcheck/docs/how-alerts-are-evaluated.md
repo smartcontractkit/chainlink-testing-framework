@@ -78,6 +78,17 @@ Before classifying, `check` must **prove** continuous coverage of `[from, to]` f
 - `health=error` means the query **failed** — a malfunction. Sustained past `healthGrace`, it makes the rule `unobservable`.
 - `health=nodata` means the query **ran and returned no series** — indistinguishable from a quiet system. It is not fatal by default; most of a fleet runs `no_data_state: OK`.
 
+## Early exit (fail-fast)
+
+`check` does not have to wait for the whole window to know the run has failed. As soon as it observes a condition that cannot become a pass, it stops and classifies the sub-window it did see:
+
+- a **post-`from` bad onset** — the full classifier would call it `newly_bad` (or `flapping`), which fails whether or not it later clears; or
+- an **inability** — a heartbeat gap, a sustained `health=error` run, a stale evaluation, an in-window pause, or an absent rule.
+
+A preexisting bad instance is deliberately **not** terminal: if it clears before `to` the full run would call it `recovered`, which passes.
+
+Fail-fast is on by default and always preserves the failure: an early run can exit `1` or `2`, never `0`. The one difference from a full run is that an early exit may report `1` before an inability surfaces that would have made it `2`. `--no-fail-fast` disables the guard and always waits for the full window and its coverage proof.
+
 ## The drain wait and `transitionGrace`
 
 A condition that arises just before `to` becomes `firing` only at the first evaluation after its `for` elapses. `transitionGrace` (derived from the watched rules' `for` values) extends the classification bound past `to` so such a surfacing condition is caught. After collection, a **drain wait** polls until each rule has evaluated through `to + transitionGrace` (bounded by `drainTimeout`); a rule that never does is `unobservable`.
