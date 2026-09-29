@@ -49,7 +49,7 @@ The header must be line 1, appear once, and carry `schema_version` `1` (any othe
 ```
 
 - `url` and `rules` are the log's identity — `check` validates them against the current environment and a fresh ruler read.
-- `is_paused` records the pause state at record start (the moment `skipped` means).
+- `is_paused` records the pause state at record start (the moment `paused` means).
 - `poll_every_seconds` is the cadence the recording **actually used** (after any `--poll-interval` override). `check` derives `maxGap` from it, never from `interval_seconds`.
 - `for_seconds`, `interval_seconds`, `no_data_state`, `exec_err_state` are forensic only — `check` re-resolves definitions and never reads them back.
 
@@ -95,4 +95,4 @@ Instance keys are the JSON encoding of the labels map (with stable key order), s
 { "type": "stopped", "at": "2026-09-07T10:10:30Z" }
 ```
 
-`at` is the recorder's own stop time. `check` compares it against `to + transitionGrace`; absent or earlier is `unobservable` — never a pass.
+`at` is the recorder's own stop time. `check` compares it against `to + transitionGrace`; absent or earlier is `not_verified` — never a pass.

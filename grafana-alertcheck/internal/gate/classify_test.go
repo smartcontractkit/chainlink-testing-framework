@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -48,7 +49,7 @@ func pausedHeader(startedAt time.Time, pausedUIDs ...string) Header {
 	return h
 }
 
-// --- clean / newly_bad ---
+// --- healthy / new_failure ---
 
 func TestClassifyRule_NoEvidenceIsClean(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -57,7 +58,7 @@ func TestClassifyRule_NoEvidenceIsClean(t *testing.T) {
 
 	polls := []Poll{quietPoll("r1", from), quietPoll("r1", to)}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomeClean, outcome)
+	require.Equal(t, OutcomeHealthy, outcome)
 	require.Zero(t, badFor)
 	require.Empty(t, viols)
 }
@@ -74,10 +75,10 @@ func TestClassifyRule_NewOnsetInsideWindowIsNewlyBad(t *testing.T) {
 		abnormalPoll("r1", to, StateFiring, lbl("a"), onset),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomeNewlyBad, outcome)
+	require.Equal(t, OutcomeNewFailure, outcome)
 	require.Equal(t, to.Sub(onset), badFor)
 	require.Len(t, viols, 1)
-	require.Equal(t, OutcomeNewlyBad, viols[0].Outcome)
+	require.Equal(t, OutcomeNewFailure, viols[0].Outcome)
 }
 
 // A genuinely new bad episode fails even if it clears again before the window
@@ -96,11 +97,11 @@ func TestClassifyRule_NewOnsetThatClearsStillFails(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomeNewlyBad, outcome, "even though it cleared")
+	require.Equal(t, OutcomeNewFailure, outcome, "even though it cleared")
 	require.Len(t, viols, 1)
 }
 
-// --- recovered / persistently_bad (preexisting) ---
+// --- recovered / still_failing (preexisting) ---
 
 func TestClassifyRule_PreexistingThatRecoversIsRecoveredAndNotAViolation(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -151,13 +152,13 @@ func TestClassifyRule_PreexistingStillBadAtWindowEndIsPersistentlyBad(t *testing
 		abnormalPoll("r1", to, StateFiring, lbl("a"), from.Add(-time.Hour)),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomePersistentlyBad, outcome)
+	require.Equal(t, OutcomeStillFailing, outcome)
 	require.Equal(t, to.Sub(from), badFor)
 	require.Len(t, viols, 1)
-	require.Equal(t, OutcomePersistentlyBad, viols[0].Outcome)
+	require.Equal(t, OutcomeStillFailing, viols[0].Outcome)
 }
 
-// --- flapping ---
+// --- unstable ---
 
 func TestClassifyRule_ClearThenBadAgainIsFlapping(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -172,12 +173,12 @@ func TestClassifyRule_ClearThenBadAgainIsFlapping(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomeFlapping, outcome)
+	require.Equal(t, OutcomeUnstable, outcome)
 	require.Len(t, viols, 1)
-	require.Equal(t, OutcomeFlapping, viols[0].Outcome, "always a fail regardless of policy")
+	require.Equal(t, OutcomeUnstable, viols[0].Outcome, "always a fail regardless of policy")
 }
 
-// A clear and then a second bad state gives flapping, wherever the second bad
+// A clear and then a second bad state gives unstable, wherever the second bad
 // state lands. A table over where the second onset falls — immediately after
 // the clear, mid-window, and right at the
 // last instant before windowEnd — closes the boundary this single fixed
@@ -206,9 +207,9 @@ func TestClassifyRule_FlappingAtEveryTimingOfTheSecondOnset(t *testing.T) {
 				quietPoll("r1", to),
 			}
 			outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-			require.Equalf(t, OutcomeFlapping, outcome, "second onset at %s", tc.secondOnset)
+			require.Equalf(t, OutcomeUnstable, outcome, "second onset at %s", tc.secondOnset)
 			require.Len(t, viols, 1)
-			require.Equal(t, OutcomeFlapping, viols[0].Outcome)
+			require.Equal(t, OutcomeUnstable, viols[0].Outcome)
 		})
 	}
 }
@@ -227,7 +228,7 @@ func TestClassifyRule_VanishedWhileBadStaysPersistentlyBad(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomePersistentlyBad, outcome, "a vanish must never read as a recovery")
+	require.Equal(t, OutcomeStillFailing, outcome, "a vanish must never read as a recovery")
 	require.Equal(t, to.Sub(from), badFor, "the freeze must hold the episode open to windowEnd")
 	require.Len(t, viols, 1)
 }
@@ -246,7 +247,7 @@ func TestClassifyRule_VanishedWhileNeverBadIsUninteresting(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomeClean, outcome)
+	require.Equal(t, OutcomeHealthy, outcome)
 	require.Zero(t, badFor)
 	require.Empty(t, viols)
 }
@@ -281,7 +282,7 @@ func TestClassifyRule_PreexistingPolicyIgnoreForgivesPersistentlyBad(t *testing.
 		abnormalPoll("r1", to, StateFiring, lbl("a"), from.Add(-time.Hour)),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingIgnore)
-	require.Equal(t, OutcomePersistentlyBad, outcome, "the descriptive outcome does not change under policy=ignore")
+	require.Equal(t, OutcomeStillFailing, outcome, "the descriptive outcome does not change under policy=ignore")
 	require.Empty(t, viols, "policy=ignore disregards a preexisting instance even if it never recovers")
 }
 
@@ -297,7 +298,7 @@ func TestClassifyRule_PreexistingPolicyIgnoreStillFailsANewOnset(t *testing.T) {
 		abnormalPoll("r1", to, StateFiring, lbl("a"), onset),
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingIgnore)
-	require.Equal(t, OutcomeNewlyBad, outcome)
+	require.Equal(t, OutcomeNewFailure, outcome)
 	require.Len(t, viols, 1, "ignore only forgives PREEXISTING badness")
 }
 
@@ -323,9 +324,9 @@ func TestClassifyRule_WorstOfMultipleInstancesWins(t *testing.T) {
 		},
 	}
 	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomePersistentlyBad, outcome, "the worse of {recovered, persistently_bad}")
+	require.Equal(t, OutcomeStillFailing, outcome, "the worse of {recovered, still_failing}")
 	require.Len(t, viols, 1)
-	require.Equal(t, OutcomePersistentlyBad, viols[0].Outcome)
+	require.Equal(t, OutcomeStillFailing, viols[0].Outcome)
 }
 
 // --- decide(): skipped rules, unobservable, MinObserved, exit mapping ---
@@ -344,9 +345,9 @@ func TestDecide_SkippedRuleNeverReachesProveCoverage(t *testing.T) {
 	// The HEADER is what says paused — decide reads skipped from there, not
 	// from def.IsPaused, which is a post-window reading (Header.pausedAtStart).
 	res, err := decide(pausedHeader(from.Add(-time.Hour), "r1"), nil, nil, defs, rt, gt, pol)
-	require.NoError(t, err, "a rule paused before the window is skipped, not unobservable")
+	require.NoError(t, err, "a rule paused before the window is paused, not not_verified")
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeSkipped, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomePaused, res.Verdicts[0].Outcome)
 	_, ok := res.Coverage["r1"]
 	require.False(t, ok, "a skipped rule has no coverage to prove")
 }
@@ -365,11 +366,11 @@ func TestDecide_UnobservableRuleAlwaysReturnsAnError(t *testing.T) {
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, nil, nil, defs, rt, gt, pol)
 	require.Error(t, err, "an unobservable rule must always fail the run")
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeNotVerified, res.Verdicts[0].Outcome)
 }
 
 // Any unobservable rule means exit 2, with no exception — even alongside a
-// real newly_bad.
+// real new_failure.
 func TestDecide_UnobservableWinsEvenAlongsideARealViolation(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
@@ -407,11 +408,11 @@ func TestDecide_UnobservableWinsEvenAlongsideARealViolation(t *testing.T) {
 			gotBad = v.Outcome
 		}
 	}
-	require.Equal(t, OutcomeUnobservable, gotBroken)
-	require.Equal(t, OutcomeNewlyBad, gotBad,
+	require.Equal(t, OutcomeNotVerified, gotBroken)
+	require.Equal(t, OutcomeNewFailure, gotBad,
 		"classification still runs and is still visible in Verdicts")
 	require.NotEmpty(t, res.Violations,
-		"the newly_bad instance still reported even though the run fails on the unobservable rule")
+		"the new_failure instance still reported even though the run fails on the not_verified rule")
 }
 
 // A clean verdict with a coverage gap must never give exit 0, and recovered
@@ -429,7 +430,7 @@ func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 		wantOutcome   Outcome
 	}{
 		{
-			name: "clean",
+			name: "healthy",
 			goodPolls: func() []Poll {
 				var polls []Poll
 				for ts := from; !ts.After(to); ts = ts.Add(30 * time.Second) {
@@ -437,7 +438,7 @@ func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 				}
 				return polls
 			}(),
-			wantOutcome: OutcomeClean,
+			wantOutcome: OutcomeHealthy,
 		},
 		{
 			// Dense 30s-spaced polls throughout, so "good"'s own coverage
@@ -466,9 +467,9 @@ func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 			wantOutcome: OutcomeRecovered,
 		},
 		{
-			name:          "skipped",
+			name:          "paused",
 			pausedAtStart: true,
-			wantOutcome:   OutcomeSkipped,
+			wantOutcome:   OutcomePaused,
 		},
 	}
 
@@ -502,7 +503,7 @@ func TestDecide_UnobservableRuleWinsOverEveryFavorableOutcome(t *testing.T) {
 				}
 			}
 			require.Equal(t, tc.wantOutcome, gotGood)
-			require.Equal(t, OutcomeUnobservable, gotBroken)
+			require.Equal(t, OutcomeNotVerified, gotBroken)
 		})
 	}
 }
@@ -540,7 +541,7 @@ func TestDecide_RecoveredOutcomeOverriddenByItsOwnCoverageGap(t *testing.T) {
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
 	require.Error(t, err, "r1's own coverage gap must fail the run even though it recovered")
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome, "never recovered")
+	require.Equal(t, OutcomeNotVerified, res.Verdicts[0].Outcome, "never recovered")
 	require.False(t, res.Coverage["r1"].Proved)
 }
 
@@ -562,7 +563,7 @@ func TestDecide_CleanWindowIsAPass(t *testing.T) {
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
 	require.NoError(t, err)
 	require.Empty(t, res.Violations, "a pass is exactly len(Violations)==0 && err==nil")
-	require.Equal(t, OutcomeClean, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeHealthy, res.Verdicts[0].Outcome)
 }
 
 // A pause and then an unpause inside the window, with an episode that would
@@ -604,7 +605,7 @@ func TestDecide_PauseThenUnpauseWithHiddenEpisodeGivesUnobservableNotClean(t *te
 	res, err := decide(Header{StartedAt: from.Add(-time.Hour)}, polls, &sentinel, defs, rt, gt, pol)
 	require.Error(t, err, "the pause-then-unpause blind interval must fail closed")
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome, "never clean")
+	require.Equal(t, OutcomeNotVerified, res.Verdicts[0].Outcome, "never clean")
 	require.False(t, res.Coverage["r1"].Proved)
 }
 
@@ -632,10 +633,10 @@ func TestDecide_SkippedOnlyShortfallProducesAViolationWithoutAnError(t *testing.
 	sentinel := to
 
 	res, err := decide(pausedHeader(from.Add(-time.Hour), "paused"), polls, &sentinel, defs, rt, gt, pol)
-	require.NoError(t, err, "a shortfall caused only by a skipped rule is exit 1, not exit 2")
+	require.NoError(t, err, "a shortfall caused only by a paused rule is exit 1, not exit 2")
 	require.Len(t, res.Violations, 1)
 	v := res.Violations[0]
-	require.Equal(t, OutcomeSkipped, v.Outcome)
+	require.Equal(t, OutcomePaused, v.Outcome)
 	require.Equal(t, "paused", v.RuleUID)
 	require.Equal(t, "Paused", v.Alert)
 	require.NotEmpty(t, v.Note,
@@ -665,7 +666,8 @@ func TestDecide_ExplicitMinObservedShortfallWithNoPausedRuleStillProducesAViolat
 	require.NoError(t, err, "an unmet MinObserved is exit 1, never exit 2")
 	require.Len(t, res.Violations, 2, "the shortfall (3-1=2) must surface directly rather than pass silently")
 	for _, v := range res.Violations {
-		require.Equal(t, OutcomeSkipped, v.Outcome)
+		require.Equal(t, OutcomeNotCounted, v.Outcome,
+			"no resolved rule explains the deficit, so it must not be blamed on a paused one")
 	}
 }
 
@@ -740,7 +742,7 @@ func TestDecide_NodataIsANoteByDefault(t *testing.T) {
 
 // An instance whose true onset (ActiveAt) falls strictly inside the window —
 // even though the first poll that happens to observe it already shows it bad —
-// must never be treated as preexisting. If it then clears, that is newly_bad
+// must never be treated as preexisting. If it then clears, that is new_failure
 // (exit 1), not recovered (exit 0).
 func TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -757,10 +759,10 @@ func TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered(t *test
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomeNewlyBad, outcome,
+	require.Equal(t, OutcomeNewFailure, outcome,
 		"the onset is after `from`, so it is not preexisting even though the FIRST in-window poll already observes it bad")
 	require.Len(t, viols, 1)
-	require.Equal(t, OutcomeNewlyBad, viols[0].Outcome)
+	require.Equal(t, OutcomeNewFailure, viols[0].Outcome)
 	require.Equal(t, clearAt.Sub(onset), badFor, "BadFor must count from the true onset, not from `from`")
 }
 
@@ -799,7 +801,7 @@ func TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary(t *testing.T
 	// Grafana's clock reads 90s ahead of the runner's (skew = +90s). The
 	// poll's raw GrafanaNow/ActiveAt both sit 90s past `from` in Grafana's
 	// domain, but translate to exactly `from` in the runner domain — genuinely
-	// preexisting once translated, and wrongly "newly_bad" if the skew is
+	// preexisting once translated, and wrongly "new_failure" if the skew is
 	// ignored.
 	skew := 90 * time.Second
 	rawActiveAt := from.Add(skew)
@@ -813,7 +815,7 @@ func TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary(t *testing.T
 	stillBad.LastEvaluation = to.Add(skew)
 
 	outcome, badFor, _ := classifyRule(def, []Poll{poll, stillBad}, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomePersistentlyBad, outcome,
+	require.Equal(t, OutcomeStillFailing, outcome,
 		"a +90s skew must translate ActiveAt back to exactly `from`")
 	require.Equal(t, to.Sub(from), badFor)
 }
@@ -893,7 +895,7 @@ func TestClassifyRule_ClearedEventPastWindowEndClampsToWindowEnd(t *testing.T) {
 // reading of the upper boundary: an instance whose runner-domain onset lands
 // only slightly past windowEnd (to + transitionGrace) is reachable at all only
 // because inWindowPolls widens the boundary outward by the skew bound, so the
-// gate cannot PROVE it belongs to the next window. It is charged as newly_bad —
+// gate cannot PROVE it belongs to the next window. It is charged as new_failure —
 // with BadFor truncated to zero — rather than silently forgiven as clean.
 func TestClassifyRule_OnsetJustPastWindowEndIsNewlyBadNotClean(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -914,13 +916,13 @@ func TestClassifyRule_OnsetJustPastWindowEndIsNewlyBadNotClean(t *testing.T) {
 	}
 
 	outcome, badFor, viols := classifyRule(def, []Poll{poll}, from, windowEnd, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomeNewlyBad, outcome,
+	require.Equal(t, OutcomeNewFailure, outcome,
 		"an onset past windowEnd seen only via the skew bound must fail closed")
 	require.Zero(t, badFor, "the zero-length episode must truncate to the window end")
 	require.Len(t, viols, 1)
 }
 
-// A clear after `to` gives persistently_bad. classifyRule filters
+// A clear after `to` gives still_failing. classifyRule filters
 // its input to [from, windowEnd] itself (inWindowPolls), so a Cleared event
 // GENUINELY past windowEnd — well beyond any skew bound, unlike the clamp
 // case above — never reaches the timeline at all: the instance is still bad
@@ -936,10 +938,10 @@ func TestClassifyRule_ClearAfterWindowEndIsPersistentlyBad(t *testing.T) {
 		clearedPoll("r1", to.Add(time.Hour), key), // far past `to`, not a boundary case
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomePersistentlyBad, outcome, "a clear outside the window must not read as a recovery")
+	require.Equal(t, OutcomeStillFailing, outcome, "a clear outside the window must not read as a recovery")
 	require.Equal(t, to.Sub(from), badFor)
 	require.Len(t, viols, 1)
-	require.Equal(t, OutcomePersistentlyBad, viols[0].Outcome)
+	require.Equal(t, OutcomeStillFailing, viols[0].Outcome)
 }
 
 // TestClassifyRule_CloseBeforeOpenClampsToZeroNotNegative pins the
@@ -966,7 +968,7 @@ func TestClassifyRule_CloseBeforeOpenClampsToZeroNotNegative(t *testing.T) {
 		quietPoll("r1", to),
 	}
 	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
-	require.Equal(t, OutcomeNewlyBad, outcome)
+	require.Equal(t, OutcomeNewFailure, outcome)
 	require.GreaterOrEqual(t, badFor, time.Duration(0),
 		"a non-negative duration even though the closing poll's translated time landed before the opening poll's")
 	require.Zero(t, badFor, "the clamp collapses the inverted span to a zero-length episode")
@@ -989,4 +991,31 @@ func TestMergeDurations_OverlappingEpisodesCountOnce(t *testing.T) {
 
 func TestMergeDurations_Empty(t *testing.T) {
 	require.Zero(t, mergeDurations(nil))
+}
+
+// --- published vocabulary ---
+
+// Outcome strings are published JSON, but every other test compares against
+// the constants, so a typo in a constant's literal would pass them all. Pin
+// the literals themselves.
+func TestOutcomeJSONVocabulary(t *testing.T) {
+	want := map[Outcome]string{
+		OutcomeHealthy:      "healthy",
+		OutcomeNewFailure:   "new_failure",
+		OutcomeRecovered:    "recovered",
+		OutcomeStillFailing: "still_failing",
+		OutcomeUnstable:     "unstable",
+		OutcomePaused:       "paused",
+		OutcomeNotVerified:  "not_verified",
+		OutcomeNotCounted:   "not_counted",
+	}
+	require.Len(t, want, 8, "every Outcome constant must be pinned here")
+
+	for outcome, literal := range want {
+		t.Run(string(outcome), func(t *testing.T) {
+			raw, err := json.Marshal(outcome)
+			require.NoError(t, err)
+			require.Equal(t, `"`+literal+`"`, string(raw))
+		})
+	}
 }

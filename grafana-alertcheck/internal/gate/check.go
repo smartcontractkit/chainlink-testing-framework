@@ -43,6 +43,11 @@ type Config struct {
 	AllowPaused          bool
 	NodataIsUnobservable bool
 
+	// NoFailFast disables early exit, so the loop always runs to
+	// to+transitionGrace for a full-window coverage proof. The CLI sets it
+	// with --no-fail-fast; the gate never exits 0 early either way.
+	NoFailFast bool
+
 	// From is the moment the deploy finished and To is the end of the work.
 	// They are different moments and both come from the work. In recorder mode
 	// an absent From is a hard error; in single-step mode it falls back to the
@@ -327,22 +332,66 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		}
 	}
 
+	// The fail-fast guard needs a header now; the authoritative ReadLog
+	// overwrites this advisory one after the writer exits.
+	if logHasHdr {
+		header = earlyHdr
+	}
+
+	// Fixed once, before collection, so the guard and decide share one policy.
+	pol := Policy{
+		States:               cfg.States,
+		Preexisting:          cfg.Preexisting,
+		MinObserved:          minObserved,
+		AllowPaused:          cfg.AllowPaused,
+		NodataIsUnobservable: cfg.NodataIsUnobservable,
+		From:                 from,
+		To:                   cfg.To,
+	}
+
 	// ---- Collect the evidence. --------------------------------------------
-	// Collect ONLY. No classification happens here and there is no early exit,
-	// even once a violation is certain: the loop always runs to
-	// to + transitionGrace, which is what makes "did the early exit lose the
-	// coverage proof?" a question that cannot be asked.
+	// The loop never classifies; its only access to the pure layer is the
+	// fail-fast guard, which ends the run only on a condition that cannot
+	// become a pass. With --no-fail-fast there is no guard.
 	windowEnd := cfg.To.Add(gt.transitionGrace)
 
-	var poller *livePoller
+	var (
+		poller *livePoller
+		tail   *logTailer
+		guard  terminalCheck
+	)
 	if !logHasHdr {
 		poller = newLivePoller(src, reducer, activeRules(resolved), rt, cfg.Concurrency, cfg.Clock.Now())
 	}
-	collected, err := collectUntil(ctx, cfg, windowEnd, poller)
+	failFast := !cfg.NoFailFast
+	if failFast {
+		guard = func(polls []Poll, at time.Time) (Termination, bool) {
+			return terminalVerdict(header, polls, resolved, rt, pol, from, at)
+		}
+		if logHasHdr {
+			// In recorder mode check otherwise only sleeps, so the guard reads
+			// the recorder's log as it lands. ReadLog is still the evidence.
+			tail, err = newLogTailer(cfg.Log)
+			if err != nil {
+				return Result{}, err
+			}
+			defer tail.Close()
+		}
+	}
+	collected, err := collectUntil(ctx, cfg, windowEnd, initial, poller, tail, guard)
 	if err != nil {
+		// Fail closed: in recorder mode the detached recorder is still running,
+		// so reap it and keep the original error.
+		if logHasHdr {
+			if held, stopErr := stopRecorder(ctx, cfg); stopErr != nil {
+				err = errors.Join(err, stopErr)
+			} else if held != nil {
+				_ = held.Close()
+			}
+		}
 		// Nothing collected is classified; the count lets an operator tell a
 		// run that failed at once from one that failed at minute nine.
-		return Result{}, fmt.Errorf("collect evidence after %d poll(s): %w", len(collected), err)
+		return Result{}, fmt.Errorf("collect evidence after %d poll(s): %w", len(collected.polls), err)
 	}
 
 	var (
@@ -377,15 +426,26 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			return Result{}, fmt.Errorf("log identity: %w", err)
 		}
 	} else {
-		polls = make([]Poll, 0, len(initial)+len(collected))
-		polls = append(polls, initial...)
-		polls = append(polls, collected...)
-		// The shell stamps the sentinel itself, when the collection loop
-		// exits: by construction that is at or after to + transitionGrace, so
-		// the sentinel check passes for the same reason a clean recorder stop
-		// does, and for no other.
-		stoppedAt := cfg.Clock.Now()
-		sentinel = &stoppedAt
+		// Seeded with the measurement pass, so this is initial + the loop's polls.
+		polls = collected.polls
+		if collected.term == nil {
+			// The loop ran to to+transitionGrace, so a sentinel stamped now
+			// proves it. A fail-fast exit has no such claim; earlyResult
+			// supplies its own.
+			stoppedAt := cfg.Clock.Now()
+			sentinel = &stoppedAt
+		}
+	}
+
+	// ---- Fail-fast exit. --------------------------------------------------
+	// The window is not proved, so earlyResult classifies the observed
+	// sub-window, preserves the non-zero verdict, and skips the drain wait.
+	if collected.term != nil {
+		term := *collected.term
+		fmt.Fprintf(cfg.Notes, "note: fail-fast: %s (%s at %s); stopping before the window closed\n",
+			term.Kind, term.Alert, term.At.Format(time.RFC3339))
+		result, err := earlyResult(header, polls, resolved, rt, gt, pol, term)
+		return result, err
 	}
 
 	// ---- The drain wait. --------------------------------------------------
@@ -399,15 +459,6 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	}
 
 	// ---- Classify. --------------------------------------------------------
-	pol := Policy{
-		States:               cfg.States,
-		Preexisting:          cfg.Preexisting,
-		MinObserved:          minObserved,
-		AllowPaused:          cfg.AllowPaused,
-		NodataIsUnobservable: cfg.NodataIsUnobservable,
-		From:                 from,
-		To:                   cfg.To,
-	}
 	result, decideErr := decide(header, polls, sentinel, resolved, rt, gt, pol)
 	result, drainErr := mergeDrainTimeouts(result, drained)
 
@@ -521,22 +572,38 @@ func (p *livePoller) poll(ctx context.Context, uids []string) ([]Poll, error) {
 	return out, obsErr
 }
 
-// collectUntil is the collection loop, shared by both modes. With a poller it
-// polls each rule on its own cadence; with nil it only waits, because in
-// recorder mode the evidence is being written by another process. Both print
-// the same countdown, because both are the same silence to an operator
-// watching a job.
-//
-// It never classifies and never exits early.
-func collectUntil(ctx context.Context, cfg Config, deadline time.Time, p *livePoller) ([]Poll, error) {
-	var (
-		polls     []Poll
-		lastPrint time.Time
-	)
+// tailPollInterval bounds how long a fail-fast condition can sit unnoticed in
+// recorder mode. The read is a cheap seek-and-append from the last offset.
+const tailPollInterval = time.Second
+
+// terminalCheck is the fail-fast guard: polls observed so far plus runner time
+// in, a terminal verdict out. nil disables fail-fast.
+type terminalCheck func(polls []Poll, at time.Time) (Termination, bool)
+
+// collection is what collectUntil observed. polls is the evidence in
+// single-step mode and the tailed subset in recorder mode, where ReadLog
+// re-reads the authoritative set after the writer exits. term is set only when
+// the guard ended the loop early.
+type collection struct {
+	polls    []Poll
+	sentinel *time.Time
+	term     *Termination
+}
+
+// collectUntil is the collection loop. With a poller it polls each rule on its
+// own cadence; in recorder mode it tails the log the recorder is writing. A
+// guard is evaluated after each observation and ends the loop early on a
+// condition that cannot become a pass.
+func collectUntil(ctx context.Context, cfg Config, deadline time.Time, seed []Poll,
+	p *livePoller, tail *logTailer, guard terminalCheck) (collection, error) {
+
+	out := collection{polls: seed}
+	var lastPrint time.Time
+
 	for {
 		now := cfg.Clock.Now()
 		if !now.Before(deadline) {
-			return polls, nil
+			return out, nil
 		}
 		if lastPrint.IsZero() || now.Sub(lastPrint) >= countdownEvery {
 			fmt.Fprintf(cfg.Notes, "collecting: %s until the window closes at %s\n",
@@ -553,24 +620,42 @@ func collectUntil(ctx context.Context, cfg Config, deadline time.Time, p *livePo
 			due := p.sched.Due(now)
 			for _, uid := range due {
 				if merr := p.sched.Mark(uid, now); merr != nil {
-					return polls, fmt.Errorf("mark %s: %w", uid, merr)
+					return out, fmt.Errorf("mark %s: %w", uid, merr)
 				}
 			}
 			if len(due) > 0 {
 				batch, err := p.poll(ctx, due)
-				polls = append(polls, batch...)
+				out.polls = append(out.polls, batch...)
 				if err != nil {
-					return polls, err
+					return out, err
 				}
 			}
 			if next, ok := p.sched.earliestDue(); ok {
 				wait = min(wait, next.Sub(cfg.Clock.Now()))
 			}
 		}
+		if tail != nil {
+			batch, sentinel, err := tail.read()
+			if err != nil {
+				return out, err
+			}
+			out.polls = append(out.polls, batch...)
+			if sentinel != nil {
+				out.sentinel = sentinel
+			}
+			wait = min(wait, tailPollInterval)
+		}
+
+		if guard != nil {
+			if term, ok := guard(out.polls, cfg.Clock.Now()); ok {
+				out.term = &term
+				return out, nil
+			}
+		}
 
 		select {
 		case <-ctx.Done():
-			return polls, ctx.Err()
+			return out, ctx.Err()
 		case <-cfg.Clock.After(max(wait, 0)):
 		}
 	}
@@ -600,13 +685,13 @@ type drainVerdict struct {
 
 // drainWait is the final liveness check: did each rule evaluate through the
 // end of the window? A rule that cannot answer within drainTimeout is
-// unobservable, never a pass. It returns one verdict per rule it could not
+// not_verified, never a pass. It returns one verdict per rule it could not
 // clear (keyed by UID); an error only for a hard failure of the wait itself.
 //
 // Two kinds of rule are excluded up front because draining them could not
 // change a verdict: a rule the HEADER says was paused at the window open (the
 // header, not the late-resolved definitions — see Header.pausedAtStart), and a
-// rule whose last poll says Found == false (already unobservable via rule_absent).
+// rule whose last poll says Found == false (already not_verified via rule_absent).
 func drainWait(ctx context.Context, cfg Config, src Source, defs []Definition, pausedAtStart map[string]bool,
 	rt map[string]RuleTimings, polls []Poll, windowEnd time.Time, timeout time.Duration) (map[string]drainVerdict, error) {
 
@@ -777,17 +862,17 @@ func mergeDrainTimeouts(res Result, drained map[string]drainVerdict) (Result, er
 		cov.Notes = append(cov.Notes, verdict.note)
 		res.Coverage[uid] = cov
 
-		if res.Verdicts[i].Outcome != OutcomeUnobservable {
+		if res.Verdicts[i].Outcome != OutcomeNotVerified {
 			names = append(names, fmt.Sprintf("%s (%s)", res.Verdicts[i].Alert, verdict.reason))
 		}
-		res.Verdicts[i].Outcome = OutcomeUnobservable
+		res.Verdicts[i].Outcome = OutcomeNotVerified
 		res.Verdicts[i].Note = strings.Join(cov.Notes, "; ")
 	}
 	if len(names) == 0 {
-		// Every drained rule was already unobservable for an earlier reason,
+		// Every drained rule was already not_verified for an earlier reason,
 		// so decide's own error already stops the run. Adding a second error
 		// saying the same thing would only make the message longer.
 		return res, nil
 	}
-	return res, fmt.Errorf("gate: %d rule(s) unobservable at the drain wait: %s", len(names), strings.Join(names, "; "))
+	return res, fmt.Errorf("gate: %d rule(s) not verified at the drain wait: %s", len(names), strings.Join(names, "; "))
 }

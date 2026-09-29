@@ -64,7 +64,7 @@ Use it when the work failed and the alert verdict no longer matters, but the rec
 ```bash
 grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339 \
   [--alerts ...] [--folder F] [--states ...] [--preexisting ...] [--min-observed N] \
-  [--allow-paused] [--nodata-is-unobservable] [--concurrency N] [--output json]
+  [--allow-paused] [--nodata-is-unobservable] [--no-fail-fast] [--concurrency N] [--output json]
 ```
 
 | Flag | Default | Meaning |
@@ -79,8 +79,11 @@ grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339
 | `--min-observed` | every resolved rule | Minimum rules that must be observed |
 | `--allow-paused` | `false` | Don't count pre-window-paused rules against `--min-observed` |
 | `--nodata-is-unobservable` | `false` | Treat sustained `health=nodata` as unobservable |
+| `--no-fail-fast` | `false` | Wait for the full window even after a certain failure |
 | `--concurrency` | `1` | Max concurrent requests |
 | `--output` | `table` | `json` also writes the machine-readable result to stdout |
+
+By default `check` **exits early** on a failure that cannot become a pass: a post-`from` bad onset, or an inability (a heartbeat gap, a sustained `health=error`, a stale evaluation, an in-window pause, an absent rule). This is a latency optimization, not a weaker gate — it never exits `0` early. The one observable difference is that an early exit can report `1` where a full run would have discovered an inability later and reported `2`. `--no-fail-fast` always waits for `to + transitionGrace` and the full coverage proof; the `Result` then carries no `terminated_early` marker. With early exit the JSON result includes `terminated_early` naming the rule, kind, reason and time.
 
 `--from` and `--to` are RFC3339 with an explicit offset and must come from your work — `from` from the deploy step, `to` from the step that finishes. In recorder mode an absent `--from` is a hard error; in single-step mode it falls back (with a warning) to the start of the step.
 
@@ -99,7 +102,7 @@ Datasource-managed and recording rules are refused with a specific error. A name
 
 ## Output and exit codes
 
-The human table goes to **stderr**: `RESULTS` (one row per rule), `VIOLATIONS` (one per distinct rule/outcome/state/health/note signature, with a `COUNT` of the instances it stands for — instance identity is only in the JSON), and `THRESHOLDS` (each rule's `maxGap`/`healthGrace`/`evalStaleAfter` plus global `transitionGrace`/`drainTimeout` and the largest measured clock skew). `--output json` writes the result to stdout.
+The human table goes to **stderr**: `RESULTS` (one row per rule, with the verdict, time broken, check cadence and whether the window was observed), `VIOLATIONS` (one per distinct rule/verdict/state/health/note signature, with an `INSTANCES` count of the instances it stands for — instance identity is only in the JSON), and `LIMITS USED` (each rule's observation limits in plain words, explained by a legend under the table, plus the extra observation time, the evaluation wait and the largest measured clock difference). The JSON outcome values are `healthy`, `new_failure`, `still_failing`, `recovered`, `unstable`, `paused`, `not_verified` and the synthetic `not_counted`. `--output json` writes the result to stdout.
 
 | Code | Meaning |
 | ---- | ------- |
