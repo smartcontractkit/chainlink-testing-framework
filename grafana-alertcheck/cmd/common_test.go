@@ -23,9 +23,10 @@ func TestParseLabelPairs(t *testing.T) {
 			{Key: "env", Value: "stage"},
 		}, ""},
 		{"value may contain equals", "query=a=b", []gate.LabelMatcher{{Key: "query", Value: "a=b"}}, ""},
-		{"missing equals", "team", nil, "not a non-empty key=value pair"},
-		{"empty key", "=bcm", nil, "not a non-empty key=value pair"},
-		{"empty value", "team=", nil, "not a non-empty key=value pair"},
+		{"empty value selects the empty value", "team=", []gate.LabelMatcher{{Key: "team"}}, ""},
+		{"empty and set values mix", "env=,team=bcm", []gate.LabelMatcher{{Key: "env"}, {Key: "team", Value: "bcm"}}, ""},
+		{"missing equals", "team", nil, "not a key=value pair with a non-empty key"},
+		{"empty key", "=bcm", nil, "not a key=value pair with a non-empty key"},
 		{"empty segment", "team=bcm,", nil, "empty label pair"},
 		{"duplicate key", "team=a,team=b", nil, "duplicate label"},
 	}

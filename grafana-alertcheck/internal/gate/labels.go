@@ -24,11 +24,11 @@ func SelectByLabels(defs []Definition, include, exclude []LabelMatcher) ([]Defin
 			continue
 		}
 		matchedInclude++
-		if matchesAny(d.Labels, exclude) {
-			continue
-		}
 		if d.Kind != KindGrafanaManaged {
 			return nil, fmt.Errorf("label selection matches %q, a %s, which is not supported", d.Title, kindName(d.Kind))
+		}
+		if matchesAny(d.Labels, exclude) {
+			continue
 		}
 		selected = append(selected, d)
 	}

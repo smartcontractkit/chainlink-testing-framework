@@ -115,7 +115,7 @@ grafana-alertcheck watch --out /tmp/run.jsonl --include-labels team=bcm,env=stag
 grafana-alertcheck check --to "$finished_at" --include-labels team=bcm --exclude-labels severity=info
 ```
 
-`--include-labels` takes comma-separated exact-match `key=value` pairs; a rule must carry **all** of them. `--exclude-labels` is optional and drops any rule carrying **one** of its pairs. A rule that does not carry the label is never dropped, only never included. Values cannot contain commas.
+`--include-labels` takes comma-separated exact-match `key=value` pairs; a rule must carry **all** of them. `--exclude-labels` is optional and drops any rule carrying **one** of its pairs. A rule that does not carry the label is never dropped, only never included. Values cannot contain commas; `key=` matches only rules that carry the label with an empty value.
 
 The label flags cannot be combined with `--alerts` or `--folder`, and they are refused with `--in` — the recorded log names its own alert set. A selection that matches no rules, whose matches are all excluded, or that matches a datasource-managed or recording rule exits `2`: an empty watch set must never pass.
 

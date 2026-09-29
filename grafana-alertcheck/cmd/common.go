@@ -50,10 +50,12 @@ func parseLabelPairs(flagName, s string) ([]gate.LabelMatcher, error) {
 		if part == "" {
 			return nil, fmt.Errorf("%s: empty label pair in %q", flagName, s)
 		}
+		// An empty value is legal: it selects rules that carry the label with
+		// an empty value (a missing label never matches).
 		key, value, ok := strings.Cut(part, "=")
 		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
-		if !ok || key == "" || value == "" {
-			return nil, fmt.Errorf("%s: %q is not a non-empty key=value pair", flagName, part)
+		if !ok || key == "" {
+			return nil, fmt.Errorf("%s: %q is not a key=value pair with a non-empty key", flagName, part)
 		}
 		if seen[key] {
 			return nil, fmt.Errorf("%s: duplicate label %q", flagName, key)
