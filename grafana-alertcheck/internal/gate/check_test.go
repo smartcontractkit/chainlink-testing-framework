@@ -268,7 +268,7 @@ func TestCheckSingleStepCleanWindowPasses(t *testing.T) {
 	// A pass is exactly this shape.
 	require.Empty(t, res.Violations)
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeClean, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeHealthy, res.Verdicts[0].Outcome)
 	cov := res.Coverage[checkUID]
 	require.True(t, cov.Proved)
 	require.False(t, cov.Unobservable)
@@ -340,7 +340,7 @@ func TestCheckSingleStepContinuousHealthErrorIsUnobservable(t *testing.T) {
 	res, err := check(context.Background(), cfg, src)
 	require.Error(t, err, "continuous health=error must be unobservable")
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeNotVerified, res.Verdicts[0].Outcome)
 	require.Equal(t, ReasonHealthError, res.Coverage[def.UID].Reason)
 }
 
@@ -361,15 +361,13 @@ func TestCheckSingleStepFiringInstanceReportsWithoutExitingEarly(t *testing.T) {
 	res, err := check(context.Background(), cfg, src)
 	require.NoError(t, err, "a violation is exit 1, not an error")
 	require.Len(t, res.Violations, 1)
-	require.Equal(t, OutcomePersistentlyBad, res.Violations[0].Outcome)
+	require.Equal(t, OutcomeStillFailing, res.Violations[0].Outcome)
 	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)), "exited early; collection must run to to+grace")
 }
 
-// A newly_bad instance at from+30s gives exit 1, but ONLY after
-// to+transitionGrace. The test above covers a rule already bad before the
-// window opened (persistently_bad); this covers a fresh onset just inside the
-// window, which must not release the runner the instant it is first observed.
-func TestCheckSingleStepNewOnsetDoesNotExitEarly(t *testing.T) {
+// A fresh onset ends the run early, well before to+transitionGrace, and still
+// reports the exit-1 shape with the requested window preserved.
+func TestCheckSingleStepNewOnsetExitsEarlyByDefault(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
 	onset := testNow.Add(30 * time.Second)
@@ -387,11 +385,67 @@ func TestCheckSingleStepNewOnsetDoesNotExitEarly(t *testing.T) {
 	})
 
 	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err, "a violation is exit 1, not an error")
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomeNewFailure, res.Violations[0].Outcome)
+	require.True(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"the runner was released only after to+grace; fail-fast did not fire")
+	require.NotNil(t, res.TerminatedEarly)
+	require.Equal(t, TerminationViolation, res.TerminatedEarly.Kind)
+	require.Equal(t, OutcomeNewFailure, res.TerminatedEarly.Outcome)
+	require.True(t, res.To.Equal(cfg.To), "the requested window is still reported")
+	require.Contains(t, notesOf(cfg), "fail-fast")
+}
+
+// A preexisting bad instance can still become `recovered` (a pass), so it is
+// never terminal even with fail-fast on.
+func TestCheckSingleStepPreexistingBadDoesNotExitEarly(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	firing := Instance{
+		Labels:   map[string]string{"alertname": checkTitle, "instance": "a"},
+		State:    StateFiring,
+		ActiveAt: testNow.Add(-10 * time.Minute), // bad before the window opened
+	}
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		return healthyObservation(clock.Now(), firing), nil
+	})
+
+	res, err := check(context.Background(), cfg, src)
 	require.NoError(t, err)
 	require.Len(t, res.Violations, 1)
-	require.Equal(t, OutcomeNewlyBad, res.Violations[0].Outcome)
+	require.Equal(t, OutcomeStillFailing, res.Violations[0].Outcome)
+	require.Nil(t, res.TerminatedEarly, "a preexisting condition can still recover, so it is not terminal")
 	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
-		"exited early; collection must run to to+grace even for a fresh onset at from+30s")
+		"exited early; collection must run to to+grace for a preexisting bad instance")
+}
+
+// --no-fail-fast runs the same fresh onset to to+transitionGrace.
+func TestCheckSingleStepNewOnsetNoFailFastRunsToTheEnd(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.NoFailFast = true
+	onset := testNow.Add(30 * time.Second)
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		now := clock.Now()
+		if now.Before(onset) {
+			return healthyObservation(now), nil
+		}
+		firing := Instance{
+			Labels:   map[string]string{"alertname": checkTitle, "instance": "a"},
+			State:    StateFiring,
+			ActiveAt: onset,
+		}
+		return healthyObservation(now, firing), nil
+	})
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomeNewFailure, res.Violations[0].Outcome)
+	require.Nil(t, res.TerminatedEarly)
+	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"with --no-fail-fast the loop must run to to+grace")
 }
 
 // An ABSENT `from` in single-step mode (as opposed to recorder mode, which
@@ -596,11 +650,80 @@ func TestCheckRecorderModeCleanWindowPasses(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, res.Violations)
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeClean, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeHealthy, res.Verdicts[0].Outcome)
 	require.Equal(t, "13.1.0", res.GrafanaVersion)
 	// The collection loop still waited out to+transitionGrace even though the
 	// recorder had already finished.
 	require.False(t, clock.Now().Before(windowEnd))
+}
+
+// recordedLogWithOnset records a full window where the rule fires from onset on.
+func recordedLogWithOnset(t *testing.T, dir string, onset time.Time) string {
+	t.Helper()
+	windowEnd := testNow.Add(5*time.Minute + checkGrace)
+	path := filepath.Join(dir, "log.jsonl")
+	w, err := NewWriter(path, newFakeClock(windowEnd.Add(30*time.Second)))
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
+		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: testNow.Add(-time.Minute),
+		Rules: []LoggedRule{{
+			UID: checkUID, Title: checkTitle, Folder: "F", Group: "G",
+			IntervalSeconds: 60, NoDataState: "OK", ExecErrState: "OK",
+			PollEverySeconds: checkPollEvery.Seconds(),
+		}},
+	}))
+	for at := testNow.Add(-time.Minute); !at.After(windowEnd.Add(30 * time.Second)); at = at.Add(checkPollEvery) {
+		p := Poll{RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok", LastEvaluation: at}
+		if !at.Before(onset) {
+			p.State = "firing"
+			p.Abnormal = []Instance{{
+				Labels:   map[string]string{"alertname": checkTitle, "instance": "a"},
+				State:    StateFiring,
+				ActiveAt: onset,
+			}}
+		}
+		require.NoError(t, w.WritePoll(p))
+	}
+	require.NoError(t, w.Stop())
+	return path
+}
+
+// Recorder-mode fail-fast reads the recorder's log as it lands, ending the wait
+// on an onset inside the window. No live source is polled.
+func TestCheckRecorderModeExitsEarlyOnANewOnset(t *testing.T) {
+	onset := testNow.Add(time.Minute)
+	logPath := recordedLogWithOnset(t, t.TempDir(), onset)
+	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	clock := newVirtualClock(testNow)
+	cfg := recorderConfig(t, clock, logPath)
+	res, err := check(context.Background(), cfg, newCheckSource(nil))
+	require.NoError(t, err)
+	require.NotNil(t, res.TerminatedEarly)
+	require.Equal(t, TerminationViolation, res.TerminatedEarly.Kind)
+	require.Equal(t, OutcomeNewFailure, res.TerminatedEarly.Outcome)
+	require.Len(t, res.Violations, 1)
+	require.True(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"the runner was held to the window; fail-fast did not fire")
+	require.True(t, res.To.Equal(cfg.To), "the requested window is still reported")
+}
+
+// --no-fail-fast over the same recording runs to to+transitionGrace.
+func TestCheckRecorderModeNoFailFastRunsToTheEnd(t *testing.T) {
+	onset := testNow.Add(time.Minute)
+	logPath := recordedLogWithOnset(t, t.TempDir(), onset)
+	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	clock := newVirtualClock(testNow)
+	cfg := recorderConfig(t, clock, logPath)
+	cfg.NoFailFast = true
+	res, err := check(context.Background(), cfg, newCheckSource(nil))
+	require.NoError(t, err)
+	require.Nil(t, res.TerminatedEarly)
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomeNewFailure, res.Violations[0].Outcome)
+	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
+		"with --no-fail-fast the loop must run to to+grace")
 }
 
 // The identity of the log is not correct. The check runs against the header
@@ -680,7 +803,7 @@ func TestCheckRecorderModeFromSameSecondAsStartedAtPasses(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, res.Violations)
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeClean, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeHealthy, res.Verdicts[0].Outcome)
 }
 
 // The coverage proof failed: a hole in the middle of the recording is not
@@ -712,7 +835,7 @@ func TestCheckFailClosedOnCoverageGap(t *testing.T) {
 	res, err := check(context.Background(), cfg, newCheckSource(nil))
 	require.Error(t, err, "the coverage gap to fail closed")
 	require.Equal(t, ReasonHeartbeatGap, res.Coverage[checkUID].Reason)
-	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeNotVerified, res.Verdicts[0].Outcome)
 }
 
 // An episode fully between the deploy and the start of the check: recorder
@@ -745,7 +868,7 @@ func TestCheckRecorderModeFindsAGapImmediatelyAfterTheDeploy(t *testing.T) {
 	res, err := check(context.Background(), cfg, newCheckSource(nil))
 	require.Error(t, err, "a hole right after the deploy hides whatever happened there")
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome, "never clean")
+	require.Equal(t, OutcomeNotVerified, res.Verdicts[0].Outcome, "never clean")
 }
 
 // The drain limit passed. The recording itself is clean, so this isolates the
@@ -774,7 +897,7 @@ func TestCheckFailClosedOnDrainTimeout(t *testing.T) {
 	res, err := check(context.Background(), cfg, src)
 	require.Error(t, err, "the drain limit to fail closed")
 	require.Equal(t, ReasonDrainTimeout, res.Coverage[checkUID].Reason)
-	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeNotVerified, res.Verdicts[0].Outcome)
 	require.Contains(t, res.Verdicts[0].Note, "drain limit")
 	require.GreaterOrEqual(t, clock.Now().Sub(windowEnd), checkDrainLimit,
 		"the rule never evaluates through the window, so the drain wait must run its full limit")
@@ -873,10 +996,10 @@ func pausedAfterWindowCheck(t *testing.T, allowPaused bool) (Result, Config, err
 func TestCheckPausingARuleAfterTheWindowDoesNotMakeItSkipped(t *testing.T) {
 	res, _, err := pausedAfterWindowCheck(t, false)
 	require.NoError(t, err)
-	require.Equal(t, OutcomeNewlyBad, res.Verdicts[0].Outcome,
+	require.Equal(t, OutcomeNewFailure, res.Verdicts[0].Outcome,
 		"the rule was active for the whole window and fired inside it")
 	require.Len(t, res.Violations, 1)
-	require.Equal(t, OutcomeNewlyBad, res.Violations[0].Outcome)
+	require.Equal(t, OutcomeNewFailure, res.Violations[0].Outcome)
 	require.NotContains(t, res.Verdicts[0].Note, "paused before the window opened")
 }
 
@@ -924,7 +1047,7 @@ func TestCheckHeaderPausedRuleStaysSkipped(t *testing.T) {
 
 	res, err := run(false)
 	require.NoError(t, err, "a skipped rule is a known condition, not an inability")
-	require.Equal(t, OutcomeSkipped, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomePaused, res.Verdicts[0].Outcome)
 	_, ok := res.Coverage[checkUID]
 	require.False(t, ok, "a skipped rule has no coverage to prove")
 	require.Len(t, res.Violations, 1, "the MinObserved shortfall")
@@ -1091,7 +1214,7 @@ func TestCheckDeadPidWithNoSentinelIsUnobservable(t *testing.T) {
 	res, err := check(context.Background(), cfg, newCheckSource(nil))
 	require.Error(t, err, "no sentinel means the recorder never proved it ran to the end")
 	require.Len(t, res.Verdicts, 1)
-	require.Equal(t, OutcomeUnobservable, res.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeNotVerified, res.Verdicts[0].Outcome)
 }
 
 // An incomplete last line gives exit 2. log_test.go's TestReadLogRejectsBadLogs
@@ -1209,8 +1332,8 @@ func TestMergeDrainTimeoutsNamesEveryUnobservableRule(t *testing.T) {
 			"b": {Unobservable: true, Reason: ReasonHeartbeatGap, Notes: []string{"rule \"B\": gap"}},
 		},
 		Verdicts: []RuleVerdict{
-			{Alert: "A", RuleUID: "a", Outcome: OutcomeClean},
-			{Alert: "B", RuleUID: "b", Outcome: OutcomeUnobservable},
+			{Alert: "A", RuleUID: "a", Outcome: OutcomeHealthy},
+			{Alert: "B", RuleUID: "b", Outcome: OutcomeNotVerified},
 		},
 	}
 
@@ -1218,9 +1341,9 @@ func TestMergeDrainTimeoutsNamesEveryUnobservableRule(t *testing.T) {
 		"a": {reason: ReasonDrainTimeout, note: "rule \"A\": did not evaluate through the end within the drain limit"},
 		"b": {reason: ReasonDrainTimeout, note: "rule \"B\": did not evaluate through the end within the drain limit"},
 	})
-	require.Error(t, err, "naming the newly unobservable rule")
-	require.Contains(t, err.Error(), "unobservable at the drain wait")
-	// Only A is newly unobservable; B was already, so naming it twice would
+	require.Error(t, err, "naming the newly not_verified rule")
+	require.Contains(t, err.Error(), "not verified at the drain wait")
+	// Only A is newly not_verified; B was already, so naming it twice would
 	// only lengthen the message.
 	require.Contains(t, err.Error(), "A ("+string(ReasonDrainTimeout)+")")
 	require.NotContains(t, err.Error(), "B (")
@@ -1228,7 +1351,7 @@ func TestMergeDrainTimeoutsNamesEveryUnobservableRule(t *testing.T) {
 	// B keeps the reason the coverage proof gave it — the FIRST reason wins,
 	// as it does inside proveCoverage.
 	require.Equal(t, ReasonHeartbeatGap, merged.Coverage["b"].Reason)
-	require.Equal(t, OutcomeUnobservable, merged.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeNotVerified, merged.Verdicts[0].Outcome)
 }
 
 // ReadLogHeader is the one read of a log a writer may still hold, so its

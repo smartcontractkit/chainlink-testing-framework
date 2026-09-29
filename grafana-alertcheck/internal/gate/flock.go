@@ -24,17 +24,25 @@ func isLockContention(err error) bool {
 	return errors.Is(err, syscall.EWOULDBLOCK) || errors.Is(err, syscall.EAGAIN)
 }
 
-// tryLockExclusive is the same call read as a question rather than as a
-// demand: held is false when another process holds the lock, and err is
-// non-nil only for a failure that is not contention.
-//
-// check needs that distinction where NewWriter does not. NewWriter is entitled
-// to treat any refusal as "another writer has it", because it wants the lock;
-// check only wants to know whether a writer EXISTS. The lock answers
-// that directly, where a pid can only infer it — the kernel releases a flock
-// when the holder exits, crash included, and pids get reused.
+// tryLockExclusive is lockExclusive read as a question: held is false when
+// another process holds the lock; err is non-nil only for a real failure.
 func tryLockExclusive(f *os.File) (held bool, err error) {
 	switch err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); {
+	case err == nil:
+		return true, nil
+	case isLockContention(err):
+		return false, nil
+	default:
+		return false, fmt.Errorf("flock %s: %w", f.Name(), err)
+	}
+}
+
+// tryLockShared is the reader side of the same question: held is false when an
+// EXCLUSIVE holder exists. The recorder holds the log exclusively; readers and
+// cleanup hold it shared, so shared contention always means the recorder, never
+// another reader.
+func tryLockShared(f *os.File) (held bool, err error) {
+	switch err := syscall.Flock(int(f.Fd()), syscall.LOCK_SH|syscall.LOCK_NB); {
 	case err == nil:
 		return true, nil
 	case isLockContention(err):

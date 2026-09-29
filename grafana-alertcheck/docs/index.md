@@ -50,6 +50,8 @@ grafana-alertcheck check --in /tmp/run.jsonl --from "$deployed_at" --to "$finish
 
 `watch` returns only after the recorder has observed every named, non-paused alert once and reported ready — so auth, name-resolution, and parse failures surface **before** your deploy runs.
 
+If your work fails before `check` runs and the alert verdict no longer matters, reap the recorder with `grafana-alertcheck stop --out /tmp/run.jsonl`. It is idempotent, so it is safe as an `if: always()` step: after `check` has already stopped the recorder it is a no-op.
+
 ## Quickstart — single-step mode
 
 Skip the recorder and observe the window inline, from inside `check` itself:
@@ -78,7 +80,7 @@ An error is never a pass: `2` wins over any violation found alongside it.
 - `recovered` has **no deadline** — a bad-at-`from` alert that clears by `to` passes; set `--preexisting fail` to forbid it.
 - If you retry the check, then the work also needs to be retried - there is no way to check the past.
 - `watch` and `check` must run in **one job, one runner, one filesystem** — nothing persists across jobs or attempts.
-- The gate **never exits early** — a violation at minute 2 still holds the runner to `to + transitionGrace + drainTimeout`; size the job timeout to the planned run time the gate prints at start.
+- The gate **stops early on a certain failure** — as soon as a post-`from` bad onset or an inability is observed, `check` returns instead of holding the runner to `to + transitionGrace + drainTimeout`. This can never turn into a pass, but it can report exit `1` where a full run would have reported exit `2` (inability beats violation only when the inability is observed). Pass `--no-fail-fast` to always wait for the full window and its coverage proof; size the job timeout to the planned run time the gate prints at start either way.
 
 ## More
 

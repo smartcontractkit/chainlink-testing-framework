@@ -27,3 +27,12 @@ func signalRecorder(pid int) (gone bool, err error) {
 		return false, fmt.Errorf("signal recorder pid %d: %w", pid, err)
 	}
 }
+
+// killRecorder is the cleanup-only counterpart to signalRecorder: SIGKILL to a
+// recorder that ignored SIGTERM. An already-gone pid is not an error.
+func killRecorder(pid int) error {
+	if err := syscall.Kill(pid, syscall.SIGKILL); err != nil && !errors.Is(err, syscall.ESRCH) {
+		return fmt.Errorf("kill recorder pid %d: %w", pid, err)
+	}
+	return nil
+}

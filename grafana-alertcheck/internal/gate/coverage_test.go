@@ -79,7 +79,7 @@ func TestProveCoverage_SentinelBeforeGraceIsUnobservable(t *testing.T) {
 	dres, err := decide(Header{StartedAt: from.Add(-time.Hour)}, nil, &sentinel, defs, drt, gt, pol)
 	require.Error(t, err, "a sentinel short of to+grace must fail the run")
 	require.Len(t, dres.Verdicts, 1)
-	require.Equal(t, OutcomeUnobservable, dres.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeNotVerified, dres.Verdicts[0].Outcome)
 }
 
 func TestProveCoverage_SentinelExactlyAtGraceIsFine(t *testing.T) {
@@ -123,7 +123,7 @@ func TestProveCoverage_FromBeforeRecordIsUnobservable(t *testing.T) {
 	dres, err := decide(Header{StartedAt: started}, nil, &sentinel, defs, drt, gt, pol)
 	require.Error(t, err, "`from` before the recording started must fail the run")
 	require.Len(t, dres.Verdicts, 1)
-	require.Equal(t, OutcomeUnobservable, dres.Verdicts[0].Outcome)
+	require.Equal(t, OutcomeNotVerified, dres.Verdicts[0].Outcome)
 }
 
 // The from-bounds check compares at whole-second granularity: a whole-second
@@ -688,15 +688,15 @@ func TestProveCoverage_MultipleFailuresReasonIsFirstButAllNoted(t *testing.T) {
 		"a later failure must still be recorded, not swallowed once Reason is already set")
 }
 
-// --- Skipped rules ---
+// --- Paused rules ---
 
 // A known limit of this function's contract, not a bug in it: a rule paused
 // BEFORE the window opened is never scheduled or polled (watch.go), so it
 // reaches proveCoverage with zero polls at all. proveCoverage has no notion of
-// "skipped" — that classification belongs to the definitions
+// "paused" — that classification belongs to the definitions
 // (LoggedRule.IsPaused / Definition.IsPaused), never to the polls — so it
 // reports the whole window as one big heartbeat_gap instead. decide is what
-// reads skipped status from the header and never calls this function for such
+// reads paused status from the header and never calls this function for such
 // a rule; this pins the behavior it relies on not reaching.
 func TestProveCoverage_SkippedRuleWithZeroPollsPinnedAsHeartbeatGap(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
