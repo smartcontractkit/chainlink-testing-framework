@@ -685,13 +685,13 @@ type drainVerdict struct {
 
 // drainWait is the final liveness check: did each rule evaluate through the
 // end of the window? A rule that cannot answer within drainTimeout is
-// unobservable, never a pass. It returns one verdict per rule it could not
+// not_verified, never a pass. It returns one verdict per rule it could not
 // clear (keyed by UID); an error only for a hard failure of the wait itself.
 //
 // Two kinds of rule are excluded up front because draining them could not
 // change a verdict: a rule the HEADER says was paused at the window open (the
 // header, not the late-resolved definitions — see Header.pausedAtStart), and a
-// rule whose last poll says Found == false (already unobservable via rule_absent).
+// rule whose last poll says Found == false (already not_verified via rule_absent).
 func drainWait(ctx context.Context, cfg Config, src Source, defs []Definition, pausedAtStart map[string]bool,
 	rt map[string]RuleTimings, polls []Poll, windowEnd time.Time, timeout time.Duration) (map[string]drainVerdict, error) {
 
@@ -862,17 +862,17 @@ func mergeDrainTimeouts(res Result, drained map[string]drainVerdict) (Result, er
 		cov.Notes = append(cov.Notes, verdict.note)
 		res.Coverage[uid] = cov
 
-		if res.Verdicts[i].Outcome != OutcomeUnobservable {
+		if res.Verdicts[i].Outcome != OutcomeNotVerified {
 			names = append(names, fmt.Sprintf("%s (%s)", res.Verdicts[i].Alert, verdict.reason))
 		}
-		res.Verdicts[i].Outcome = OutcomeUnobservable
+		res.Verdicts[i].Outcome = OutcomeNotVerified
 		res.Verdicts[i].Note = strings.Join(cov.Notes, "; ")
 	}
 	if len(names) == 0 {
-		// Every drained rule was already unobservable for an earlier reason,
+		// Every drained rule was already not_verified for an earlier reason,
 		// so decide's own error already stops the run. Adding a second error
 		// saying the same thing would only make the message longer.
 		return res, nil
 	}
-	return res, fmt.Errorf("gate: %d rule(s) unobservable at the drain wait: %s", len(names), strings.Join(names, "; "))
+	return res, fmt.Errorf("gate: %d rule(s) not verified at the drain wait: %s", len(names), strings.Join(names, "; "))
 }

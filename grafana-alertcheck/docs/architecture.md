@@ -15,11 +15,11 @@ This page documents the invariants and seams a maintainer must not break. It exi
 The gate must fail if it cannot get an answer. Every rule below is a specific instance of that:
 
 - **An error is never a pass.** A pass is exactly `len(Violations) == 0 && err == nil`. Every error path leaves `err` non-nil, and the CLI maps that to exit `2` unconditionally.
-- **Inability beats violation.** Any `unobservable` rule is exit `2`, even alongside a real violation found first.
+- **Inability beats violation.** Any `not_verified` rule is exit `2`, even alongside a real violation found first.
 - **Absent never means normal.** An instance that leaves the bad set is looked up in the *same* response: present as `normal` → cleared; absent (or `MissingSeries`) → vanished (a discontinuity, not a recovery).
 - **Staleness is absolute.** `grafana_now − lastEvaluation` is compared against a threshold, never "did it increase since the last poll" — a delta check reports stale on ~half the polls of a healthy rule (we poll at half of `intervalSeconds` of each rule).
 - **`grafana_now` is the response `Date` header.** Never the runner clock, in any comparison against a Grafana timestamp.
-- **An early exit can never be a pass.** `check` may stop collecting before `to + transitionGrace` (fail-fast), but only on a *monotone* terminal verdict: an inability that has already happened, or a post-`from` bad onset (which the full classifier would call `newly_bad`/`flapping`). The one outcome that forgives an observed bad state, `recovered`, is reserved for bad-at-`from`, so a preexisting condition is never terminal. `--no-fail-fast` removes the guard entirely.
+- **An early exit can never be a pass.** `check` may stop collecting before `to + transitionGrace` (fail-fast), but only on a *monotone* terminal verdict: an inability that has already happened, or a post-`from` bad onset (which the full classifier would call `new_failure`/`unstable`). The one outcome that forgives an observed bad state, `recovered`, is reserved for bad-at-`from`, so a preexisting condition is never terminal. `--no-fail-fast` removes the guard entirely.
 - **No replay.** No run-id key, no artifact download, no state between attempts. A retry is a new piece of work and observation.
 
 ## The pure-function seam
