@@ -105,7 +105,7 @@ Alert names take one of four forms:
 | `Platform/api/HighErrorRate` | Folder + group + title (may still be ambiguous; use `uid:` for guaranteed uniqueness) |
 | `uid:abc123` | Exact uid (present on both endpoints) |
 
-Datasource-managed and recording rules are refused with a specific error. A name matching multiple rules errors listing every candidate with the copyable `Folder/Group/Title` and its `uid:` form. A no-match errors with case-insensitive substring suggestions and points at `list`. Duplicate names that resolve to the same uid collapse to one (a note, not an error).
+Recording rules are refused with a specific error. Datasource-managed rules never reach resolution at all: the Grafana-managed ruler endpoint this tool queries does not return them. A no-match errors with case-insensitive substring suggestions and points at `list`, and states that datasource-managed rules cannot be observed and are not supported. A name matching multiple rules errors listing every candidate with the copyable `Folder/Group/Title` and its `uid:` form. Duplicate names that resolve to the same uid collapse to one (a note, not an error).
 
 ## Selecting alerts by labels
 
@@ -118,7 +118,7 @@ grafana-alertcheck check --to "$finished_at" --include-labels team=bcm --exclude
 
 `--include-labels` takes comma-separated exact-match `key=value` pairs; a rule must carry **all** of them. `--exclude-labels` is optional and drops any rule carrying **one** of its pairs. A rule that does not carry the label is never dropped, only never included. Values cannot contain commas; `key=` matches only rules that carry the label with an empty value.
 
-The label flags cannot be combined with `--alerts` or `--folder`, and they are refused with `--in` — the recorded log names its own alert set. A selection that matches no rules, whose matches are all excluded, or that matches a datasource-managed or recording rule exits `2`: an empty watch set must never pass.
+The label flags cannot be combined with `--alerts` or `--folder`, and they are refused with `--in` — the recorded log names its own alert set. A selection that matches no rules, whose matches are all excluded, or that matches a recording rule exits `2`: an empty watch set must never pass.
 
 ## Output and exit codes
 

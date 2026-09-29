@@ -61,6 +61,7 @@ func TestResolve_NoMatch(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no rule matched")
 	require.Contains(t, err.Error(), "list")
+	require.Contains(t, err.Error(), "datasource-managed alert rules cannot be observed")
 }
 
 func TestResolve_NoMatchSubstringSuggestion(t *testing.T) {
@@ -123,7 +124,7 @@ func TestResolve_UnsupportedKindsExcludedFromNoMatchSurfaces(t *testing.T) {
 	_, _, err = Resolve(combined, []string{"Example"}, "")
 	require.Error(t, err, "want a no-match error for a name matching no title exactly")
 
-	wantCount := fmt.Sprintf("(%d rules available", len(supported))
+	wantCount := fmt.Sprintf("(%d grafana-managed rules available", len(supported))
 	require.Contains(t, err.Error(), wantCount)
 	require.NotContains(t, err.Error(), "ExampleTargetDown")
 	require.NotContains(t, err.Error(), "example:recorded_metric:rate5m")
