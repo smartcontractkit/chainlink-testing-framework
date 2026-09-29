@@ -52,6 +52,11 @@ type WatchConfig struct {
 	Alerts []string
 	Folder string
 
+	// IncludeLabels selects the watched rules by exact-match labels instead of
+	// names; ExcludeLabels drops matching rules from that set. The two
+	// selection modes cannot be combined (validate refuses it).
+	IncludeLabels, ExcludeLabels []LabelMatcher
+
 	// Out is the JSONL log path. PidFile and DaemonLog default to
 	// <Out>.pid and <Out>.daemon.log — the same convention check uses to find
 	// the recorder it must stop, so nothing has to be wired by hand.
@@ -113,8 +118,9 @@ func (cfg WatchConfig) validate() error {
 			named++
 		}
 	}
-	if named == 0 {
-		return fmt.Errorf("watch: no alert names given; there is nothing to record")
+	if err := validateSelection("watch", named, cfg.IncludeLabels, cfg.ExcludeLabels, cfg.Folder,
+		"watch: no alert names given and no --include-labels; there is nothing to record"); err != nil {
+		return err
 	}
 	// An --until already in the past would make the child stop before it ever
 	// polled, and the parent would then report a child that never reported
@@ -288,7 +294,7 @@ func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWa
 	if err != nil {
 		return nil, fmt.Errorf("read rule definitions: %w", err)
 	}
-	resolved, notes, err := Resolve(defs, cfg.Alerts, cfg.Folder)
+	resolved, notes, err := resolveAlertSet(defs, cfg.Alerts, cfg.IncludeLabels, cfg.ExcludeLabels, cfg.Folder)
 	if err != nil {
 		return nil, err
 	}

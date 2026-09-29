@@ -22,8 +22,10 @@ const (
 // (/api/ruler/grafana/api/v1/rules). IntervalSeconds, NoDataState and
 // ExecErrState live inside the grafana_alert block and are only populated for
 // KindGrafanaManaged — a datasource-managed rule has no such block by
-// definition. relativeTimeRange and keep_firing_for are deliberately not
-// parsed: nothing in the gate reads them.
+// definition. Labels is the rule's own label set, optional (the 13.1 fleet
+// capture has three unlabeled rules) and the only input to label selection.
+// relativeTimeRange and keep_firing_for are deliberately not parsed: nothing in
+// the gate reads them.
 type Definition struct {
 	UID, Title, Folder, FolderUID, Group string
 	For                                  time.Duration
@@ -32,6 +34,7 @@ type Definition struct {
 	ExecErrState                         string
 	IsPaused                             bool
 	Kind                                 RuleKind
+	Labels                               map[string]string
 }
 
 // ParseDefinitions strictly parses a ruler-endpoint response body
@@ -96,6 +99,11 @@ func parseDefinition(raw json.RawMessage, folder, group string) (Definition, err
 		return Definition{}, fmt.Errorf("for: %w", err)
 	}
 
+	var labels map[string]string
+	if err := opt(m, "labels", &labels); err != nil {
+		return Definition{}, fmt.Errorf("labels: %w", err)
+	}
+
 	var gaRaw json.RawMessage
 	if err := opt(m, "grafana_alert", &gaRaw); err != nil {
 		return Definition{}, err
@@ -106,7 +114,7 @@ func parseDefinition(raw json.RawMessage, folder, group string) (Definition, err
 		// name — "alert" for an alerting rule, "record" for a recording
 		// one — never a synthetic UID (Grafana's ruler API gives this
 		// shape no uid at all; inventing one would be inventing shape).
-		def := Definition{Folder: folder, Group: group, For: forDur, Kind: KindDatasourceManaged}
+		def := Definition{Folder: folder, Group: group, For: forDur, Kind: KindDatasourceManaged, Labels: labels}
 		if err := opt(m, "alert", &def.Title); err != nil {
 			return Definition{}, err
 		}
@@ -132,7 +140,7 @@ func parseDefinition(raw json.RawMessage, folder, group string) (Definition, err
 	if err := req(ga, "uid", &uid); err != nil {
 		return Definition{}, fmt.Errorf("grafana_alert: %w", err)
 	}
-	def := Definition{Folder: folder, Group: group, For: forDur, UID: uid}
+	def := Definition{Folder: folder, Group: group, For: forDur, UID: uid, Labels: labels}
 
 	// Classify by the presence of "record" before requiring anything else.
 	// no_data_state/exec_err_state/is_paused/intervalSeconds are alerting-only

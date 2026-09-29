@@ -193,6 +193,35 @@ func TestCheckValidateRejectsBadConfigurations(t *testing.T) {
 			wantErr: "--alerts is refused with a recorded log",
 		},
 		{
+			name: "log mode with labels",
+			mutate: func(c *Config) {
+				c.Log = "log.jsonl"
+				c.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}}
+			},
+			wantErr: "refused with a recorded log",
+		},
+		{
+			name: "alerts and labels",
+			mutate: func(c *Config) {
+				c.Alerts = []string{"A"}
+				c.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}}
+			},
+			wantErr: "cannot be combined",
+		},
+		{
+			name:    "exclude without include",
+			mutate:  func(c *Config) { c.ExcludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}} },
+			wantErr: "requires --include-labels",
+		},
+		{
+			name: "labels with folder",
+			mutate: func(c *Config) {
+				c.Folder = "F"
+				c.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}}
+			},
+			wantErr: "--folder",
+		},
+		{
 			// Never a warning-and-continue.
 			name:    "log mode without from",
 			mutate:  func(c *Config) { c.Log = "log.jsonl"; c.From = time.Time{} },
@@ -252,6 +281,19 @@ func TestCheckValidateAcceptsAPastToWithALog(t *testing.T) {
 	require.Equal(t, "log.jsonl.pid", cfg.PidFile)
 }
 
+func TestCheckValidateAcceptsLabelSelection(t *testing.T) {
+	cfg := Config{
+		URL:           "https://grafana.example.com",
+		From:          testNow,
+		To:            testNow.Add(5 * time.Minute),
+		Clock:         newFakeClock(testNow),
+		IncludeLabels: []LabelMatcher{{Key: "team", Value: "bcm"}},
+		ExcludeLabels: []LabelMatcher{{Key: "env", Value: "stage"}},
+	}.withDefaults()
+
+	require.NoError(t, cfg.validate())
+}
+
 // ---------------------------------------------------------------------------
 // Single-step mode
 // ---------------------------------------------------------------------------
@@ -302,6 +344,49 @@ func TestCheckSingleStepDuplicateAlertNamesCollapseWithNote(t *testing.T) {
 	require.Len(t, res.Verdicts, 1, "the duplicate must collapse to a single rule")
 	require.Empty(t, res.Violations, "MinObserved must be satisfied by the post-collapse count of 1")
 	require.Contains(t, notesOf(cfg), "counted once")
+}
+
+// Label selection replaces the enumerated alert set end to end: only the rule
+// matching include minus exclude is watched, and the run passes over it.
+func TestCheckSingleStepSelectsByLabels(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.Alerts = nil
+	cfg.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}}
+	cfg.ExcludeLabels = []LabelMatcher{{Key: "env", Value: "stage"}}
+
+	matching := checkDef()
+	matching.Labels = map[string]string{"team": "bcm", "env": "prod"}
+	excluded := checkDef()
+	excluded.UID, excluded.Title = "other", "Other"
+	excluded.Labels = map[string]string{"team": "bcm", "env": "stage"}
+
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		return healthyObservation(clock.Now()), nil
+	})
+	src.defs = []Definition{matching, excluded}
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, checkUID, res.Verdicts[0].RuleUID)
+	require.Empty(t, res.Violations)
+}
+
+// A label selection matching nothing is exit 2, before any poll — never an
+// empty watch set that would pass an unproven window.
+func TestCheckSingleStepLabelSelectionWithNoMatchFails(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.Alerts = nil
+	cfg.IncludeLabels = []LabelMatcher{{Key: "team", Value: "does-not-exist"}}
+
+	src := newCheckSource(nil) // nil responder: any poll fails the test
+	src.defs = rulerDefs(t)
+
+	_, err := check(context.Background(), cfg, src)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no rule matches the include labels")
 }
 
 // A rule with health=error for the whole window is unobservable, exit 2 —

@@ -482,6 +482,13 @@ func TestWatchConfigValidation(t *testing.T) {
 		{"no log path", func(c *WatchConfig) { c.Out = "" }, "no log path"},
 		{"no alerts", func(c *WatchConfig) { c.Alerts = nil }, "no alert names"},
 		{"blank alerts only", func(c *WatchConfig) { c.Alerts = []string{"", "  "} }, "no alert names"},
+		{"alerts and labels", func(c *WatchConfig) { c.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}} }, "cannot be combined"},
+		{"exclude without include", func(c *WatchConfig) { c.Alerts = nil; c.ExcludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}} }, "requires --include-labels"},
+		{"labels with folder", func(c *WatchConfig) {
+			c.Alerts = nil
+			c.Folder = "F"
+			c.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}}
+		}, "--folder"},
 		{"until in the past", func(c *WatchConfig) { c.Until = testNow.Add(-time.Second) }, "not in the future"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -499,6 +506,47 @@ func TestWatchConfigValidation(t *testing.T) {
 		require.NotEmpty(t, cfg.DaemonLog, "a detached child would have nowhere to explain a failure")
 		require.NoError(t, cfg.validate())
 	})
+
+	t.Run("label selection alone is a valid alert set", func(t *testing.T) {
+		cfg := base()
+		cfg.Alerts = nil
+		cfg.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}}
+		require.NoError(t, cfg.withDefaults().validate())
+	})
+}
+
+// A label selection replaces Resolve: the header must name every matched rule,
+// not the fixture's whole fleet.
+func TestPrepareWatchSelectsByLabels(t *testing.T) {
+	var notes strings.Builder
+	cfg := watchTestConfig(t, &notes)
+	cfg.IncludeLabels = []LabelMatcher{{Key: "severity", Value: "warning"}}
+
+	src := watchTestSource(t, liveObservation(testNow))
+	const weeklyUID, weeklyTitle = "rule0000010", "Example Failure Ratio Above 10 Percent Weekly"
+	src.script(weeklyTitle, observation(testNow,
+		testStateRule(weeklyUID, weeklyTitle, time.Minute, testNow, testInstance(StateNormal, "", "a"))), nil)
+
+	prep, err := prepareWatch(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.NoError(t, prep.writer.Close())
+
+	header, polls, _, err := ReadLog(cfg.Out)
+	require.NoError(t, err)
+	require.Len(t, header.Rules, 2)
+	require.Equal(t, []string{watchActiveUID, weeklyUID},
+		[]string{header.Rules[0].UID, header.Rules[1].UID})
+	require.Len(t, polls, 2)
+}
+
+func TestPrepareWatchLabelSelectionWithNoMatchFails(t *testing.T) {
+	var notes strings.Builder
+	cfg := watchTestConfig(t, &notes)
+	cfg.IncludeLabels = []LabelMatcher{{Key: "team", Value: "does-not-exist"}}
+
+	_, err := prepareWatch(context.Background(), cfg, watchTestSource(t, liveObservation(testNow)))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no rule matches the include labels")
 }
 
 // The fail-open direction, checked on the child's side: a log recorded at 5s on

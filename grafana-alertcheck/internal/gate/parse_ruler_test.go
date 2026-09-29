@@ -47,6 +47,22 @@ func TestParseDefinitions_RulerRules(t *testing.T) {
 	// Identity shared with testdata/state_paused.json.
 	shared := byUID["rule0000002"]
 	require.Equal(t, "folder0000002", shared.FolderUID)
+
+	// Labels are parsed verbatim; an unlabeled rule stays empty.
+	require.Equal(t, map[string]string{
+		"env": "production", "severity": "critical", "team": "example-team", "zone": "zone-a",
+	}, byUID["rule0000006a"].Labels)
+	require.Empty(t, byUID["rule0000002"].Labels)
+}
+
+// The real 13.1 fleet capture has three rules with no labels key at all; that
+// absence is legal and must not fail the whole parse.
+func TestParseDefinitions_LabelsAreOptional(t *testing.T) {
+	body := []byte(`{"Example":[{"name":"G","rules":[{"expr":"","for":"1m","grafana_alert":{"title":"T","uid":"rule0000001","namespace_uid":"f","intervalSeconds":60,"no_data_state":"OK","exec_err_state":"OK","is_paused":false}}]}]}`)
+	defs, err := ParseDefinitions(body)
+	require.NoError(t, err)
+	require.Len(t, defs, 1)
+	require.Empty(t, defs[0].Labels)
 }
 
 func TestParseDefinitions_DatasourceManaged(t *testing.T) {
