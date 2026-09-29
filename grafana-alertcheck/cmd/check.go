@@ -15,7 +15,8 @@ import (
 )
 
 const checkUsage = "usage: grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339 " +
-	"[--alerts ...] [--folder F] [--states ...] [--preexisting ...] [--min-observed N] [--allow-paused] " +
+	"[--alerts ... | --include-labels k=v,...] [--exclude-labels k=v,...] [--folder F] " +
+	"[--states ...] [--preexisting ...] [--min-observed N] [--allow-paused] " +
 	"[--nodata-is-unobservable] [--no-fail-fast] [--concurrency N] [--output json]"
 
 // runCheck is the classify step's CLI surface: parse flags into a gate.Config,
@@ -55,6 +56,20 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintf(stderr, "--output: unknown value %q (only \"json\" is supported)\n", *output)
 		return 2
 	}
+	if *common.alerts != "" && (*common.includeLabels != "" || *common.excludeLabels != "") {
+		fmt.Fprintln(stderr, "check: --alerts cannot be combined with label selection")
+		return 2
+	}
+	includeLabels, err := parseLabelPairs("--include-labels", *common.includeLabels)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	excludeLabels, err := parseLabelPairs("--exclude-labels", *common.excludeLabels)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
 
 	url, token, err := grafanaEnv()
 	if err != nil {
@@ -82,6 +97,8 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		Token:                token,
 		Alerts:               alerts,
 		Folder:               *common.folder,
+		IncludeLabels:        includeLabels,
+		ExcludeLabels:        excludeLabels,
 		States:               stateList,
 		Preexisting:          preexistingPolicy,
 		MinObserved:          *minObserved,

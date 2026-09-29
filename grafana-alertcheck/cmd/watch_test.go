@@ -35,6 +35,18 @@ func TestRunWatch_FlagValidation(t *testing.T) {
 		{"bad poll-interval", true, func(t *testing.T) []string {
 			return []string{"--out", t.TempDir() + "/log.jsonl", "--alerts", writeTempAlerts(t), "--poll-interval", "not-a-duration"}
 		}, "--poll-interval"},
+		{"alerts and labels", true, func(t *testing.T) []string {
+			return []string{"--out", t.TempDir() + "/log.jsonl", "--alerts", writeTempAlerts(t), "--include-labels", "team=bcm"}
+		}, "cannot be combined with label selection"},
+		{"bad label pair", true, func(t *testing.T) []string {
+			return []string{"--out", t.TempDir() + "/log.jsonl", "--include-labels", "team"}
+		}, "--include-labels"},
+		{"exclude without include", true, func(t *testing.T) []string {
+			return []string{"--out", t.TempDir() + "/log.jsonl", "--exclude-labels", "severity=info"}
+		}, "requires --include-labels"},
+		{"labels with folder", true, func(t *testing.T) []string {
+			return []string{"--out", t.TempDir() + "/log.jsonl", "--include-labels", "team=bcm", "--folder", "F"}
+		}, "--folder"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

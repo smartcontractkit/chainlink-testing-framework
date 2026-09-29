@@ -18,7 +18,7 @@ It **fails closed**: if it cannot get an answer, it stops the release. It never 
 
 ## How it works, in one paragraph
 
-`watch` starts a background recorder that polls each named alert and appends snapshots to a JSONL log. Your work then emits two RFC3339 timestamps — `from` (when the change landed) and `to` (when the work ended). `check` proves continuous coverage of `[from, to]`, builds a state timeline per alert, classifies it, and exits `0`, `1`, or `2`.
+`watch` starts a background recorder that polls each watched alert and appends snapshots to a JSONL log. Your work then emits two RFC3339 timestamps — `from` (when the change landed) and `to` (when the work ended). `check` proves continuous coverage of `[from, to]`, builds a state timeline per alert, classifies it, and exits `0`, `1`, or `2`.
 
 ## Install
 
@@ -46,7 +46,7 @@ grafana-alertcheck watch --out /tmp/run.jsonl --alerts alerts.txt
 grafana-alertcheck check --in /tmp/run.jsonl --from "$deployed_at" --to "$finished_at"
 ```
 
-`alerts.txt` holds one alert name per line. See [Naming alerts](./reference/cli#naming-alerts).
+`alerts.txt` holds one alert name per line. See [Naming alerts](./reference/cli#naming-alerts). Alerts can also be selected by label instead of by name: `--include-labels team=bcm,env=stage` (optionally `--exclude-labels`).
 
 `watch` returns only after the recorder has observed every named, non-paused alert once and reported ready — so auth, name-resolution, and parse failures surface **before** your deploy runs.
 

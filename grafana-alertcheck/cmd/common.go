@@ -11,16 +11,18 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 )
 
-// commonFlags is registerCommon's result: the exactly three flags watch and
-// check share. Connection details are never flags, and states / poll-interval
-// are deliberately NOT here — states is check-only because recording is
+// commonFlags is registerCommon's result: the flags watch and check share.
+// Connection details are never flags, and states / poll-interval are
+// deliberately NOT here — states is check-only because recording is
 // unfiltered, and poll-interval is watch-only because check reads the cadence
 // from the log header. Putting either here would give both commands an opinion
 // about a value only one of them may set.
 type commonFlags struct {
-	folder      *string
-	concurrency *int
-	alerts      *string
+	folder        *string
+	concurrency   *int
+	alerts        *string
+	includeLabels *string
+	excludeLabels *string
 }
 
 func registerCommon(fs *flag.FlagSet) *commonFlags {
@@ -28,7 +30,38 @@ func registerCommon(fs *flag.FlagSet) *commonFlags {
 		folder:      fs.String("folder", "", "default folder to scope an unqualified alert name to"),
 		concurrency: fs.Int("concurrency", 1, "maximum concurrent requests to Grafana"),
 		alerts:      fs.String("alerts", "", "path to a file of alert names, one per line, or - for stdin"),
+		includeLabels: fs.String("include-labels", "",
+			"comma-separated key=value pairs selecting rules by label, e.g. team=bcm,env=stage (cannot be combined with --alerts)"),
+		excludeLabels: fs.String("exclude-labels", "",
+			"comma-separated key=value pairs; rules carrying any of them are dropped (requires --include-labels)"),
 	}
+}
+
+// parseLabelPairs parses a comma-separated list of exact-match key=value label
+// pairs. An empty string means the flag was not given.
+func parseLabelPairs(flagName, s string) ([]gate.LabelMatcher, error) {
+	if strings.TrimSpace(s) == "" {
+		return nil, nil
+	}
+	seen := make(map[string]bool)
+	var out []gate.LabelMatcher
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			return nil, fmt.Errorf("%s: empty label pair in %q", flagName, s)
+		}
+		key, value, ok := strings.Cut(part, "=")
+		key, value = strings.TrimSpace(key), strings.TrimSpace(value)
+		if !ok || key == "" || value == "" {
+			return nil, fmt.Errorf("%s: %q is not a non-empty key=value pair", flagName, part)
+		}
+		if seen[key] {
+			return nil, fmt.Errorf("%s: duplicate label %q", flagName, key)
+		}
+		seen[key] = true
+		out = append(out, gate.LabelMatcher{Key: key, Value: value})
+	}
+	return out, nil
 }
 
 // readAlerts reads alert names, one per line, from a file or from

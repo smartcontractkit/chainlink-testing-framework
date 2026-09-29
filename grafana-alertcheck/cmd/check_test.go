@@ -84,6 +84,21 @@ func TestRunCheck_FlagValidation(t *testing.T) {
 		{"no alerts no in", true, func(t *testing.T) []string {
 			return []string{"--to", "2026-01-01T00:00:00Z"}
 		}, "no alert names"},
+		{"alerts and labels", true, func(t *testing.T) []string {
+			return []string{"--to", "2026-01-01T00:00:00Z", "--alerts", writeTempAlerts(t), "--include-labels", "team=bcm"}
+		}, "cannot be combined with label selection"},
+		{"bad label pair", true, func(t *testing.T) []string {
+			return []string{"--to", "2026-01-01T00:00:00Z", "--include-labels", "team"}
+		}, "--include-labels"},
+		{"exclude without include", true, func(t *testing.T) []string {
+			return []string{"--to", "2026-01-01T00:00:00Z", "--exclude-labels", "severity=info"}
+		}, "requires --include-labels"},
+		{"labels with in", true, func(t *testing.T) []string {
+			return []string{"--to", "2026-01-01T00:00:00Z", "--in", "some.jsonl", "--include-labels", "team=bcm"}
+		}, "refused with a recorded log"},
+		{"labels with folder", true, func(t *testing.T) []string {
+			return []string{"--to", "2026-01-01T00:00:00Z", "--include-labels", "team=bcm", "--folder", "F"}
+		}, "--folder"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
