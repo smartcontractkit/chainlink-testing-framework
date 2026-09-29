@@ -26,8 +26,8 @@ grafana-alertcheck list
 
 ```bash
 grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
-  (--alerts <file|-> | --include-labels k=v,...) [--exclude-labels k=v,...] \
-  [--folder F] [--poll-interval D] [--concurrency N] [--until RFC3339]
+  (--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) \
+  [--poll-interval D] [--concurrency N] [--until RFC3339]
 ```
 
 | Flag | Default | Meaning |
@@ -36,9 +36,9 @@ grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
 | `--pidfile` | `<out>.pid` | Where the recorder's pid is written |
 | `--daemon-log` | `<out>.daemon.log` | stdout/stderr sink for the detached recorder |
 | `--alerts` | — | File of alert names, one per line, or `-` for stdin (required unless `--include-labels`) |
+| `--folder` | — | Default folder to scope unqualified names (with `--alerts` only) |
 | `--include-labels` | — | Comma-separated exact-match `key=value` pairs selecting rules by label (cannot be combined with `--alerts`) |
 | `--exclude-labels` | — | Comma-separated exact-match `key=value` pairs; a rule carrying any of them is dropped (requires `--include-labels`) |
-| `--folder` | — | Default folder to scope unqualified names |
 | `--poll-interval` | half the rule's interval | Override every rule's cadence (never clamped) |
 | `--concurrency` | `1` | Max concurrent requests to Grafana |
 | `--until` | run until signalled | Optional hard stop |
@@ -66,7 +66,7 @@ Use it when the work failed and the alert verdict no longer matters, but the rec
 
 ```bash
 grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339 \
-  [--alerts ... | --include-labels k=v,...] [--exclude-labels k=v,...] [--folder F] \
+  [--alerts ... [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]] \
   [--states ...] [--preexisting ...] [--min-observed N] \
   [--allow-paused] [--nodata-is-unobservable] [--no-fail-fast] [--concurrency N] [--output json]
 ```
@@ -78,6 +78,7 @@ grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339
 | `--from` | see below | Moment the deploy finished |
 | `--to` | — | End of the window (required) |
 | `--alerts` | — | Required **without** `--in` (unless `--include-labels`); refused **with** `--in` |
+| `--folder` | — | Default folder to scope unqualified names (with `--alerts` only) |
 | `--include-labels` | — | Comma-separated exact-match `key=value` pairs selecting rules by label (cannot be combined with `--alerts`) |
 | `--exclude-labels` | — | Comma-separated exact-match `key=value` pairs; a rule carrying any of them is dropped (requires `--include-labels`) |
 | `--states` | `firing` | Comma-separated bad states: `firing,pending,nodata,error` |

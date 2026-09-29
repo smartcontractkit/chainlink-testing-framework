@@ -48,7 +48,7 @@ grafana-alertcheck check --in /tmp/run.jsonl --from "$deployed_at" --to "$finish
 
 `alerts.txt` holds one alert name per line. See [Naming alerts](./reference/cli#naming-alerts). Alerts can also be selected by label instead of by name: `--include-labels team=bcm,env=stage` (optionally `--exclude-labels`).
 
- `watch` returns only after the recorder has observed every selected, non-paused alert once and reported ready — so auth, alert-selection, and parse failures surface **before** your deploy runs.
+`watch` returns only after the recorder has observed every selected, non-paused alert once and reported ready — so auth, alert-selection, and parse failures surface **before** your deploy runs.
 
 If your work fails before `check` runs and the alert verdict no longer matters, reap the recorder with `grafana-alertcheck stop --out /tmp/run.jsonl`. It is idempotent, so it is safe as an `if: always()` step: after `check` has already stopped the recorder it is a no-op.
 

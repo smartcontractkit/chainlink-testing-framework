@@ -15,7 +15,7 @@ import (
 )
 
 const checkUsage = "usage: grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339 " +
-	"[--alerts ... | --include-labels k=v,...] [--exclude-labels k=v,...] [--folder F] " +
+	"[--alerts ... [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]] " +
 	"[--states ...] [--preexisting ...] [--min-observed N] [--allow-paused] " +
 	"[--nodata-is-unobservable] [--no-fail-fast] [--concurrency N] [--output json]"
 

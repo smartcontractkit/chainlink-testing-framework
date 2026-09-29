@@ -12,7 +12,7 @@ import (
 )
 
 const watchUsage = "usage: grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] " +
-	"(--alerts <file|-> | --include-labels k=v,...) [--exclude-labels k=v,...] [--folder F] " +
+	"(--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) " +
 	"[--poll-interval D] [--concurrency N] [--until RFC3339]"
 
 // runWatch is the record step's entire CLI surface, split in two by one flag
