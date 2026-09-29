@@ -122,7 +122,7 @@ The label flags cannot be combined with `--alerts` or `--folder`, and they are r
 
 ## Output and exit codes
 
-The human table goes to **stderr**: `RESULTS` (one row per rule, with the verdict, time broken, check cadence and whether the window was observed), `VIOLATIONS` (one per distinct rule/verdict/state/health/note signature, with an `INSTANCES` count of the instances it stands for — instance identity is only in the JSON), and `LIMITS USED` (each rule's observation limits in plain words, explained by a legend under the table, plus the extra observation time, the evaluation wait and the largest measured clock difference). The JSON outcome values are `healthy`, `new_failure`, `still_failing`, `recovered`, `unstable`, `paused`, `not_verified` and the synthetic `not_counted`. `--output json` writes the result to stdout.
+The human table goes to **stderr**: `RESULTS` (one row per rule, with the verdict, time broken, check cadence and whether the window was observed), `VIOLATIONS` (one per distinct rule/verdict/state/health/note signature, with an `INSTANCES` count of the instances it stands for — instance identity is only in the JSON), and `LIMITS USED` (each rule's observation limits in plain words, explained by a legend under the table, plus the extra observation time, the evaluation wait, the largest measured clock difference and the detected Grafana version; the closing violations count is marked ✅/❌). The JSON outcome values are `healthy`, `new_failure`, `still_failing`, `recovered`, `unstable`, `paused`, `not_verified` and the synthetic `not_counted`. `--output json` writes the result to stdout.
 
 | Code | Meaning |
 | ---- | ------- |

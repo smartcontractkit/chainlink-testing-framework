@@ -78,15 +78,24 @@ func TestRenderTable(t *testing.T) {
 	require.Contains(t, out, "MAX GAP WITHOUT CHECK")
 	require.Contains(t, out, "QUERY FAILING FOR")
 	require.Contains(t, out, "NO EVALUATION FOR")
+	require.Contains(t, out, "Legend:")
 	require.Contains(t, out, "the longest gap between two checks")
 	require.Contains(t, out, "without evaluating the alert")
 
-	// The global footer in plain words.
+	// The global footer in plain words, with the Grafana version on its own
+	// line and the violations count marked with an emoji.
 	require.Contains(t, out, "extra watching after your window: +5m0s")
 	require.Contains(t, out, "slowest: Ape Alert (for=5m)")
 	require.Contains(t, out, "max wait for all alerts to finish evaluating: 2m0s")
-	require.Contains(t, out, "clock difference from Grafana: 1.5s, accurate to ±250ms (checks fail above 1m0s); Grafana 13.1.0")
-	require.Contains(t, out, "violations: 2")
+	require.Contains(t, out, "clock difference from Grafana: 1.5s, accurate to ±250ms (checks fail above 1m0s)")
+	require.Contains(t, out, "Grafana version: 13.1.0")
+	require.Contains(t, out, "❌ violations: 2")
+}
+
+// The footer verdict line picks its emoji by whether there are violations.
+func TestViolationsLabel(t *testing.T) {
+	require.Equal(t, "✅ violations: 0", violationsLabel(0, false))
+	require.Equal(t, "❌ violations: 2", violationsLabel(2, false))
 }
 
 // The "-" case: a rule decide never asked proveCoverage about (paused before

@@ -13,9 +13,10 @@ import (
 
 // limitsLegend explains each LIMITS USED column in one plain sentence, so the
 // table needs no documentation lookup.
-const limitsLegend = `  max gap without check — the longest gap between two checks we accept before we say the alert was not watched.
-  query failing for — how long Grafana may keep failing to run the alert's query before we stop trusting its state.
-  no evaluation for — how long Grafana may go without evaluating the alert before we stop trusting its state.`
+const limitsLegend = `Legend:
+max gap without check — the longest gap between two checks we accept before we say the alert was not watched.
+query failing for — how long Grafana may keep failing to run the alert's query before we stop trusting its state.
+no evaluation for — how long Grafana may go without evaluating the alert before we stop trusting its state.`
 
 // renderTable is the human table. It always writes to the writer it is given,
 // which the caller (runCheck) always points at stderr — stdout is reserved for
@@ -32,8 +33,8 @@ const limitsLegend = `  max gap without check — the longest gap between two ch
 //     column is named in plain words and explained by the legend below it, so
 //     the table needs no documentation lookup.
 //
-// The global footer then reports the extra observation time, the drain limit
-// and the largest measured clock difference, also in plain words.
+// The global footer reports the extra observation time, the drain limit, the
+// clock difference, the Grafana version and the emoji-marked violations count.
 func renderTable(w io.Writer, res gate.Result) error {
 	alertOf := make(map[string]string, len(res.Verdicts))
 	for _, v := range res.Verdicts {
@@ -96,6 +97,7 @@ func renderTable(w io.Writer, res gate.Result) error {
 	if err := ttw.Flush(); err != nil {
 		return fmt.Errorf("render table: %w", err)
 	}
+	fmt.Fprintln(w)
 	fmt.Fprintln(w, limitsLegend)
 
 	fmt.Fprintln(w)
@@ -106,9 +108,10 @@ func renderTable(w io.Writer, res gate.Result) error {
 		fmt.Fprintln(w, "extra watching after your window: none")
 	}
 	fmt.Fprintf(w, "max wait for all alerts to finish evaluating: %s\n", res.Global.DrainTimeout)
-	fmt.Fprintf(w, "clock difference from Grafana: %s, accurate to ±%s (checks fail above %s); Grafana %s\n",
+	fmt.Fprintf(w, "clock difference from Grafana: %s, accurate to ±%s (checks fail above %s)\n",
 		res.ClockSkew.Round(time.Millisecond), res.ClockSkewBound.Round(time.Millisecond),
-		gate.SkewHardLimit, res.GrafanaVersion)
+		gate.SkewHardLimit)
+	fmt.Fprintf(w, "\nGrafana version: %s\n", res.GrafanaVersion)
 	// The verdict — the single number a terminal operator reads last — sits on
 	// its own line at the very bottom, separated from the diagnostics above and
 	// from the shell prompt below.
@@ -116,17 +119,18 @@ func renderTable(w io.Writer, res gate.Result) error {
 	return nil
 }
 
-// violationsLabel colours the "violations: N" prefix of the footer: green when
-// there are none, red otherwise. The rest of the line is written uncoloured.
+// violationsLabel is the footer verdict line: ✅/❌ then "violations: N",
+// coloured green/red when the destination is a terminal.
 func violationsLabel(n int, enabled bool) string {
-	s := fmt.Sprintf("violations: %d", n)
-	if !enabled {
-		return s
-	}
+	mark, color := "❌", ansiRed
 	if n == 0 {
-		return ansiGreen + s + ansiReset
+		mark, color = "✅", ansiGreen
 	}
-	return ansiRed + s + ansiReset
+	s := fmt.Sprintf("violations: %d", n)
+	if enabled {
+		s = color + s + ansiReset
+	}
+	return mark + " " + s
 }
 
 // provedLabel is the table's WINDOW COVERED column: "yes" for a fully
