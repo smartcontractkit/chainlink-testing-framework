@@ -9,10 +9,10 @@ import (
 type TerminationKind string
 
 const (
-	// TerminationViolation is a post-`from` bad onset (newly_bad or flapping).
+	// TerminationViolation is a post-`from` bad onset (new_failure or unstable).
 	TerminationViolation TerminationKind = "violation"
-	// TerminationUnobservable is an inability that has already happened.
-	TerminationUnobservable TerminationKind = "unobservable"
+	// TerminationNotVerified is an inability that has already happened.
+	TerminationNotVerified TerminationKind = "not_verified"
 )
 
 // Termination is why a fail-fast run stopped before the window closed. At is
@@ -30,10 +30,10 @@ type Termination struct {
 // observed so far, treating at as the provisional end of the window. PURE.
 //
 // Only two conditions qualify, because only they can never become a pass: an
-// inability that already happened, and a post-`from` bad onset (newly_bad or
-// flapping). `recovered` forgives an observed bad state and is reserved for
+// inability that already happened, and a post-`from` bad onset (new_failure or
+// unstable). `recovered` forgives an observed bad state and is reserved for
 // bad-at-`from`, so a preexisting condition is deliberately not terminal.
-// unobservable beats violation, as it does at the end of a full run.
+// not_verified beats violation, as it does at the end of a full run.
 func terminalVerdict(h Header, polls []Poll, defs []Definition, rt map[string]RuleTimings,
 	pol Policy, from, at time.Time) (Termination, bool) {
 
@@ -55,17 +55,17 @@ func terminalVerdict(h Header, polls []Poll, defs []Definition, rt map[string]Ru
 		}
 		if cov.Unobservable {
 			return Termination{
-				Kind:    TerminationUnobservable,
+				Kind:    TerminationNotVerified,
 				Alert:   def.Title,
 				RuleUID: def.UID,
-				Outcome: OutcomeUnobservable,
+				Outcome: OutcomeNotVerified,
 				Reason:  cov.Reason,
 				At:      at,
 			}, true
 		}
 
 		outcome, _, _ := classifyRule(def, polls, from, at, badStates, pol.Preexisting)
-		if outcome == OutcomeNewlyBad || outcome == OutcomeFlapping {
+		if outcome == OutcomeNewFailure || outcome == OutcomeUnstable {
 			if violation == nil {
 				v := Termination{
 					Kind:    TerminationViolation,

@@ -19,26 +19,30 @@ const ReasonNodata UnobservableReason = "nodata"
 type Outcome string
 
 const (
-	OutcomeClean           Outcome = "clean"
-	OutcomeNewlyBad        Outcome = "newly_bad"
-	OutcomeRecovered       Outcome = "recovered"
-	OutcomePersistentlyBad Outcome = "persistently_bad"
-	OutcomeFlapping        Outcome = "flapping"
-	OutcomeSkipped         Outcome = "skipped"
-	OutcomeUnobservable    Outcome = "unobservable"
+	OutcomeHealthy      Outcome = "healthy"
+	OutcomeNewFailure   Outcome = "new_failure"
+	OutcomeRecovered    Outcome = "recovered"
+	OutcomeStillFailing Outcome = "still_failing"
+	OutcomeUnstable     Outcome = "unstable"
+	OutcomePaused       Outcome = "paused"
+	OutcomeNotVerified  Outcome = "not_verified"
+	// OutcomeNotCounted is synthetic: decide uses it for a --min-observed
+	// deficit row that no resolved rule explains. It is not a verdict on an
+	// alert, so it is deliberately not named after one.
+	OutcomeNotCounted Outcome = "not_counted"
 )
 
 // PreexistingPolicy governs only the ONE ambiguous case in the outcome table:
-// an instance that was already bad when the window opened. A newly_bad or
-// flapping instance is a fail under every policy, so this type only ever
-// changes how `recovered` and `persistently_bad` are judged (isViolation
+// an instance that was already bad when the window opened. A new_failure or
+// unstable instance is a fail under every policy, so this type only ever
+// changes how `recovered` and `still_failing` are judged (isViolation
 // below).
 type PreexistingPolicy string
 
 const (
 	// PreexistingFailUnlessRecovered is the default: a preexisting instance
 	// that clears and stays clear is a pass (`recovered`); one that never
-	// clears is still a fail (`persistently_bad`).
+	// clears is still a fail (`still_failing`).
 	PreexistingFailUnlessRecovered PreexistingPolicy = "fail-unless-recovered"
 	// PreexistingFail makes ANY preexisting instance a fail, even one that
 	// recovers — for a user who wants no benefit of the doubt for a
@@ -46,7 +50,7 @@ const (
 	PreexistingFail PreexistingPolicy = "fail"
 	// PreexistingIgnore disregards a preexisting instance entirely, whether
 	// it recovers or stays bad for the whole window: only a genuinely NEW
-	// bad episode (newly_bad or flapping) can fail the rule.
+	// bad episode (new_failure or unstable) can fail the rule.
 	PreexistingIgnore PreexistingPolicy = "ignore"
 )
 
@@ -294,7 +298,7 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 	slices.Sort(order)
 
 	var (
-		outcome = OutcomeClean
+		outcome = OutcomeHealthy
 		badFor  []episode
 		viols   []Violation
 	)
@@ -311,17 +315,17 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		var instOutcome Outcome
 		switch {
 		case len(tl.episodes) > 1:
-			instOutcome = OutcomeFlapping
+			instOutcome = OutcomeUnstable
 		case tl.preexisting:
 			if tl.episodes[0].closedByRealClear {
 				instOutcome = OutcomeRecovered
 			} else {
-				instOutcome = OutcomePersistentlyBad
+				instOutcome = OutcomeStillFailing
 			}
 		default:
 			// A genuinely new onset fails whether or not it clears in-window;
 			// only a preexisting condition earns `recovered`.
-			instOutcome = OutcomeNewlyBad
+			instOutcome = OutcomeNewFailure
 		}
 
 		if outcomeRank(instOutcome) > outcomeRank(outcome) {
@@ -353,17 +357,17 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 }
 
 // isViolation decides whether one instance's outcome counts against the run,
-// once the preexisting policy is applied. newly_bad and flapping always do:
+// once the preexisting policy is applied. new_failure and unstable always do:
 // both contain a genuinely new bad episode, so no policy forgives them.
-// recovered and persistently_bad are, by classifyRule's construction,
-// ALWAYS preexisting (a non-preexisting single episode is newly_bad instead,
+// recovered and still_failing are, by classifyRule's construction,
+// ALWAYS preexisting (a non-preexisting single episode is new_failure instead,
 // regardless of whether it clears) — so these are the only two policy can
 // change, and isViolation needs no separate preexisting flag to know that.
 func isViolation(o Outcome, pol PreexistingPolicy) bool {
 	switch o {
-	case OutcomeNewlyBad, OutcomeFlapping:
+	case OutcomeNewFailure, OutcomeUnstable:
 		return true
-	case OutcomePersistentlyBad:
+	case OutcomeStillFailing:
 		return pol != PreexistingIgnore
 	case OutcomeRecovered:
 		return pol == PreexistingFail
@@ -375,25 +379,25 @@ func isViolation(o Outcome, pol PreexistingPolicy) bool {
 // outcomeRank orders outcomes for classifyRule's worst-of reduction across a
 // rule's instances:
 //
-//	unobservable > {flapping, persistently_bad, newly_bad} > recovered >
-//	skipped > clean
+//	not_verified > {unstable, still_failing, new_failure} > recovered >
+//	paused > healthy
 //
-// with unobservable and skipped applied outside this function (decide owns
-// both: unobservable from CoverageResult, skipped from the log header). The
+// with not_verified and paused applied outside this function (decide owns
+// both: not_verified from CoverageResult, paused from the log header). The
 // three fail values are not ranked against each other by anything that reads
 // this, so their relative order here is an arbitrary but fixed tie-break, not
 // a claim that one is worse than another.
 func outcomeRank(o Outcome) int {
 	switch o {
-	case OutcomeFlapping:
+	case OutcomeUnstable:
 		return 4
-	case OutcomePersistentlyBad:
+	case OutcomeStillFailing:
 		return 3
-	case OutcomeNewlyBad:
+	case OutcomeNewFailure:
 		return 2
 	case OutcomeRecovered:
 		return 1
-	default: // OutcomeClean
+	default: // OutcomeHealthy
 		return 0
 	}
 }
@@ -483,7 +487,7 @@ func applyNodataPolicy(def Definition, polls []Poll, cov *CoverageResult, t Rule
 // decide is the pure seam between the collected evidence and the CLI's exit
 // code, and carries nearly the whole test suite because of it. It combines
 // proveCoverage's nine checks with classifyRule's timelines under one Policy,
-// and owns the inability-beats-violation rule: any unobservable rule makes
+// and owns the inability-beats-violation rule: any not-verified rule makes
 // decide return a non-nil error, which the CLI maps to exit 2 unconditionally
 // — never to 0 or 1, and never suppressed by a real violation found alongside
 // it.
@@ -532,13 +536,13 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 	windowEnd := pol.To.Add(gt.transitionGrace)
 
 	var (
-		skippedRules      []Definition
+		pausedRules       []Definition
 		watchedCount      int
 		anyUnobservable   bool
 		unobservableNames []string
 	)
 
-	// `skipped` is decided from the header, never from defs: defs are resolved
+	// `paused` is decided from the header, never from defs: defs are resolved
 	// after the window closed, so Definition.IsPaused describes the present,
 	// while Header.pausedAtStart describes the window open — the only moment
 	// "paused before the window opened" can mean.
@@ -546,9 +550,9 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 
 	for _, def := range defs {
 		if pausedAtStart[def.UID] {
-			skippedRules = append(skippedRules, def)
+			pausedRules = append(pausedRules, def)
 			result.Verdicts = append(result.Verdicts, RuleVerdict{
-				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomeSkipped,
+				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomePaused,
 				PollEvery: rt[def.UID].pollEvery,
 				Note:      "paused before the window opened",
 			})
@@ -571,7 +575,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 
 		outcome, badFor, viols := classifyRule(def, polls, pol.From, windowEnd, badStates, pol.Preexisting)
 		if cov.Unobservable {
-			outcome = OutcomeUnobservable
+			outcome = OutcomeNotVerified
 			anyUnobservable = true
 			unobservableNames = append(unobservableNames, fmt.Sprintf("%s (%s)", def.Title, cov.Reason))
 		}
@@ -588,9 +592,9 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 	counted := watchedCount
 	var attributable []Definition
 	if pol.AllowPaused {
-		counted += len(skippedRules)
+		counted += len(pausedRules)
 	} else {
-		attributable = skippedRules
+		attributable = pausedRules
 	}
 	if shortfall := minObserved - counted; shortfall > 0 {
 		attributed := 0
@@ -603,7 +607,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			// prints Note verbatim rather than re-deriving the hint, so the
 			// exact wording here is what an operator reads.
 			result.Violations = append(result.Violations, Violation{
-				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomeSkipped,
+				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomePaused,
 				Note: "paused before the window opened; counts against --min-observed unless --allow-paused is set",
 			})
 			attributed++
@@ -615,14 +619,14 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			// rule state read from a real poll, and this Violation never
 			// touched one.
 			result.Violations = append(result.Violations, Violation{
-				Outcome: OutcomeSkipped,
+				Outcome: OutcomeNotCounted,
 				Note:    fmt.Sprintf("min-observed %d exceeds the %d rule(s) counted as observed", minObserved, counted),
 			})
 		}
 	}
 
 	if anyUnobservable {
-		return result, fmt.Errorf("gate: %d rule(s) unobservable: %s", len(unobservableNames), strings.Join(unobservableNames, "; "))
+		return result, fmt.Errorf("gate: %d rule(s) not verified: %s", len(unobservableNames), strings.Join(unobservableNames, "; "))
 	}
 	return result, nil
 }

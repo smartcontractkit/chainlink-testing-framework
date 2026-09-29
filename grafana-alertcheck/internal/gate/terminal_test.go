@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -57,7 +58,7 @@ func TestTerminalVerdict(t *testing.T) {
 			polls:    func() []Poll { return badFromPolls(checkUID, from, at, from.Add(time.Minute)) },
 			want:     true,
 			wantKind: TerminationViolation,
-			wantOut:  OutcomeNewlyBad,
+			wantOut:  OutcomeNewFailure,
 		},
 		{
 			// Bad before `from` can still become `recovered` (a pass).
@@ -72,17 +73,17 @@ func TestTerminalVerdict(t *testing.T) {
 			want: false,
 		},
 		{
-			name: "heartbeat gap is terminal unobservable",
+			name: "heartbeat gap is terminal not_verified",
 			polls: func() []Poll {
 				return append(denseHealthyPolls(checkUID, from, from.Add(time.Minute), checkPollEvery),
 					quietPoll(checkUID, at))
 			},
 			want:       true,
-			wantKind:   TerminationUnobservable,
+			wantKind:   TerminationNotVerified,
 			wantReason: ReasonHeartbeatGap,
 		},
 		{
-			name: "sustained health=error is terminal unobservable",
+			name: "sustained health=error is terminal not_verified",
 			polls: func() []Poll {
 				var out []Poll
 				for ts := from; !ts.After(at); ts = ts.Add(checkPollEvery) {
@@ -93,29 +94,29 @@ func TestTerminalVerdict(t *testing.T) {
 				return out
 			},
 			want:       true,
-			wantKind:   TerminationUnobservable,
+			wantKind:   TerminationNotVerified,
 			wantReason: ReasonHealthError,
 		},
 		{
-			name: "in-window pause is terminal unobservable",
+			name: "in-window pause is terminal not_verified",
 			polls: func() []Poll {
 				out := denseHealthyPolls(checkUID, from, at, checkPollEvery)
 				out = append(out, Poll{RuleUID: checkUID, GrafanaNow: from.Add(time.Minute), Found: true, Health: "ok", IsPaused: true})
 				return out
 			},
 			want:       true,
-			wantKind:   TerminationUnobservable,
+			wantKind:   TerminationNotVerified,
 			wantReason: ReasonPausedInWindow,
 		},
 		{
-			name: "absent rule is terminal unobservable",
+			name: "absent rule is terminal not_verified",
 			polls: func() []Poll {
 				out := denseHealthyPolls(checkUID, from, at, checkPollEvery)
 				out = append(out, Poll{RuleUID: checkUID, GrafanaNow: from.Add(time.Minute)})
 				return out
 			},
 			want:       true,
-			wantKind:   TerminationUnobservable,
+			wantKind:   TerminationNotVerified,
 			wantReason: ReasonRuleAbsent,
 		},
 	}
@@ -158,7 +159,7 @@ func TestTerminalVerdictNodataIsTerminalOnlyWhenConfigured(t *testing.T) {
 	term, ok := terminalVerdict(terminalHeader(from), polls, []Definition{def}, rt,
 		Policy{From: from, To: at, NodataIsUnobservable: true}, from, at)
 	require.True(t, ok)
-	require.Equal(t, TerminationUnobservable, term.Kind)
+	require.Equal(t, TerminationNotVerified, term.Kind)
 	require.Equal(t, ReasonNodata, term.Reason)
 }
 
@@ -180,7 +181,25 @@ func TestTerminalVerdictUnobservableBeatsViolation(t *testing.T) {
 
 	term, ok := terminalVerdict(terminalHeader(from), polls, []Definition{violating, gapped}, rt, Policy{From: from, To: at}, from, at)
 	require.True(t, ok)
-	require.Equal(t, TerminationUnobservable, term.Kind)
+	require.Equal(t, TerminationNotVerified, term.Kind)
 	require.Equal(t, "rule-two", term.RuleUID)
 	require.Equal(t, ReasonHeartbeatGap, term.Reason)
+}
+
+// Termination kinds are published JSON too, and the assertions above compare
+// against the constants. Pin the literals.
+func TestTerminationKindJSONVocabulary(t *testing.T) {
+	want := map[TerminationKind]string{
+		TerminationViolation:   "violation",
+		TerminationNotVerified: "not_verified",
+	}
+	require.Len(t, want, 2, "every TerminationKind constant must be pinned here")
+
+	for kind, literal := range want {
+		t.Run(string(kind), func(t *testing.T) {
+			raw, err := json.Marshal(kind)
+			require.NoError(t, err)
+			require.Equal(t, `"`+literal+`"`, string(raw))
+		})
+	}
 }

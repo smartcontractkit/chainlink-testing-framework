@@ -11,22 +11,29 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 )
 
+// limitsLegend explains each LIMITS USED column in one plain sentence, so the
+// table needs no documentation lookup.
+const limitsLegend = `  max gap without check — the longest gap between two checks we accept before we say the alert was not watched.
+  query failing for — how long Grafana may keep failing to run the alert's query before we stop trusting its state.
+  no evaluation for — how long Grafana may go without evaluating the alert before we stop trusting its state.`
+
 // renderTable is the human table. It always writes to the writer it is given,
 // which the caller (runCheck) always points at stderr — stdout is reserved for
 // the machine-readable --output json.
 //
-// Three titled tables, in order (the name column is RULE in all of them — one
-// row is one resolved alert rule, never a firing instance):
+// Three titled tables, in order (the ALERT column is one resolved alert rule,
+// never a firing instance):
 //
-//  1. RESULTS, one line per rule: outcome, BadFor, pollEvery, proved-or-not
-//     with the largest gap;
-//  2. VIOLATIONS, one line per distinct violation.
-//  3. THRESHOLDS, the numbers that answer "why" on exit 2: each non-skipped
-//     rule's maxGap/healthGrace/evalStaleAfter, followed by the global
-//     transitionGrace and drainTimeout, and the largest measured clock skew
-//     alongside its own error bound (RTT/2) — SkewHardLimit is a separate,
-//     fixed input threshold and is reported next to it, never as if it were
-//     that bound.
+//  1. RESULTS, one line per rule: verdict, time broken, check cadence,
+//     whether the window was observed, and any notes;
+//  2. VIOLATIONS, one line per distinct violation, with the raw Grafana state
+//     and health and the number of instances it stands for;
+//  3. LIMITS USED, the coverage thresholds that answer "why" on exit 2. Each
+//     column is named in plain words and explained by the legend below it, so
+//     the table needs no documentation lookup.
+//
+// The global footer then reports the extra observation time, the drain limit
+// and the largest measured clock difference, also in plain words.
 func renderTable(w io.Writer, res gate.Result) error {
 	alertOf := make(map[string]string, len(res.Verdicts))
 	for _, v := range res.Verdicts {
@@ -52,7 +59,7 @@ func renderTable(w io.Writer, res gate.Result) error {
 
 	fmt.Fprintln(w, "RESULTS")
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "RULE\tOUTCOME\tBADFOR\tPOLLEVERY\tPROVED\tNOTE")
+	fmt.Fprintln(tw, "ALERT\tVERDICT\tBROKEN FOR\tCHECKED EVERY\tWINDOW COVERED\tDETAILS")
 	for _, v := range sortedVerdicts(res.Verdicts) {
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			v.Alert, v.Outcome, v.BadFor.Round(time.Second), v.PollEvery.Round(time.Second),
@@ -65,7 +72,7 @@ func renderTable(w io.Writer, res gate.Result) error {
 	if len(res.Violations) > 0 {
 		fmt.Fprintln(w, "\nVIOLATIONS")
 		vtw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-		fmt.Fprintln(vtw, "RULE\tOUTCOME\tSTATE\tHEALTH\tINSTANCE COUNT\tNOTE")
+		fmt.Fprintln(vtw, "ALERT\tVERDICT\tGRAFANA STATE\tGRAFANA HEALTH\tINSTANCES\tDETAILS")
 		for _, g := range groupedViolations(res.Violations) {
 			fmt.Fprintf(vtw, "%s\t%s\t%s\t%s\t%s\t%s\n", alertLabel(g.v, alertOf), g.v.Outcome, g.v.State, g.v.Health, instanceCount(g), g.v.Note)
 		}
@@ -74,14 +81,13 @@ func renderTable(w io.Writer, res gate.Result) error {
 		}
 	}
 
-	// The per-rule thresholds answer "why" on exit 2: a table, not the prose
-	// "rule NAME: maxGap=... healthGrace=... evalStaleAfter=..." that repeated
-	// the rule name a fourth time. It is separated from the result above by a
-	// blank line.
+	// The per-rule limits answer "why" on exit 2. The columns are spelled out
+	// and explained by limitsLegend right below, so an operator does not have
+	// to look anything up.
 	fmt.Fprintln(w)
-	fmt.Fprintln(w, "THRESHOLDS")
+	fmt.Fprintln(w, "LIMITS USED")
 	ttw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(ttw, "RULE\tMAXGAP\tHEALTHGRACE\tEVALSTALEAFTER")
+	fmt.Fprintln(ttw, "ALERT\tMAX GAP WITHOUT CHECK\tQUERY FAILING FOR\tNO EVALUATION FOR")
 	for _, uid := range sortedThresholdUIDs(res.Thresholds, alertOf) {
 		t := res.Thresholds[uid]
 		fmt.Fprintf(ttw, "%s\t%s\t%s\t%s\n",
@@ -90,11 +96,17 @@ func renderTable(w io.Writer, res gate.Result) error {
 	if err := ttw.Flush(); err != nil {
 		return fmt.Errorf("render table: %w", err)
 	}
+	fmt.Fprintln(w, limitsLegend)
 
 	fmt.Fprintln(w)
-	fmt.Fprintf(w, "global: transitionGrace=%s (source: %s) drainTimeout=%s\n",
-		res.Global.TransitionGrace, res.Global.GraceSource, res.Global.DrainTimeout)
-	fmt.Fprintf(w, "largest measured clock skew: %s (bound ±%s, hard limit %s), grafana %s\n",
+	if res.Global.TransitionGrace > 0 {
+		fmt.Fprintf(w, "extra watching after your window: +%s — so an alert that only starts firing at the end is still caught (slowest: %s)\n",
+			res.Global.TransitionGrace, res.Global.GraceSource)
+	} else {
+		fmt.Fprintln(w, "extra watching after your window: none")
+	}
+	fmt.Fprintf(w, "max wait for all alerts to finish evaluating: %s\n", res.Global.DrainTimeout)
+	fmt.Fprintf(w, "clock difference from Grafana: %s, accurate to ±%s (checks fail above %s); Grafana %s\n",
 		res.ClockSkew.Round(time.Millisecond), res.ClockSkewBound.Round(time.Millisecond),
 		gate.SkewHardLimit, res.GrafanaVersion)
 	// The verdict — the single number a terminal operator reads last — sits on
@@ -104,8 +116,8 @@ func renderTable(w io.Writer, res gate.Result) error {
 	return nil
 }
 
-// violationsLabel colours the "violations: N" prefix of the footer: green for a
-// clean run, red otherwise. The rest of the line is written uncoloured.
+// violationsLabel colours the "violations: N" prefix of the footer: green when
+// there are none, red otherwise. The rest of the line is written uncoloured.
 func violationsLabel(n int, enabled bool) string {
 	s := fmt.Sprintf("violations: %d", n)
 	if !enabled {
@@ -117,10 +129,10 @@ func violationsLabel(n int, enabled bool) string {
 	return ansiRed + s + ansiReset
 }
 
-// provedLabel is the table's PROVED column: "yes" for a clean coverage
-// proof, "no" with the reason and largest gap for an unobservable rule, and
-// "-" for a rule decide never asked proveCoverage about at all (skipped —
-// paused before the window opened).
+// provedLabel is the table's WINDOW COVERED column: "yes" for a fully
+// observed window, "no" with the reason and largest gap for a not-verified
+// rule, and "-" for a rule decide never asked proveCoverage about at all
+// (paused before the window opened).
 func provedLabel(cov gate.CoverageResult) string {
 	if cov.Reason == "" && !cov.Unobservable && !cov.Proved {
 		return "-"
@@ -192,8 +204,11 @@ func sameRendered(a, b gate.Violation) bool {
 	return violationSignature(a) == violationSignature(b)
 }
 
+// instanceCount is the INSTANCES column: how many alert instances one grouped
+// violation row stands for. Paused and not-counted rows stand for no instance
+// at all, so they render "-".
 func instanceCount(g violationGroup) string {
-	if g.v.Outcome == gate.OutcomeSkipped {
+	if g.v.Outcome == gate.OutcomePaused || g.v.Outcome == gate.OutcomeNotCounted {
 		return "-"
 	}
 	return strconv.Itoa(g.n)
