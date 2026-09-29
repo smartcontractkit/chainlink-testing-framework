@@ -7,9 +7,10 @@ A CD quality gate for Grafana alerts. It bookends a release with two commands �
 watch  → your work → check
 ```
 
-`watch` starts a background recorder that polls each named alert into a JSONL log. After the work emits a
-`from`/`to` pair, `check` proves continuous coverage of that window, classifies each alert's state
-timeline, and exits `0`, `1`, or `2`. If the work fails first, `stop` reaps the recorder.
+`watch` starts a background recorder that polls each watched alert into a JSONL log. Alerts are selected by
+name or by labels. After the work emits a `from`/`to` pair, `check` proves continuous coverage of that
+window, classifies each alert's state timeline, and exits `0`, `1`, or `2`. If the work fails first, `stop`
+reaps the recorder.
 
 It **fails closed**: if it cannot get an answer, it stops the release — never a pass on an unproven window.
 
@@ -24,6 +25,9 @@ grafana-alertcheck watch --out /tmp/run.jsonl --alerts alerts.txt
 ./verify.sh   # emits finished_at=<RFC3339>
 grafana-alertcheck check --in /tmp/run.jsonl --from "$deployed_at" --to "$finished_at"
 ```
+
+Or select alerts by label instead of a file: `--include-labels team=bcm,env=stage` (optionally
+`--exclude-labels`). See the [CLI reference](./docs/reference/cli.md#selecting-alerts-by-labels).
 
 Requires Grafana >= 13.0.0 and < 14.0.0. Connection details come from the environment only — the token is
 never a flag.

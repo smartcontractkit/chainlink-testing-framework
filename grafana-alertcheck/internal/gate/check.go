@@ -37,6 +37,11 @@ type Config struct {
 	Alerts []string
 	Folder string
 
+	// IncludeLabels selects the watched rules by exact-match labels instead of
+	// names; ExcludeLabels drops matching rules from that set. Both are refused
+	// in log mode, where the header IS the alert set.
+	IncludeLabels, ExcludeLabels []LabelMatcher
+
 	States               []State
 	Preexisting          PreexistingPolicy
 	MinObserved          int
@@ -133,16 +138,19 @@ func (cfg Config) validate() error {
 	}
 
 	named := cfg.namedAlerts()
+	labeled := len(cfg.IncludeLabels) > 0 || len(cfg.ExcludeLabels) > 0
 	if cfg.Log == "" {
-		// An empty Alerts is an error — but only without a log.
-		if len(named) == 0 {
-			return errors.New("check: no alert names given and no recorded log to take them from")
+		if err := validateSelection("check", len(named), cfg.IncludeLabels, cfg.ExcludeLabels, cfg.Folder,
+			"check: no alert names given, no --include-labels, and no recorded log to take them from"); err != nil {
+			return err
 		}
 	} else if len(named) > 0 {
-		// The other direction: with a log, the alert set comes from the log.
-		// Accepting both would mean reconciling two sets, which the log being
-		// the one source removes entirely.
+		// With a log, the alert set comes from the log. Accepting both would
+		// mean reconciling two sets, which the log being the one source
+		// removes entirely.
 		return fmt.Errorf("check: --alerts is refused with a recorded log: %s already names the alert set it recorded", cfg.Log)
+	} else if labeled {
+		return fmt.Errorf("check: label selection is refused with a recorded log: %s already names the alert set it recorded", cfg.Log)
 	}
 
 	now := cfg.Clock.Now()
@@ -239,7 +247,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			}
 		}
 	} else {
-		resolved, notes, err = Resolve(allDefs, cfg.namedAlerts(), cfg.Folder)
+		resolved, notes, err = resolveAlertSet(allDefs, cfg.namedAlerts(), cfg.IncludeLabels, cfg.ExcludeLabels, cfg.Folder)
 	}
 	if err != nil {
 		return Result{}, err

@@ -12,7 +12,8 @@ import (
 )
 
 const watchUsage = "usage: grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] " +
-	"--alerts <file|-> [--folder F] [--poll-interval D] [--concurrency N] [--until RFC3339]"
+	"(--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) " +
+	"[--poll-interval D] [--concurrency N] [--until RFC3339]"
 
 // runWatch is the record step's entire CLI surface, split in two by one flag
 // set — gate.DaemonChildFlag ("--daemon-child") and gate.ReadyFDFlag
@@ -64,6 +65,21 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return runDaemonChild(*out, *until, *common.concurrency, *readyFD, stderr)
 	}
 
+	if *common.alerts != "" && (*common.includeLabels != "" || *common.excludeLabels != "") {
+		fmt.Fprintln(stderr, "watch: --alerts cannot be combined with label selection")
+		return 2
+	}
+	includeLabels, err := parseLabelPairs("--include-labels", *common.includeLabels)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	excludeLabels, err := parseLabelPairs("--exclude-labels", *common.excludeLabels)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+
 	url, token, err := grafanaEnv()
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -77,16 +93,18 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	}
 
 	cfg := gate.WatchConfig{
-		URL:         url,
-		Token:       token,
-		Alerts:      alerts,
-		Folder:      *common.folder,
-		Out:         *out,
-		PidFile:     *pidfile,
-		DaemonLog:   *daemonLog,
-		Concurrency: *common.concurrency,
-		Clock:       gate.SystemClock{},
-		Notes:       newNoteStyler(stderr),
+		URL:           url,
+		Token:         token,
+		Alerts:        alerts,
+		Folder:        *common.folder,
+		IncludeLabels: includeLabels,
+		ExcludeLabels: excludeLabels,
+		Out:           *out,
+		PidFile:       *pidfile,
+		DaemonLog:     *daemonLog,
+		Concurrency:   *common.concurrency,
+		Clock:         gate.SystemClock{},
+		Notes:         newNoteStyler(stderr),
 	}
 	if *until != "" {
 		t, err := time.Parse(time.RFC3339, *until)

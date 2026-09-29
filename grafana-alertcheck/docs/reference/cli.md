@@ -26,7 +26,8 @@ grafana-alertcheck list
 
 ```bash
 grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
-  --alerts <file|-> [--folder F] [--poll-interval D] [--concurrency N] [--until RFC3339]
+  (--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) \
+  [--poll-interval D] [--concurrency N] [--until RFC3339]
 ```
 
 | Flag | Default | Meaning |
@@ -34,8 +35,10 @@ grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
 | `--out` | — | JSONL log path (required) |
 | `--pidfile` | `<out>.pid` | Where the recorder's pid is written |
 | `--daemon-log` | `<out>.daemon.log` | stdout/stderr sink for the detached recorder |
-| `--alerts` | — | File of alert names, one per line, or `-` for stdin (required) |
-| `--folder` | — | Default folder to scope unqualified names |
+| `--alerts` | — | File of alert names, one per line, or `-` for stdin (required unless `--include-labels`) |
+| `--folder` | — | Default folder to scope unqualified names (with `--alerts` only) |
+| `--include-labels` | — | Comma-separated exact-match `key=value` pairs selecting rules by label (cannot be combined with `--alerts`) |
+| `--exclude-labels` | — | Comma-separated exact-match `key=value` pairs; a rule carrying any of them is dropped (requires `--include-labels`) |
 | `--poll-interval` | half the rule's interval | Override every rule's cadence (never clamped) |
 | `--concurrency` | `1` | Max concurrent requests to Grafana |
 | `--until` | run until signalled | Optional hard stop |
@@ -63,7 +66,8 @@ Use it when the work failed and the alert verdict no longer matters, but the rec
 
 ```bash
 grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339 \
-  [--alerts ...] [--folder F] [--states ...] [--preexisting ...] [--min-observed N] \
+  [--alerts ... [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]] \
+  [--states ...] [--preexisting ...] [--min-observed N] \
   [--allow-paused] [--nodata-is-unobservable] [--no-fail-fast] [--concurrency N] [--output json]
 ```
 
@@ -73,7 +77,10 @@ grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339
 | `--pidfile` | `<in>.pid` | Recorder to stop before reading `--in` |
 | `--from` | see below | Moment the deploy finished |
 | `--to` | — | End of the window (required) |
-| `--alerts` | — | Required **without** `--in`; refused **with** `--in` |
+| `--alerts` | — | Required **without** `--in` (unless `--include-labels`); refused **with** `--in` |
+| `--folder` | — | Default folder to scope unqualified names (with `--alerts` only) |
+| `--include-labels` | — | Comma-separated exact-match `key=value` pairs selecting rules by label (cannot be combined with `--alerts`) |
+| `--exclude-labels` | — | Comma-separated exact-match `key=value` pairs; a rule carrying any of them is dropped (requires `--include-labels`) |
 | `--states` | `firing` | Comma-separated bad states: `firing,pending,nodata,error` |
 | `--preexisting` | `fail-unless-recovered` | `fail-unless-recovered` \| `fail` \| `ignore` |
 | `--min-observed` | every resolved rule | Minimum rules that must be observed |
@@ -99,6 +106,19 @@ Alert names take one of four forms:
 | `uid:abc123` | Exact uid (present on both endpoints) |
 
 Datasource-managed and recording rules are refused with a specific error. A name matching multiple rules errors listing every candidate with the copyable `Folder/Group/Title` and its `uid:` form. A no-match errors with case-insensitive substring suggestions and points at `list`. Duplicate names that resolve to the same uid collapse to one (a note, not an error).
+
+## Selecting alerts by labels
+
+Instead of naming alerts, `watch` and single-step `check` accept a label selection:
+
+```bash
+grafana-alertcheck watch --out /tmp/run.jsonl --include-labels team=bcm,env=stage
+grafana-alertcheck check --to "$finished_at" --include-labels team=bcm --exclude-labels severity=info
+```
+
+`--include-labels` takes comma-separated exact-match `key=value` pairs; a rule must carry **all** of them. `--exclude-labels` is optional and drops any rule carrying **one** of its pairs. A rule that does not carry the label is never dropped, only never included. Values cannot contain commas; `key=` matches only rules that carry the label with an empty value.
+
+The label flags cannot be combined with `--alerts` or `--folder`, and they are refused with `--in` — the recorded log names its own alert set. A selection that matches no rules, whose matches are all excluded, or that matches a datasource-managed or recording rule exits `2`: an empty watch set must never pass.
 
 ## Output and exit codes
 
