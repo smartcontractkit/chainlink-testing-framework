@@ -173,10 +173,12 @@ func refuseUnsupportedKind(name string, d Definition) (Definition, error) {
 	}
 }
 
-// noMatchError reports a no-match with the count of rules the gate could see
-// and case-insensitive substring matches as suggestions.
+// noMatchError reports a no-match with the count of grafana-managed rules and
+// case-insensitive substring suggestions. The trailing disclaimer covers rules
+// the ruler response omits entirely, namely datasource-managed ones.
 func noMatchError(defs []Definition, name, wantTitle string) error {
-	msg := fmt.Sprintf("no rule matched %q (%d rules available; run 'grafana-alertcheck list' to see titles)", name, len(defs))
+	msg := fmt.Sprintf("no rule matched %q (%d grafana-managed rules available; run 'grafana-alertcheck list' to see titles)",
+		name, len(defs))
 
 	needle := strings.ToLower(wantTitle)
 	var subs []string
@@ -189,6 +191,7 @@ func noMatchError(defs []Definition, name, wantTitle string) error {
 		sort.Strings(subs)
 		msg += fmt.Sprintf("; did you mean: %s", strings.Join(subs, ", "))
 	}
+	msg += "; datasource-managed alert rules cannot be observed and are not supported"
 	return fmt.Errorf("%s", msg)
 }
 
