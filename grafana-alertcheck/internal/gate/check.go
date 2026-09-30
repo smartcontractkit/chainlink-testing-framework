@@ -353,6 +353,14 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			// warning and a pass, and ONLY here. Recorder mode keeps the
 			// from-bounds coverage check strict, because there the recorder
 			// was supposed to be watching and the gap means it was not.
+			//
+			// A clamp past `to` leaves no requested window to classify (and an
+			// inverted window can prove nothing), so fail closed instead.
+			if !readyAt.Before(cfg.To) {
+				return Result{}, fmt.Errorf(
+					"check: the first-observation pass completed at %s, at or after `to` %s: no window remains to classify",
+					readyAt.Format(time.RFC3339), cfg.To.Format(time.RFC3339))
+			}
 			fmt.Fprintf(cfg.Notes, "warning: cannot see [%s, %s) — %s before the first observation pass completed; the window is classified from %s\n",
 				from.Format(time.RFC3339), readyAt.Format(time.RFC3339),
 				readyAt.Sub(from).Round(time.Second), readyAt.Format(time.RFC3339))

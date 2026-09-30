@@ -609,6 +609,24 @@ func TestCheckSingleStepFromInsideTheMeasurementPassIsClampedToThePassCompletion
 		"only the rule's own 5s cadence may remain between the clamped open and the polls")
 }
 
+// The measurement pass can outlast the requested window when `--to` is close
+// ahead; clamping `from` past `to` would invert the window and prove nothing,
+// so check must fail closed instead.
+func TestCheckSingleStepPassOutlastingTheWindowFailsClosed(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.To = testNow.Add(time.Second)
+
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		clock.Advance(5 * time.Second) // the pass runs past `to`
+		return healthyObservation(clock.Now()), nil
+	})
+
+	_, err := check(context.Background(), cfg, src)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no window remains")
+}
+
 // The live poller continues the measurement pass's schedule: an overdue rule is
 // due immediately instead of waiting out a fresh stagger.
 func TestNewLivePollerContinuesTheMeasurementPass(t *testing.T) {
