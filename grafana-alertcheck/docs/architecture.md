@@ -55,7 +55,7 @@ This, plus the declared supported range (Grafana >= 13.0.0, < 14.0.0), is how a 
 
 `watch` detaches a background recorder so observation survives the step boundary:
 
-1. Parent resolves the alert set (names or labels), writes the header, observes every non-paused rule once, checks the budget.
+1. Parent resolves the alert set (names or labels), observes every non-paused rule once, checks the budget, then writes the header — whose `ReadyAt` stamps the pass completion — and the observations. `ReadyAt` is what `check` uses to refuse a `from` that falls inside the pass.
 2. Parent re-execs itself as the child (`--daemon-child`) under a new session/process group, stdout/stderr to the daemon log.
 3. Child re-reads the header, reopens the log `O_APPEND`, takes the exclusive `flock`, and writes one readiness byte on `--ready-fd`.
 4. Parent writes the pidfile **after** the readiness report, then returns.

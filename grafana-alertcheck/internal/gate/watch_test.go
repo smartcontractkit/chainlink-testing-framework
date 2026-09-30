@@ -136,6 +136,37 @@ func TestWatchLoopPollsEachRuleAtItsOwnCadence(t *testing.T) {
 	require.LessOrEqual(t, got, 3)
 }
 
+// A seeded, already-overdue rule is polled at the loop's first instant, with no
+// fresh stagger added on top of the parent's pass.
+func TestWatchLoopContinuesTheSeededSchedule(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "log.jsonl")
+	clock := newVirtualClock(testNow)
+	w := newLoopWriter(t, path, clock)
+
+	src := newLoopSource(func(title string, _ int) (Observation, error) {
+		now := clock.Now()
+		return observation(now, testStateRule("r1", title, time.Minute, now)), nil
+	})
+
+	require.NoError(t, watchLoop(context.Background(), watchLoopConfig{
+		Src:         src,
+		Writer:      w,
+		Reducer:     NewReducer(),
+		Titles:      map[string]string{"r1": "Example"},
+		Cadence:     map[string]time.Duration{"r1": 30 * time.Second},
+		Seed:        []Poll{{RuleUID: "r1", GrafanaNow: testNow.Add(-90 * time.Second), Found: true}},
+		Until:       testNow.Add(time.Minute),
+		Concurrency: 1,
+		Clock:       clock,
+	}))
+
+	_, polls, _, err := ReadLog(path)
+	require.NoError(t, err)
+	require.NotEmpty(t, polls)
+	require.True(t, polls[0].GrafanaNow.Equal(testNow),
+		"the first poll must be the seeded due time (now), not a fresh stagger")
+}
+
 // Fail-closed from the recorder's side: a recorder that dies must look exactly
 // like a coverage gap, so it must not sign off the log on its way out.
 func TestWatchLoopHardErrorLeavesNoSentinel(t *testing.T) {
@@ -395,6 +426,62 @@ func TestPrepareWatchHeaderRecordsTheOverriddenCadence(t *testing.T) {
 	require.Contains(t, notes.String(), "--poll-interval")
 }
 
+// ReadyAt must be stamped after the first-observation pass, never before it:
+// that is what lets check refuse a `from` inside the pass. StartedAt stays the
+// record start, captured before the pass.
+func TestOpenRecordingStampsReadyAtAfterTheFirstObservationPass(t *testing.T) {
+	var notes strings.Builder
+	clock := newFakeClock(testNow)
+	cfg := watchTestConfig(t, &notes, "uid:"+watchActiveUID)
+	cfg.Clock = clock
+
+	src := newCheckSource(func(title string, _ int) (Observation, error) {
+		clock.Advance(5 * time.Second)
+		now := clock.Now()
+		return observation(now, testStateRule(watchActiveUID, watchActiveTitle, time.Minute, now,
+			testInstance(StateNormal, "", "a"))), nil
+	})
+	src.version = "13.1.0"
+	src.defs = rulerDefs(t)
+
+	prep, err := prepareWatch(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.NoError(t, prep.writer.Close())
+
+	require.Equal(t, testNow, prep.header.StartedAt, "StartedAt is the record start, captured before the pass")
+	require.Equal(t, testNow.Add(5*time.Second), prep.header.ReadyAt, "ReadyAt must be stamped after the pass completes")
+
+	header, polls, _, err := ReadLog(cfg.Out)
+	require.NoError(t, err)
+	require.Equal(t, prep.header.ReadyAt, header.ReadyAt, "ReadyAt must round-trip through the log")
+	require.Len(t, polls, 1)
+	require.False(t, polls[0].GrafanaNow.After(header.ReadyAt),
+		"the first observation cannot postdate the readiness it proves")
+}
+
+// A pass longer than the tightest poll-interval is the startup shape that opens
+// a gap; warn at the source.
+func TestOpenRecordingWarnsWhenTheStartupPassExceedsTheTightestCadence(t *testing.T) {
+	var notes strings.Builder
+	clock := newFakeClock(testNow)
+	cfg := watchTestConfig(t, &notes, "uid:"+watchActiveUID)
+	cfg.Clock = clock
+
+	src := newCheckSource(func(title string, _ int) (Observation, error) {
+		clock.Advance(31 * time.Second) // longer than the rule's 30s poll-interval
+		now := clock.Now()
+		return observation(now, testStateRule(watchActiveUID, watchActiveTitle, time.Minute, now,
+			testInstance(StateNormal, "", "a"))), nil
+	})
+	src.version = "13.1.0"
+	src.defs = rulerDefs(t)
+
+	prep, err := prepareWatch(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.NoError(t, prep.writer.Close())
+	require.Contains(t, notes.String(), "first observation pass took")
+}
+
 // The budget check runs on the latencies the parent just measured, before the
 // deploy runs.
 func TestPrepareWatchFailsWhenTheScheduleDoesNotFit(t *testing.T) {
@@ -425,11 +512,12 @@ func TestPrepareWatchVerifiesNormalInstancesAreVisible(t *testing.T) {
 	require.Error(t, err, "totals claim normal instances the response omitted")
 	require.Contains(t, err.Error(), "no longer returns normal instances")
 
-	// The failure happens before any poll is appended, so the log holds a
-	// header and nothing else.
-	_, polls, _, readErr := ReadLog(cfg.Out)
-	require.NoError(t, readErr)
-	require.Empty(t, polls)
+	// The failure happens during the pass, before the header is written, so the
+	// log holds neither a header nor a poll — still unreadable, still fail
+	// closed.
+	info, statErr := os.Stat(cfg.Out)
+	require.NoError(t, statErr)
+	require.Zero(t, info.Size(), "a failed first-observation pass left bytes in the log")
 }
 
 func TestPrepareWatchRejectsAnUnsupportedGrafana(t *testing.T) {

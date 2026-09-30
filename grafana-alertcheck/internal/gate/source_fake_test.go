@@ -66,6 +66,15 @@ func (c *virtualClock) Now() time.Time {
 	return c.now
 }
 
+// Advance moves the clock without a wait. It exists for a test that must model
+// time passing inside a non-waiting section — the measurement pass of a
+// single-step check — while collectUntil below still advances through After.
+func (c *virtualClock) Advance(d time.Duration) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.now = c.now.Add(d)
+}
+
 func (c *virtualClock) After(d time.Duration) <-chan time.Time {
 	c.mu.Lock()
 	if d > 0 {

@@ -132,8 +132,8 @@ func (cfg WatchConfig) validate() error {
 }
 
 // Watch is the record step's parent process, returning only once the window is
-// genuinely being recorded (version gate, resolve, write header, one
-// observation per rule, budget check, then detach and await the child's
+// genuinely being recorded (version gate, resolve, one observation per rule,
+// budget check, header with ReadyAt, then detach and await the child's
 // readiness). The first-observation wait is what surfaces auth, name-resolution
 // and parse failures before deploy.sh runs, rather than ten minutes later.
 func Watch(ctx context.Context, cfg WatchConfig) error {
@@ -330,21 +330,21 @@ func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWa
 	return prep, nil
 }
 
-// openRecording writes the header, takes the first observation of every rule
-// the recorder will actually watch, appends those observations as the log's
-// first heartbeats, and only then decides whether the schedule is feasible.
+// openRecording takes the first observation of every rule the recorder will
+// actually watch, checks the budget, and only then writes the header and those
+// observations. The header's ReadyAt is the pass completion — the earliest
+// `from` a coverage proof can honestly start at — so the header must be written
+// after the pass, not before it.
 func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Writer,
 	version string, resolved []Definition, rt map[string]RuleTimings) (*preparedWatch, error) {
 
+	startedAt := cfg.Clock.Now()
 	header := Header{
 		SchemaVersion:  LogSchemaVersion,
 		URL:            cfg.URL,
 		GrafanaVersion: version,
-		StartedAt:      cfg.Clock.Now(),
+		StartedAt:      startedAt,
 		Rules:          loggedRules(resolved, rt),
-	}
-	if err := writer.WriteHeader(header); err != nil {
-		return nil, err
 	}
 
 	// A rule whose definition says is_paused is skipped (never waited for or
@@ -367,20 +367,50 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 	if err != nil {
 		return nil, err
 	}
+
+	// The pass is over; the seed will start from this instant, so both budget
+	// checks judge the schedule the child will actually run.
+	readyAt := cfg.Clock.Now()
+
+	// Budget before the header, on the latencies just measured — never on a
+	// fixed estimate. Only the active rules count: a skipped rule is never
+	// polled and consumes none of the capacity.
+	if err := CheckBudget(activeTimings, measured, cfg.Concurrency); err != nil {
+		return nil, err
+	}
+	if err := CheckStartupHandoff(activeTimings, measured, polls, readyAt, cfg.Concurrency); err != nil {
+		return nil, err
+	}
+
+	header.ReadyAt = readyAt
+	if tightest := tightestPollEvery(activeTimings); tightest > 0 {
+		if pass := header.ReadyAt.Sub(header.StartedAt); pass > tightest {
+			fmt.Fprintf(cfg.Notes, "warning: the first observation pass took %s, longer than the tightest poll-interval %s; `from` must be emitted after this command returns or the first window can open with a gap\n",
+				pass.Round(time.Millisecond), tightest)
+		}
+	}
+	if err := writer.WriteHeader(header); err != nil {
+		return nil, err
+	}
 	for _, p := range polls {
 		if err := writer.WritePoll(p); err != nil {
 			return nil, err
 		}
 	}
 
-	// Budget last, on the latencies just measured — never on a fixed estimate.
-	// Only the active rules count: a skipped rule is never polled and consumes
-	// none of the capacity.
-	if err := CheckBudget(activeTimings, measured, cfg.Concurrency); err != nil {
-		return nil, err
-	}
-
 	return &preparedWatch{writer: writer, header: header, timings: rt, measured: measured}, nil
+}
+
+// tightestPollEvery is the smallest cadence among the rules that will be
+// polled, or zero when none will.
+func tightestPollEvery(t map[string]RuleTimings) time.Duration {
+	var tightest time.Duration
+	for _, rt := range t {
+		if tightest == 0 || rt.pollEvery < tightest {
+			tightest = rt.pollEvery
+		}
+	}
+	return tightest
 }
 
 // loggedRules snapshots the resolved definitions into the header's rule list.
@@ -585,6 +615,7 @@ func RunDaemonChild(ctx context.Context, cfg DaemonChildConfig) error {
 		Reducer:     reducer,
 		Titles:      titles,
 		Cadence:     cadence,
+		Seed:        polls,
 		Until:       cfg.Until,
 		Concurrency: cfg.Concurrency,
 		Clock:       cfg.Clock,
@@ -638,11 +669,14 @@ func childSchedule(h Header) (titles map[string]string, cadence map[string]time.
 // where to append it. There is no threshold in here and no policy — the child
 // records and classifies nothing.
 type watchLoopConfig struct {
-	Src         Source
-	Writer      *Writer
-	Reducer     *Reducer
-	Titles      map[string]string        // uid -> title: poll by title, select by UID
-	Cadence     map[string]time.Duration // uid -> pollEvery, as recorded in the header
+	Src     Source
+	Writer  *Writer
+	Reducer *Reducer
+	Titles  map[string]string        // uid -> title: poll by title, select by UID
+	Cadence map[string]time.Duration // uid -> pollEvery, as recorded in the header
+	// Seed is the polls already in the log when this loop starts: it continues
+	// their schedule instead of re-staggering. nil means a fresh schedule.
+	Seed        []Poll
 	Until       time.Time
 	Concurrency int
 	Clock       Clock
@@ -657,6 +691,9 @@ type watchLoopConfig struct {
 // coverage gap to check, because it is one.
 func watchLoop(ctx context.Context, cfg watchLoopConfig) error {
 	sched := NewScheduler(cfg.Cadence, cfg.Clock.Now())
+	if len(cfg.Seed) > 0 {
+		sched = NewSchedulerFromPolls(cfg.Cadence, cfg.Seed, cfg.Clock.Now())
+	}
 
 	for {
 		if ctx.Err() != nil {

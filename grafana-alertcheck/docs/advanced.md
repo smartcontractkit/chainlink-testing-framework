@@ -18,13 +18,22 @@ The scheduler staggers each rule's initial next-due time across its cadence, and
 
 ## The check budget
 
-The gate records one observation of every rule up front and checks the schedule against those **measured** latencies (payload sizes varied ~230× across existing rules, so a fixed estimate would be meaningless). It errors at start — before waiting — if any of three conditions hold:
+The gate records one observation of every rule up front and checks the schedule against those **measured** latencies (payload sizes varied ~230× across existing rules, so a fixed estimate would be meaningless). It errors at start — before waiting — if any of four conditions hold:
 
 - **Utilization** — total request rate exceeds `--concurrency`.
 - **Per-rule** — one rule's request can't fit its own cadence.
 - **Burst bound** — the slowest request exceeds the fleet's tightest cadence, which can open a mid-run gap.
+- **Startup handoff** — draining the first-observation pass's backlog at `--concurrency` would leave some rule unpolled past its own `maxGap`. A rule the pass observed early is seeded overdue, and a tight rule observed late can queue behind every rule due before it. The gate simulates the poller's first cycles from the recorded observation times and measured latencies — each wake takes every rule due at that instant, polls the batch at `--concurrency`, and wakes again when it ends — and refuses if any rule's first poll would land past its `maxGap`. Steady-state utilization cannot see this — a long pass at low concurrency is exactly the case it passes.
 
 The error names the three levers only: raise `--concurrency`, raise `--poll-interval`, or watch fewer alerts. It never prescribes a single interval.
+
+## The startup pass and `ready_at`
+
+Before detaching, `watch` observes every non-paused rule once, sequentially bounded by `--concurrency`. With many alerts and a low concurrency that pass takes real time (120 rules at ~230 ms each and the default concurrency of 1 is ~27 s). The header's `ready_at` stamps the moment the pass completed, and `check` refuses a `from` before it: a window opening inside the pass names observations that do not exist yet, and the earliest rules have no next poll until the detached recorder starts. This is a startup validation, checked from the immutable header before the wait, so a `from` emitted before `watch` returns fails immediately with a named reason instead of surfacing as a heartbeat gap mid-window. Emit `from` only after `watch` returns.
+
+The detached recorder then continues the schedule the first observations were on (each rule's next poll is one cadence after its last recorded observation) rather than drawing fresh phases, so the handoff adds no extra up-to-one-cadence delay to the rules the pass observed first. Continuing the schedule is necessary but not sufficient: the startup-handoff budget above proves the backlog can actually be drained before any rule's `maxGap`, and refuses the run at startup when it cannot.
+
+Single-step `check` runs the same pass itself. It cannot watch before it started, so a `from` inside the pass is a declared blind interval: the run warns, classifies from the pass completion, and the live poller continues the pass's schedule. It never classifies a window that opens before every rule has been observed.
 
 ## Why the gate never queries state history
 

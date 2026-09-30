@@ -1,7 +1,9 @@
 package gate
 
 import (
+	"container/heap"
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"sort"
 	"strings"
@@ -27,8 +29,10 @@ const minDrainTimeout = 2 * time.Minute
 const graceWarnFraction = 0.25
 
 // RuleTimings groups the per-rule thresholds derived from a rule's poll
-// cadence and its own evaluation interval.
+// cadence and its own evaluation interval. title is carried for operator-facing
+// messages only — it is never compared or applied.
 type RuleTimings struct {
+	title          string
 	pollEvery      time.Duration
 	maxGap         time.Duration
 	healthGrace    time.Duration
@@ -86,7 +90,9 @@ func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]
 					d.Title, override, d.IntervalSeconds, def))
 			}
 		}
-		rules[d.UID] = newRuleTimings(pollEvery, d.IntervalSeconds)
+		rt := newRuleTimings(pollEvery, d.IntervalSeconds)
+		rt.title = d.Title
+		rules[d.UID] = rt
 	}
 	// In this mode defs ARE the start-of-step snapshot, so they answer what was
 	// paused at the window open; only the log-mode counterpart uses the header.
@@ -140,7 +146,9 @@ func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]RuleTim
 				lr.PollEverySeconds, lr.UID, lr.Title)
 		}
 		pollEvery := time.Duration(lr.PollEverySeconds * float64(time.Second))
-		rules[lr.UID] = newRuleTimings(pollEvery, def.IntervalSeconds)
+		rt := newRuleTimings(pollEvery, def.IntervalSeconds)
+		rt.title = def.Title // the current title: the header's may predate a rename
+		rules[lr.UID] = rt
 	}
 	// The header, not defs, decides which rules are excluded from the grace:
 	// defs were resolved after the window closed. See deriveGlobalTimings.
@@ -176,6 +184,190 @@ func deriveGlobalTimings(defs []Definition, pausedAtStart map[string]bool) Globa
 	return g
 }
 
+// ruleLabel names a rule for a human, keeping the UID for correlation:
+// `"Title" (uid)`, or the bare UID when there is no title.
+func ruleLabel(title, uid string) string {
+	if title == "" {
+		return uid
+	}
+	return fmt.Sprintf("%q (%s)", title, uid)
+}
+
+// CheckStartupHandoff proves the first poll after the measurement pass can
+// arrive before each rule's own maxGap. The steady-state budget cannot see this
+// transient: a rule observed early is seeded overdue behind a backlog that
+// neither utilization (a long-run rate) nor the burst bound (one request) bounds.
+//
+// It simulates the poller's first cycles exactly as collectUntil runs them and
+// fails on any first poll past its maxGap. A formula is not enough: the wait
+// until a rule's due time and the queueing behind earlier-due rules add.
+//
+// first and measured must carry every rule in t.
+func CheckStartupHandoff(t map[string]RuleTimings, measured map[string]time.Duration, first []Poll, readyAt time.Time, concurrency int) error {
+	if len(t) == 0 {
+		return nil
+	}
+	if concurrency < 1 {
+		concurrency = 1
+	}
+	problems, err := handoffProblems(t, measured, first, readyAt, concurrency)
+	if err != nil {
+		return err
+	}
+	if len(problems) == 0 {
+		return nil
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "startup handoff does not fit at concurrency %d:\n", concurrency)
+	const maxListed = 5
+	for i, p := range problems {
+		if i == maxListed {
+			fmt.Fprintf(&b, "  - ... and %d more\n", len(problems)-maxListed)
+			break
+		}
+		fmt.Fprintf(&b, "  - %s\n", p)
+	}
+	if minC := minHandoffConcurrency(t, measured, first, readyAt, concurrency, len(t)); minC > concurrency {
+		fmt.Fprintf(&b, "fix by: raising --concurrency to at least %d (currently %d), raising poll-interval, or watching fewer alerts",
+			minC, concurrency)
+	} else {
+		b.WriteString("fix by: raising concurrency, raising poll-interval, or watching fewer alerts")
+	}
+	return fmt.Errorf("%s", b.String())
+}
+
+// handoffProblems simulates the poller's first cycles and returns one message
+// per rule whose simulated first poll lands past its maxGap. It is the one
+// simulation CheckStartupHandoff and minHandoffConcurrency both run.
+func handoffProblems(t map[string]RuleTimings, measured map[string]time.Duration, first []Poll, readyAt time.Time, concurrency int) ([]string, error) {
+	type job struct {
+		uid       string
+		title     string
+		due       time.Time
+		latency   time.Duration
+		bound     time.Duration
+		maxGap    time.Duration
+		pollEvery time.Duration
+	}
+	jobs := make([]job, 0, len(t))
+	for _, p := range first {
+		rt, ok := t[p.RuleUID]
+		if !ok {
+			continue
+		}
+		m, ok := measured[p.RuleUID]
+		if !ok {
+			return nil, fmt.Errorf("startup handoff: rule %s was never measured", ruleLabel(rt.title, p.RuleUID))
+		}
+		jobs = append(jobs, job{
+			uid:       p.RuleUID,
+			title:     rt.title,
+			due:       runnerTime(p, p.GrafanaNow).Add(rt.pollEvery),
+			latency:   m,
+			bound:     p.SkewBound(),
+			maxGap:    rt.maxGap,
+			pollEvery: rt.pollEvery,
+		})
+	}
+	if len(jobs) != len(t) {
+		return nil, fmt.Errorf("startup handoff: %d of %d rule(s) have a first observation", len(jobs), len(t))
+	}
+	sort.Slice(jobs, func(i, j int) bool {
+		if !jobs[i].due.Equal(jobs[j].due) {
+			return jobs[i].due.Before(jobs[j].due)
+		}
+		if jobs[i].pollEvery != jobs[j].pollEvery {
+			return jobs[i].pollEvery < jobs[j].pollEvery // same tie-break as Scheduler.Due
+		}
+		return jobs[i].uid < jobs[j].uid
+	})
+
+	var problems []string
+	now := readyAt
+	for i := 0; i < len(jobs); {
+		if jobs[i].due.After(now) {
+			now = jobs[i].due // the poller sleeps until the next due rule
+		}
+		// One batch: every rule due at `now`, polled by concurrency workers.
+		free := newTimeHeap(concurrency, now)
+		batchEnd := now
+		j := i
+		for ; j < len(jobs) && !jobs[j].due.After(now); j++ {
+			start := free.pop()
+			finish := start.Add(jobs[j].latency)
+			// A rule whose last observation sits inside the skew bound of the
+			// window open is measured from that observation; `bound` keeps the
+			// check on the fail-closed side of it.
+			if gap := finish.Sub(readyAt) + jobs[j].bound; gap > jobs[j].maxGap {
+				problems = append(problems, fmt.Sprintf(
+					"rule %s: first poll after readiness ~%s (measured latency %s) exceeds its maxGap %s",
+					ruleLabel(jobs[j].title, jobs[j].uid), gap.Round(time.Millisecond), jobs[j].latency.Round(time.Millisecond), jobs[j].maxGap))
+			}
+			free.push(finish)
+			if finish.After(batchEnd) {
+				batchEnd = finish
+			}
+		}
+		now = batchEnd
+		i = j
+	}
+	return problems, nil
+}
+
+// minHandoffConcurrency is the smallest concurrency in from..maxConcurrency
+// whose simulated handoff fits, or 0 when even one worker per rule does not.
+// The binary search assumes more workers never hurt and verifies its answer, so
+// a non-monotonic surprise still yields a passing suggestion.
+func minHandoffConcurrency(t map[string]RuleTimings, measured map[string]time.Duration, first []Poll, readyAt time.Time, from, maxConcurrency int) int {
+	if from < 1 {
+		from = 1
+	}
+	if maxConcurrency < from {
+		return 0
+	}
+	if problems, err := handoffProblems(t, measured, first, readyAt, maxConcurrency); err != nil || len(problems) > 0 {
+		return 0 // even a worker per rule cannot fit; the levers are cadence or fewer rules
+	}
+	lo, hi := from, maxConcurrency // lo is known to fail (the caller just did), hi is known to pass
+	for lo+1 < hi {
+		mid := lo + (hi-lo)/2
+		problems, err := handoffProblems(t, measured, first, readyAt, mid)
+		if err == nil && len(problems) == 0 {
+			hi = mid
+		} else {
+			lo = mid
+		}
+	}
+	return hi
+}
+
+// timeHeap is the min-heap of C worker free times within one handoff batch.
+type timeHeap []time.Time
+
+func newTimeHeap(n int, at time.Time) *timeHeap {
+	h := make(timeHeap, n)
+	for i := range h {
+		h[i] = at
+	}
+	heap.Init(&h)
+	return &h
+}
+
+func (h *timeHeap) pop() time.Time {
+	return heap.Pop(h).(time.Time)
+}
+
+func (h *timeHeap) push(t time.Time) {
+	heap.Push(h, t)
+}
+
+func (h timeHeap) Len() int           { return len(h) }
+func (h timeHeap) Less(i, j int) bool { return h[i].Before(h[j]) }
+func (h timeHeap) Swap(i, j int)      { h[i], h[j] = h[j], h[i] }
+func (h *timeHeap) Push(x any)        { *h = append(*h, x.(time.Time)) }
+func (h *timeHeap) Pop() any          { old := *h; n := len(old); x := old[n-1]; *h = old[:n-1]; return x }
+
 // Scheduler drives one per-rule schedule, never a global cycle: a rule at
 // intervalSeconds=10 alongside twenty at 300 keeps its own 5s cadence without
 // forcing the same cadence onto the other twenty.
@@ -199,6 +391,42 @@ func NewScheduler(every map[string]time.Duration, now time.Time) *Scheduler {
 		var offset time.Duration
 		if pollEvery > 0 {
 			offset = rand.N(pollEvery) // nolint:gosec // we don't need strong randomness, just a spread across [0, pollEvery)
+		}
+		s.next[uid] = now.Add(offset)
+	}
+	return s
+}
+
+// NewSchedulerFromPolls continues an existing recording instead of starting a
+// fresh phase: each rule is due one cadence after its last recorded observation,
+// so the parent/child handoff keeps the spread the first-observation pass
+// created and adds no stagger. An overdue rule keeps its recorded due time and
+// is due immediately. Polls outside every are ignored; a rule with no recorded
+// observation falls back to the fresh stagger.
+func NewSchedulerFromPolls(every map[string]time.Duration, polls []Poll, now time.Time) *Scheduler {
+	s := &Scheduler{
+		next:  make(map[string]time.Time, len(every)),
+		every: make(map[string]time.Duration, len(every)),
+	}
+	last := make(map[string]time.Time, len(every))
+	for _, p := range polls {
+		if _, owned := every[p.RuleUID]; !owned || p.GrafanaNow.IsZero() {
+			continue
+		}
+		at := runnerTime(p, p.GrafanaNow)
+		if cur, ok := last[p.RuleUID]; !ok || at.After(cur) {
+			last[p.RuleUID] = at
+		}
+	}
+	for uid, pollEvery := range every {
+		s.every[uid] = pollEvery
+		if at, ok := last[uid]; ok {
+			s.next[uid] = at.Add(pollEvery)
+			continue
+		}
+		var offset time.Duration
+		if pollEvery > 0 {
+			offset = rand.N(pollEvery) // nolint:gosec // spread only, same as NewScheduler
 		}
 		s.next[uid] = now.Add(offset)
 	}
@@ -283,10 +511,10 @@ func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, co
 
 	for _, uid := range uids {
 		if _, ok := measured[uid]; !ok {
-			return fmt.Errorf("schedule budget: rule %s was never measured", uid)
+			return fmt.Errorf("schedule budget: rule %s was never measured", ruleLabel(t[uid].title, uid))
 		}
 		if t[uid].pollEvery <= 0 {
-			return fmt.Errorf("schedule budget: rule %s has a non-positive poll-interval %s", uid, t[uid].pollEvery)
+			return fmt.Errorf("schedule budget: rule %s has a non-positive poll-interval %s", ruleLabel(t[uid].title, uid), t[uid].pollEvery)
 		}
 	}
 
@@ -315,12 +543,14 @@ func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, co
 	}
 	for _, uid := range overCadence {
 		problems = append(problems, fmt.Sprintf(
-			"rule %s: measured %s exceeds its own poll-interval %s", uid, measured[uid], t[uid].pollEvery))
+			"rule %s: measured %s exceeds its own poll-interval %s",
+			ruleLabel(t[uid].title, uid), measured[uid], t[uid].pollEvery))
 	}
 	if maxMeasured > t[tightestUID].pollEvery {
 		problems = append(problems, fmt.Sprintf(
-			"burst bound: rule %s's measured %s exceeds the fleet's tightest poll-interval %s (rule %s)",
-			maxMeasuredUID, maxMeasured, t[tightestUID].pollEvery, tightestUID))
+			"burst bound: the slowest request is rule %s at %s, longer than the fleet's tightest poll-interval %s (rule %s)",
+			ruleLabel(t[maxMeasuredUID].title, maxMeasuredUID), maxMeasured,
+			t[tightestUID].pollEvery, ruleLabel(t[tightestUID].title, tightestUID)))
 	}
 
 	if len(problems) == 0 {
@@ -330,12 +560,20 @@ func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, co
 	var b strings.Builder
 	fmt.Fprintf(&b, "schedule does not fit at concurrency %d:\n", concurrency)
 	for _, uid := range uids {
-		fmt.Fprintf(&b, "  rule %s: measured %s, poll-interval %s\n", uid, measured[uid], t[uid].pollEvery)
+		fmt.Fprintf(&b, "  rule %s: measured %s, poll-interval %s\n",
+			ruleLabel(t[uid].title, uid), measured[uid], t[uid].pollEvery)
 	}
 	for _, p := range problems {
 		fmt.Fprintf(&b, "  - %s\n", p)
 	}
-	b.WriteString("fix by: raising concurrency, raising poll-interval, or watching fewer alerts")
+	// Utilization is the one condition concurrency fixes, so name the exact
+	// value; the other two are single-request shapes no concurrency shortens.
+	if utilization > float64(concurrency) {
+		fmt.Fprintf(&b, "fix by: raising --concurrency to at least %d (currently %d), raising poll-interval, or watching fewer alerts",
+			int(math.Ceil(utilization)), concurrency)
+	} else {
+		b.WriteString("fix by: raising concurrency, raising poll-interval, or watching fewer alerts")
+	}
 	return fmt.Errorf("%s", b.String())
 }
 

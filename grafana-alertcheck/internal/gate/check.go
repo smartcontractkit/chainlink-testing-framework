@@ -54,9 +54,9 @@ type Config struct {
 	NoFailFast bool
 
 	// From is the moment the deploy finished and To is the end of the work.
-	// They are different moments and both come from the work. In recorder mode
-	// an absent From is a hard error; in single-step mode it falls back to the
-	// start of this step, with a blind-interval warning.
+	// In recorder mode an absent From is a hard error; in single-step mode it
+	// falls back to the start of this step, and a From before the
+	// first-observation pass completes is a declared blind interval.
 	From, To time.Time
 
 	// Log is the path of a recording made by watch; "" selects single-step
@@ -165,7 +165,7 @@ func (cfg Config) validate() error {
 		return errors.New("check: no `from` in recorder mode: the deploy step must emit a completion timestamp")
 	case from.IsZero():
 		// Single-step only. The caller sees the resulting blind interval named
-		// exactly, once the first observation has fixed its end.
+		// exactly, once the first-observation pass has fixed its end.
 		from = now
 	}
 
@@ -245,6 +245,14 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 				return Result{}, fmt.Errorf("check: `from` %s is before recording started at %s",
 					from.Format(time.RFC3339), earlyHdr.StartedAt.Format(time.RFC3339))
 			}
+			// The pass is sequential, so a `from` inside it names a window
+			// whose earliest rules were never watched. Knowable from the
+			// immutable header, so it fails before the wait.
+			if from.Truncate(time.Second).Before(earlyHdr.ReadyAt.Truncate(time.Second)) {
+				return Result{}, fmt.Errorf(
+					"check: `from` %s is inside the recorder's initial observation pass, which completed at %s; emit `from` after `watch` returns (watch observes every watched rule before returning)",
+					from.Format(time.RFC3339), earlyHdr.ReadyAt.Format(time.RFC3339))
+			}
 		}
 	} else {
 		resolved, notes, err = resolveAlertSet(allDefs, cfg.namedAlerts(), cfg.IncludeLabels, cfg.ExcludeLabels, cfg.Folder)
@@ -308,12 +316,19 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		// proves that interval, not this timestamp.
 		startedAt := cfg.Clock.Now()
 		active := activeRules(resolved)
+		activeRT := activeTimingsOf(active, rt)
 		var measured map[string]time.Duration
 		initial, measured, err = firstObservations(ctx, src, active, reducer, cfg.Concurrency, cfg.Notes)
 		if err != nil {
 			return Result{}, err
 		}
-		if err := CheckBudget(activeTimingsOf(active, rt), measured, cfg.Concurrency); err != nil {
+		// The pass is over; the live poller will start from this instant, so
+		// both budget checks judge the schedule it will actually run.
+		readyAt := cfg.Clock.Now()
+		if err := CheckBudget(activeRT, measured, cfg.Concurrency); err != nil {
+			return Result{}, err
+		}
+		if err := CheckStartupHandoff(activeRT, measured, initial, readyAt, cfg.Concurrency); err != nil {
 			return Result{}, err
 		}
 
@@ -321,22 +336,27 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		// shell builds the Header and later stamps the sentinel itself, so the
 		// sentinel and from-bounds coverage checks run exactly as they do over
 		// a recording and no mode flag ever reaches proveCoverage or decide.
+		//
+		// ReadyAt is the pass completion: single-step cannot watch before it
+		// started, so a `from` inside the pass is declared blind and the window
+		// is classified from ReadyAt.
 		header = Header{
 			SchemaVersion:  LogSchemaVersion,
 			URL:            cfg.URL,
 			GrafanaVersion: version,
 			StartedAt:      startedAt,
+			ReadyAt:        readyAt,
 			Rules:          loggedRules(resolved, rt),
 		}
-		if from.Before(startedAt) {
+		if from.Before(readyAt) {
 			// The declared blind interval: in single-step mode this is a
 			// warning and a pass, and ONLY here. Recorder mode keeps the
 			// from-bounds coverage check strict, because there the recorder
 			// was supposed to be watching and the gap means it was not.
-			fmt.Fprintf(cfg.Notes, "warning: cannot see [%s, %s) — %s before the first observation; the window is classified from %s\n",
-				from.Format(time.RFC3339), startedAt.Format(time.RFC3339),
-				startedAt.Sub(from).Round(time.Second), startedAt.Format(time.RFC3339))
-			from = startedAt
+			fmt.Fprintf(cfg.Notes, "warning: cannot see [%s, %s) — %s before the first observation pass completed; the window is classified from %s\n",
+				from.Format(time.RFC3339), readyAt.Format(time.RFC3339),
+				readyAt.Sub(from).Round(time.Second), readyAt.Format(time.RFC3339))
+			from = readyAt
 		}
 	}
 
@@ -369,7 +389,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		guard  terminalCheck
 	)
 	if !logHasHdr {
-		poller = newLivePoller(src, reducer, activeRules(resolved), rt, cfg.Concurrency, cfg.Clock.Now())
+		poller = newLivePoller(src, reducer, activeRules(resolved), rt, cfg.Concurrency, cfg.Clock.Now(), initial)
 	}
 	failFast := !cfg.NoFailFast
 	if failFast {
@@ -539,8 +559,11 @@ type livePoller struct {
 	concurrency int
 }
 
+// newLivePoller builds single-step mode's collection engine. seed, when
+// present, is the measurement pass's observations: the poller continues their
+// schedule instead of drawing fresh phases. nil falls back to the fresh stagger.
 func newLivePoller(src Source, reducer *Reducer, active []Definition, rt map[string]RuleTimings,
-	concurrency int, now time.Time) *livePoller {
+	concurrency int, now time.Time, seed []Poll) *livePoller {
 
 	titles := make(map[string]string, len(active))
 	cadence := make(map[string]time.Duration, len(active))
@@ -548,10 +571,14 @@ func newLivePoller(src Source, reducer *Reducer, active []Definition, rt map[str
 		titles[d.UID] = d.Title
 		cadence[d.UID] = rt[d.UID].pollEvery
 	}
+	sched := NewScheduler(cadence, now)
+	if len(seed) > 0 {
+		sched = NewSchedulerFromPolls(cadence, seed, now)
+	}
 	return &livePoller{
 		src:         src,
 		reducer:     reducer,
-		sched:       NewScheduler(cadence, now),
+		sched:       sched,
 		titles:      titles,
 		concurrency: concurrency,
 	}

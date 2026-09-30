@@ -43,7 +43,7 @@ grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
 | `--concurrency` | `1` | Max concurrent requests to Grafana |
 | `--until` | run until signalled | Optional hard stop |
 
-`watch` writes the header, observes every non-paused rule once, checks the budget, then detaches a background recorder and returns. Recording is **unfiltered** — there is no `--states` here, so the same log can be re-classified later under different `--states` without re-recording.
+`watch` observes every non-paused rule once, checks the budget, writes the header (with `ready_at` stamped once the observation pass completes) and those observations, then detaches a background recorder and returns. Recording is **unfiltered** — there is no `--states` here, so the same log can be re-classified later under different `--states` without re-recording.
 
 ## `stop` — reap the recorder
 
@@ -92,7 +92,7 @@ grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339
 
 By default `check` **exits early** on a failure that cannot become a pass: a post-`from` bad onset, or an inability (a heartbeat gap, a sustained `health=error`, a stale evaluation, an in-window pause, an absent rule). This is a latency optimization, not a weaker gate — it never exits `0` early. The one observable difference is that an early exit can report `1` where a full run would have discovered an inability later and reported `2`. `--no-fail-fast` always waits for `to + transitionGrace` and the full coverage proof; the `Result` then carries no `terminated_early` marker. With early exit the JSON result includes `terminated_early` naming the rule, kind, reason and time.
 
-`--from` and `--to` are RFC3339 with an explicit offset and must come from your work — `from` from the deploy step, `to` from the step that finishes. In recorder mode an absent `--from` is a hard error; in single-step mode it falls back (with a warning) to the start of the step.
+`--from` and `--to` are RFC3339 with an explicit offset and must come from your work — `from` from the deploy step, `to` from the step that finishes. In recorder mode an absent `--from` is a hard error, and a `from` before the recording's first-observation pass is refused; in single-step mode an absent `from`, or one inside `check`'s own first-observation pass, is a declared blind interval — the window is classified from the pass completion, with a warning.
 
 ## Naming alerts
 
