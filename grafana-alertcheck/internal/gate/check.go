@@ -39,8 +39,11 @@ type Config struct {
 
 	// IncludeLabels selects the watched rules by exact-match labels instead of
 	// names; ExcludeLabels drops matching rules from that set. Both are refused
-	// in log mode, where the header IS the alert set.
+	// in log mode, where the header IS the alert set. ExcludeAlerts is an
+	// enumerated list subtracted from whichever set was selected, and works
+	// with names and labels alike.
 	IncludeLabels, ExcludeLabels []LabelMatcher
+	ExcludeAlerts                []string
 
 	States               []State
 	Preexisting          PreexistingPolicy
@@ -50,7 +53,7 @@ type Config struct {
 
 	// NoFailFast disables early exit, so the loop always runs to
 	// to+transitionGrace for a full-window coverage proof. The CLI sets it
-	// with --no-fail-fast; the gate never exits 0 early either way.
+	// with --fail-fast=false; the gate never exits 0 early either way.
 	NoFailFast bool
 
 	// From is the moment the deploy finished and To is the end of the work.
@@ -151,6 +154,8 @@ func (cfg Config) validate() error {
 		return fmt.Errorf("check: --alerts is refused with a recorded log: %s already names the alert set it recorded", cfg.Log)
 	} else if labeled {
 		return fmt.Errorf("check: label selection is refused with a recorded log: %s already names the alert set it recorded", cfg.Log)
+	} else if len(cfg.ExcludeAlerts) > 0 {
+		return fmt.Errorf("check: --exclude-alerts is refused with a recorded log: %s already names the alert set it recorded", cfg.Log)
 	}
 
 	now := cfg.Clock.Now()
@@ -201,6 +206,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		fmt.Fprintf(cfg.Notes, "note: no `from` given; the window starts at the start of this step, %s\n",
 			from.Format(time.RFC3339))
 	}
+	cfg.To = roundWindowUp(from, cfg.To)
 
 	// ---- Resolve the definitions from the ruler API. ----------------------
 	// Unconditional, in BOTH modes. A log's header supplies the alert set as
@@ -247,7 +253,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			}
 		}
 	} else {
-		resolved, notes, err = resolveAlertSet(allDefs, cfg.namedAlerts(), cfg.IncludeLabels, cfg.ExcludeLabels, cfg.Folder)
+		resolved, notes, err = resolveAlertSet(allDefs, cfg.namedAlerts(), cfg.IncludeLabels, cfg.ExcludeLabels, cfg.ExcludeAlerts, cfg.Folder)
 	}
 	if err != nil {
 		return Result{}, err
@@ -260,6 +266,9 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	}
 	for _, n := range notes {
 		fmt.Fprintf(cfg.Notes, "note: %s\n", n)
+	}
+	if len(cfg.IncludeLabels) > 0 {
+		printLabelSelection(cfg.Notes, resolved, cfg.IncludeLabels, cfg.ExcludeLabels, len(cfg.ExcludeAlerts))
 	}
 
 	// ---- Derive the timings, print them, fit the request budget. ----------
@@ -278,8 +287,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			fmt.Fprintf(cfg.Notes, "note: %s\n", n)
 		}
 	}
-	summary, warning := StartupSummary(from, cfg.To, gt)
-	fmt.Fprintln(cfg.Notes, summary)
+	fmt.Fprintln(cfg.Notes, StartupSummary(from, cfg.To, gt))
 	// MinObserved is printed with the plan, beside "planned run time", rather
 	// than after it: it is a fact about the run, not a diagnostic. Its default
 	// is the resolved rule count AFTER duplicate names collapse, which is
@@ -290,9 +298,6 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		minObserved = len(resolved)
 	}
 	fmt.Fprintf(cfg.Notes, "min-observed: %d of %d resolved rule(s)\n", minObserved, len(resolved))
-	if warning != "" {
-		fmt.Fprintf(cfg.Notes, "warning: %s\n", warning)
-	}
 
 	// The measurement pass and budget check are single-step only: in recorder
 	// mode watch already measured and checked the budget before detaching.
@@ -360,7 +365,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	// ---- Collect the evidence. --------------------------------------------
 	// The loop never classifies; its only access to the pure layer is the
 	// fail-fast guard, which ends the run only on a condition that cannot
-	// become a pass. With --no-fail-fast there is no guard.
+	// become a pass. With --fail-fast=false there is no guard.
 	windowEnd := cfg.To.Add(gt.transitionGrace)
 
 	var (

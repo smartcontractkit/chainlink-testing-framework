@@ -482,6 +482,7 @@ func TestWatchConfigValidation(t *testing.T) {
 		{"no log path", func(c *WatchConfig) { c.Out = "" }, "no log path"},
 		{"no alerts", func(c *WatchConfig) { c.Alerts = nil }, "no alert names"},
 		{"blank alerts only", func(c *WatchConfig) { c.Alerts = []string{"", "  "} }, "no alert names"},
+		{"excluded alerts without a selection", func(c *WatchConfig) { c.Alerts = nil; c.ExcludeAlerts = []string{"A"} }, "no alert names"},
 		{"alerts and labels", func(c *WatchConfig) { c.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}} }, "cannot be combined"},
 		{"exclude without include", func(c *WatchConfig) { c.Alerts = nil; c.ExcludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}} }, "requires --include-labels"},
 		{"labels with folder", func(c *WatchConfig) {
@@ -511,6 +512,7 @@ func TestWatchConfigValidation(t *testing.T) {
 		cfg := base()
 		cfg.Alerts = nil
 		cfg.IncludeLabels = []LabelMatcher{{Key: "team", Value: "bcm"}}
+		cfg.ExcludeAlerts = []string{"uid:other"}
 		require.NoError(t, cfg.withDefaults().validate())
 	})
 }
@@ -537,6 +539,12 @@ func TestPrepareWatchSelectsByLabels(t *testing.T) {
 	require.Equal(t, []string{watchActiveUID, weeklyUID},
 		[]string{header.Rules[0].UID, header.Rules[1].UID})
 	require.Len(t, polls, 2)
+
+	// The matched set is listed, by name, so an operator sees what was picked.
+	out := notes.String()
+	require.Contains(t, out, "alerts matching --include-labels severity=warning:\n")
+	require.Contains(t, out, "  - Example Failure Ratio Above 10 Percent (rule0000009)\n")
+	require.Contains(t, out, "  - Example Failure Ratio Above 10 Percent Weekly (rule0000010)\n")
 }
 
 func TestPrepareWatchLabelSelectionWithNoMatchFails(t *testing.T) {

@@ -3,6 +3,7 @@ package gate
 import (
 	"errors"
 	"fmt"
+	"io"
 	"strings"
 )
 
@@ -44,13 +45,79 @@ func SelectByLabels(defs []Definition, include, exclude []LabelMatcher) ([]Defin
 }
 
 // resolveAlertSet picks the alert set for a run. Validation guarantees the two
-// modes are never mixed; an empty include list means enumerated names.
-func resolveAlertSet(defs []Definition, names []string, include, exclude []LabelMatcher, folder string) ([]Definition, []string, error) {
+// selection modes are never mixed; an empty include list means enumerated
+// names. An --exclude-alerts list is subtracted from whichever set was selected.
+func resolveAlertSet(defs []Definition, names []string, include, exclude []LabelMatcher,
+	excludeAlerts []string, folder string) ([]Definition, []string, error) {
+
+	var (
+		selected []Definition
+		notes    []string
+		err      error
+	)
 	if len(include) > 0 {
-		selected, err := SelectByLabels(defs, include, exclude)
-		return selected, nil, err
+		selected, err = SelectByLabels(defs, include, exclude)
+	} else {
+		selected, notes, err = Resolve(defs, names, folder)
 	}
-	return Resolve(defs, names, folder)
+	if err != nil {
+		return nil, nil, err
+	}
+	selected, err = subtractExcluded(defs, selected, excludeAlerts, folder)
+	if err != nil {
+		return nil, nil, err
+	}
+	return selected, notes, nil
+}
+
+// subtractExcluded removes every --exclude-alerts name from the selected set.
+// The names resolve exactly like --alerts, so a typo or an unsupported kind is
+// an error rather than a silent no-op; a name that resolves but was not
+// selected simply removes nothing.
+func subtractExcluded(all, selected []Definition, excludeAlerts []string, folder string) ([]Definition, error) {
+	if len(excludeAlerts) == 0 {
+		return selected, nil
+	}
+	excluded, _, err := Resolve(all, excludeAlerts, folder)
+	if err != nil {
+		return nil, fmt.Errorf("--exclude-alerts: %w", err)
+	}
+	drop := make(map[string]bool, len(excluded))
+	for _, d := range excluded {
+		drop[d.UID] = true
+	}
+	out := make([]Definition, 0, len(selected))
+	for _, d := range selected {
+		if !drop[d.UID] {
+			out = append(out, d)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("--exclude-alerts drops every selected rule; refusing to run with an empty alert set")
+	}
+	return out, nil
+}
+
+// labelSelectionHeader describes a label selection in one line: the include
+// pairs, the exclude pairs when present, and the --exclude-alerts subtraction.
+func labelSelectionHeader(include, exclude []LabelMatcher, excludeCount int) string {
+	header := fmt.Sprintf("alerts matching --include-labels %s", formatLabelMatchers(include))
+	if len(exclude) > 0 {
+		header += fmt.Sprintf(" and --exclude-labels %s", formatLabelMatchers(exclude))
+	}
+	if excludeCount > 0 {
+		header += " minus --exclude-alerts"
+	}
+	return header
+}
+
+// printLabelSelection lists the rules a label selection actually matched, one
+// per line, so an operator can see the set before the run starts.
+func printLabelSelection(w io.Writer, resolved []Definition, include, exclude []LabelMatcher, excludeCount int) {
+	fmt.Fprintf(w, "%s:\n", labelSelectionHeader(include, exclude, excludeCount))
+	for _, d := range resolved {
+		fmt.Fprintf(w, "  - %s (%s)\n", d.Title, d.UID)
+	}
 }
 
 func matchesAll(labels map[string]string, matchers []LabelMatcher) bool {

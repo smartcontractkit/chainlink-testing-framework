@@ -46,7 +46,7 @@ grafana-alertcheck watch --out /tmp/run.jsonl --alerts alerts.txt
 grafana-alertcheck check --in /tmp/run.jsonl --from "$deployed_at" --to "$finished_at"
 ```
 
-`alerts.txt` holds one alert name per line. See [Naming alerts](./reference/cli#naming-alerts). Alerts can also be selected by label instead of by name: `--include-labels team=bcm,env=stage` (optionally `--exclude-labels`).
+`alerts.txt` holds one alert name per line. See [Naming alerts](./reference/cli#naming-alerts). Alerts can also be selected by label instead of by name: `--include-labels team=bcm,env=stage` (optionally `--exclude-labels`). Either selection can be refined with `--exclude-alerts <file>`, an enumerated list subtracted from what was selected.
 
 `watch` returns only after the recorder has observed every selected, non-paused alert once and reported ready — so auth, alert-selection, and parse failures surface **before** your deploy runs.
 
@@ -80,7 +80,7 @@ An error is never a pass: `2` wins over any violation found alongside it.
 - `recovered` has **no deadline** — a bad-at-`from` alert that clears by `to` passes; set `--preexisting fail` to forbid it.
 - If you retry the check, then the work also needs to be retried - there is no way to check the past.
 - `watch` and `check` must run in **one job, one runner, one filesystem** — nothing persists across jobs or attempts.
-- The gate **stops early on a certain failure** — as soon as a post-`from` bad onset or an inability is observed, `check` returns instead of holding the runner to `to + transitionGrace + drainTimeout`. This can never turn into a pass, but it can report exit `1` where a full run would have reported exit `2` (inability beats violation only when the inability is observed). Pass `--no-fail-fast` to always wait for the full window and its coverage proof; size the job timeout to the planned run time the gate prints at start either way.
+- The gate **stops early on a certain failure** — as soon as a post-`from` bad onset or an inability is observed, `check` returns instead of holding the runner to `to + transitionGrace + drainTimeout`. This can never turn into a pass, but it can report exit `1` where a full run would have reported exit `2` (inability beats violation only when the inability is observed). Pass `--fail-fast=false` to always wait for the full window and its coverage proof; size the job timeout to the planned run time the gate prints at start either way.
 
 ## More
 

@@ -21,6 +21,7 @@ type commonFlags struct {
 	folder        *string
 	concurrency   *int
 	alerts        *string
+	excludeAlerts *string
 	includeLabels *string
 	excludeLabels *string
 }
@@ -30,6 +31,8 @@ func registerCommon(fs *flag.FlagSet) *commonFlags {
 		folder:      fs.String("folder", "", "default folder to scope an unqualified alert name to"),
 		concurrency: fs.Int("concurrency", 1, "maximum concurrent requests to Grafana"),
 		alerts:      fs.String("alerts", "", "path to a file of alert names, one per line, or - for stdin"),
+		excludeAlerts: fs.String("exclude-alerts", "",
+			"path to a file of alert names to subtract from the selected set, one per line, or - for stdin"),
 		includeLabels: fs.String("include-labels", "",
 			"comma-separated key=value pairs selecting rules by label, e.g. team=bcm,env=stage (cannot be combined with --alerts)"),
 		excludeLabels: fs.String("exclude-labels", "",

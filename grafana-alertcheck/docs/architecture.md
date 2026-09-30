@@ -19,7 +19,7 @@ The gate must fail if it cannot get an answer. Every rule below is a specific in
 - **Absent never means normal.** An instance that leaves the bad set is looked up in the *same* response: present as `normal` → cleared; absent (or `MissingSeries`) → vanished (a discontinuity, not a recovery).
 - **Staleness is absolute.** `grafana_now − lastEvaluation` is compared against a threshold, never "did it increase since the last poll" — a delta check reports stale on ~half the polls of a healthy rule (we poll at half of `intervalSeconds` of each rule).
 - **`grafana_now` is the response `Date` header.** Never the runner clock, in any comparison against a Grafana timestamp.
-- **An early exit can never be a pass.** `check` may stop collecting before `to + transitionGrace` (fail-fast), but only on a *monotone* terminal verdict: an inability that has already happened, or a post-`from` bad onset (which the full classifier would call `new_failure`/`unstable`). The one outcome that forgives an observed bad state, `recovered`, is reserved for bad-at-`from`, so a preexisting condition is never terminal. `--no-fail-fast` removes the guard entirely.
+- **An early exit can never be a pass.** `check` may stop collecting before `to + transitionGrace` (fail-fast), but only on a *monotone* terminal verdict: an inability that has already happened, or a post-`from` bad onset (which the full classifier would call `new_failure`/`unstable`). The one outcome that forgives an observed bad state, `recovered`, is reserved for bad-at-`from`, so a preexisting condition is never terminal. `--fail-fast=false` removes the guard entirely.
 - **No replay.** No run-id key, no artifact download, no state between attempts. A retry is a new piece of work and observation.
 
 ## The pure-function seam
@@ -43,7 +43,7 @@ By default `check` stops as soon as it knows the run cannot pass, rather than ho
 - In single-step mode `check` evaluates the guard after each in-process poll batch.
 - In recorder mode the evidence lives in another process, so `check` **tails the recorder's log** while it waits, consuming complete newline-terminated records only. This is the one place the project reads a log a writer can still append to, and only because fail-fast wants an early answer, not the authoritative one — the strict, whole-file `ReadLog` still runs after the writer exits, and only its result is classified.
 
-On a terminal verdict the run is classified over `[from, At]` by the **same `decide`**, with the policy window clamped to `At` and the transition grace zeroed; `decide` is not forked. The requested window and the real thresholds are restored on the `Result`, which carries a `TerminatedEarly` marker. The drain wait is skipped — its question no longer applies. `--no-fail-fast` leaves the guard unset and restores the full-window behavior exactly.
+On a terminal verdict the run is classified over `[from, At]` by the **same `decide`**, with the policy window clamped to `At` and the transition grace zeroed; `decide` is not forked. The requested window and the real thresholds are restored on the `Result`, which carries a `TerminatedEarly` marker. The drain wait is skipped — its question no longer applies. `--fail-fast=false` leaves the guard unset and restores the full-window behavior exactly.
 
 ## Strict parsing as the version guard
 

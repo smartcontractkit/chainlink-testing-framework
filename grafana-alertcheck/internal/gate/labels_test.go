@@ -1,6 +1,7 @@
 package gate
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -100,4 +101,62 @@ func TestSelectByLabels_EmptyIncludeIsNotAnError(t *testing.T) {
 	selected, err := SelectByLabels(defs, nil, []LabelMatcher{{Key: "env", Value: "production"}})
 	require.NoError(t, err)
 	require.Equal(t, []string{"rule0000002"}, selectedUIDs(selected))
+}
+
+// --exclude-alerts subtracts from an enumerated set: the names resolve like
+// --alerts, so uid: forms work, and the result keeps the input order.
+func TestResolveAlertSet_SubtractsExcludedNames(t *testing.T) {
+	defs := rulerDefs(t)
+	selected, _, err := resolveAlertSet(defs,
+		[]string{"uid:rule0000009", "uid:rule0000010"}, nil, nil,
+		[]string{"uid:rule0000010"}, "")
+	require.NoError(t, err)
+	require.Equal(t, []string{"rule0000009"}, selectedUIDs(selected))
+}
+
+// --exclude-alerts combines with label selection too: the label match is
+// computed first, then the named rules are subtracted from it.
+func TestResolveAlertSet_SubtractsExcludedNamesFromLabelSelection(t *testing.T) {
+	defs := rulerDefs(t)
+	selected, _, err := resolveAlertSet(defs, nil,
+		[]LabelMatcher{{Key: "team", Value: "example-team"}}, nil,
+		[]string{"uid:rule0000009", "uid:rule0000010"}, "")
+	require.NoError(t, err)
+	require.Equal(t, []string{"rule0000006a", "rule0000006b"}, selectedUIDs(selected))
+}
+
+// A typo in the excluded list is an error, never a silent no-op: the operator
+// asked to remove something and the gate cannot prove it did.
+func TestResolveAlertSet_UnknownExcludedNameFails(t *testing.T) {
+	defs := rulerDefs(t)
+	_, _, err := resolveAlertSet(defs, []string{"uid:rule0000009"}, nil, nil,
+		[]string{"Does Not Exist"}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "--exclude-alerts")
+}
+
+// Excluding the whole selection would leave nothing to observe; that is exit 2,
+// not a vacuous pass.
+func TestResolveAlertSet_ExcludingEverythingFails(t *testing.T) {
+	defs := rulerDefs(t)
+	_, _, err := resolveAlertSet(defs, []string{"uid:rule0000009"}, nil, nil,
+		[]string{"uid:rule0000009"}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "drops every selected rule")
+}
+
+func TestPrintLabelSelection(t *testing.T) {
+	defs := rulerDefs(t)
+	selected, err := SelectByLabels(defs, []LabelMatcher{{Key: "severity", Value: "warning"}}, nil)
+	require.NoError(t, err)
+
+	var b strings.Builder
+	printLabelSelection(&b, selected,
+		[]LabelMatcher{{Key: "severity", Value: "warning"}},
+		[]LabelMatcher{{Key: "env", Value: "stage"}}, 1)
+
+	out := b.String()
+	require.Contains(t, out, "alerts matching --include-labels severity=warning and --exclude-labels env=stage minus --exclude-alerts:\n")
+	require.Contains(t, out, "  - Example Failure Ratio Above 10 Percent (rule0000009)\n")
+	require.Contains(t, out, "  - Example Failure Ratio Above 10 Percent Weekly (rule0000010)\n")
 }

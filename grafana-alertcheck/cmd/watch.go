@@ -12,7 +12,7 @@ import (
 )
 
 const watchUsage = "usage: grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] " +
-	"(--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) " +
+	"(--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) [--exclude-alerts <file|->] " +
 	"[--poll-interval D] [--concurrency N] [--until RFC3339]"
 
 // runWatch is the record step's entire CLI surface, split in two by one flag
@@ -69,6 +69,10 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "watch: --alerts cannot be combined with label selection")
 		return 2
 	}
+	if *common.alerts == "-" && *common.excludeAlerts == "-" {
+		fmt.Fprintln(stderr, "watch: --alerts and --exclude-alerts cannot both read from stdin")
+		return 2
+	}
 	includeLabels, err := parseLabelPairs("--include-labels", *common.includeLabels)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -91,6 +95,11 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
+	excludeAlerts, err := readAlerts(stdin, *common.excludeAlerts)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
 
 	cfg := gate.WatchConfig{
 		URL:           url,
@@ -99,6 +108,7 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		Folder:        *common.folder,
 		IncludeLabels: includeLabels,
 		ExcludeLabels: excludeLabels,
+		ExcludeAlerts: excludeAlerts,
 		Out:           *out,
 		PidFile:       *pidfile,
 		DaemonLog:     *daemonLog,

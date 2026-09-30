@@ -54,8 +54,10 @@ type WatchConfig struct {
 
 	// IncludeLabels selects the watched rules by exact-match labels instead of
 	// names; ExcludeLabels drops matching rules from that set. The two
-	// selection modes cannot be combined (validate refuses it).
+	// selection modes cannot be combined (validate refuses it). ExcludeAlerts
+	// is an enumerated list subtracted from whichever set was selected.
 	IncludeLabels, ExcludeLabels []LabelMatcher
+	ExcludeAlerts                []string
 
 	// Out is the JSONL log path. PidFile and DaemonLog default to
 	// <Out>.pid and <Out>.daemon.log — the same convention check uses to find
@@ -294,12 +296,15 @@ func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWa
 	if err != nil {
 		return nil, fmt.Errorf("read rule definitions: %w", err)
 	}
-	resolved, notes, err := resolveAlertSet(defs, cfg.Alerts, cfg.IncludeLabels, cfg.ExcludeLabels, cfg.Folder)
+	resolved, notes, err := resolveAlertSet(defs, cfg.Alerts, cfg.IncludeLabels, cfg.ExcludeLabels, cfg.ExcludeAlerts, cfg.Folder)
 	if err != nil {
 		return nil, err
 	}
 	for _, n := range notes {
 		fmt.Fprintf(cfg.Notes, "note: %s\n", n)
+	}
+	if len(cfg.IncludeLabels) > 0 {
+		printLabelSelection(cfg.Notes, resolved, cfg.IncludeLabels, cfg.ExcludeLabels, len(cfg.ExcludeAlerts))
 	}
 
 	rt, _, timingNotes := DeriveTimings(resolved, cfg.PollEvery)

@@ -87,6 +87,12 @@ func TestRunCheck_FlagValidation(t *testing.T) {
 		{"alerts and labels", true, func(t *testing.T) []string {
 			return []string{"--to", "2026-01-01T00:00:00Z", "--alerts", writeTempAlerts(t), "--include-labels", "team=bcm"}
 		}, "cannot be combined with label selection"},
+		{"alerts and excluded alerts both stdin", true, func(t *testing.T) []string {
+			return []string{"--to", "2026-01-01T00:00:00Z", "--alerts", "-", "--exclude-alerts", "-"}
+		}, "cannot both read from stdin"},
+		{"removed no-fail-fast flag", true, func(t *testing.T) []string {
+			return []string{"--to", "2026-01-01T00:00:00Z", "--alerts", writeTempAlerts(t), "--no-fail-fast"}
+		}, "flag provided but not defined"},
 		{"bad label pair", true, func(t *testing.T) []string {
 			return []string{"--to", "2026-01-01T00:00:00Z", "--include-labels", "team"}
 		}, "--include-labels"},

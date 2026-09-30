@@ -89,10 +89,10 @@ Before classifying, `check` must **prove** continuous coverage of `[from, to]` f
 
 A preexisting bad instance is deliberately **not** terminal: if it clears before `to` the full run would call it `recovered`, which passes.
 
-Fail-fast is on by default and always preserves the failure: an early run can exit `1` or `2`, never `0`. The one difference from a full run is that an early exit may report `1` before an inability surfaces that would have made it `2`. `--no-fail-fast` disables the guard and always waits for the full window and its coverage proof.
+Fail-fast is on by default and always preserves the failure: an early run can exit `1` or `2`, never `0`. The one difference from a full run is that an early exit may report `1` before an inability surfaces that would have made it `2`. `--fail-fast=false` disables the guard and always waits for the full window and its coverage proof.
 
 ## The drain wait and `transitionGrace`
 
 A condition that arises just before `to` becomes `firing` only at the first evaluation after its `for` elapses. `transitionGrace` (derived from the watched rules' `for` values) extends the classification bound past `to` so such a surfacing condition is caught. After collection, a **drain wait** polls until each rule has evaluated through `to + transitionGrace` (bounded by `drainTimeout`); a rule that never does is `not_verified`.
 
-Run time = `(to − from) + transitionGrace + drainTimeout`. This is printed at start, and the grace is warned about when it exceeds a quarter of the window — the window may be too short for the alert's `for`.
+Run time = `(to − from) + transitionGrace + drainTimeout`. This is printed at start. A requested window with a subsecond part is rounded up to the next whole second by extending `to`, so the plan never reads a window like `9m59.99445781s`.
