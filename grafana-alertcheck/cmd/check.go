@@ -64,6 +64,11 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "check: --alerts and --exclude-alerts cannot both read from stdin")
 		return 2
 	}
+	// Refused with a log before reading: `--exclude-alerts -` would block on stdin.
+	if *in != "" && *common.excludeAlerts != "" {
+		fmt.Fprintf(stderr, "check: --exclude-alerts is refused with a recorded log: %s already names the alert set it recorded\n", *in)
+		return 2
+	}
 	includeLabels, err := parseLabelPairs("--include-labels", *common.includeLabels)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -80,12 +85,12 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
-	alerts, err := readAlerts(stdin, *common.alerts)
+	alerts, err := readAlerts(stdin, "--alerts", *common.alerts)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
-	excludeAlerts, err := readAlerts(stdin, *common.excludeAlerts)
+	excludeAlerts, err := readAlerts(stdin, "--exclude-alerts", *common.excludeAlerts)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 2

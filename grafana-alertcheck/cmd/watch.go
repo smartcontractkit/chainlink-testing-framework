@@ -90,12 +90,12 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	alerts, err := readAlerts(stdin, *common.alerts)
+	alerts, err := readAlerts(stdin, "--alerts", *common.alerts)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
-	excludeAlerts, err := readAlerts(stdin, *common.excludeAlerts)
+	excludeAlerts, err := readAlerts(stdin, "--exclude-alerts", *common.excludeAlerts)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 2

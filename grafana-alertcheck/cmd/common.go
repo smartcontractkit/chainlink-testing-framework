@@ -69,11 +69,10 @@ func parseLabelPairs(flagName, s string) ([]gate.LabelMatcher, error) {
 	return out, nil
 }
 
-// readAlerts reads alert names, one per line, from a file or from
-// stdin when path is "-". An empty path is not an error here — watch and
-// check each decide for themselves whether an empty list is allowed
-// (log mode never wants one; single-step / record mode always does).
-func readAlerts(stdin io.Reader, path string) ([]string, error) {
+// readAlerts reads alert names, one per line, from a file or stdin ("-").
+// flagName names the caller's flag so errors point at the right input. An
+// empty path is not an error: callers decide whether an empty list is allowed.
+func readAlerts(stdin io.Reader, flagName, path string) ([]string, error) {
 	if path == "" {
 		return nil, nil
 	}
@@ -83,7 +82,7 @@ func readAlerts(stdin io.Reader, path string) ([]string, error) {
 	} else {
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, fmt.Errorf("read --alerts %s: %w", path, err)
+			return nil, fmt.Errorf("read %s %s: %w", flagName, path, err)
 		}
 		defer f.Close()
 		r = f
@@ -94,7 +93,7 @@ func readAlerts(stdin io.Reader, path string) ([]string, error) {
 		lines = append(lines, sc.Text())
 	}
 	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("read --alerts %s: %w", path, err)
+		return nil, fmt.Errorf("read %s %s: %w", flagName, path, err)
 	}
 	return lines, nil
 }

@@ -357,10 +357,8 @@ func StartupSummary(from, to time.Time, global GlobalTimings) string {
 		total, window, global.transitionGrace, global.drainTimeout, source)
 }
 
-// roundWindowUp extends to until to−from is a whole number of seconds, so a
-// window never reads as 9m59.99445781s. from — the deploy-completion fact — is
-// never moved: extending it earlier could fall before recording started, while
-// extending to only observes a fraction of a second longer.
+// roundWindowUp extends to so the window is a whole number of seconds. from is
+// never moved: it is the deploy-completion fact.
 func roundWindowUp(from, to time.Time) time.Time {
 	if from.IsZero() || to.IsZero() {
 		return to

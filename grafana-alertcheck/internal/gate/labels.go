@@ -44,9 +44,7 @@ func SelectByLabels(defs []Definition, include, exclude []LabelMatcher) ([]Defin
 	return selected, nil
 }
 
-// resolveAlertSet picks the alert set for a run. Validation guarantees the two
-// selection modes are never mixed; an empty include list means enumerated
-// names. An --exclude-alerts list is subtracted from whichever set was selected.
+// resolveAlertSet picks the alert set: names or labels, minus --exclude-alerts.
 func resolveAlertSet(defs []Definition, names []string, include, exclude []LabelMatcher,
 	excludeAlerts []string, folder string) ([]Definition, []string, error) {
 
@@ -70,10 +68,9 @@ func resolveAlertSet(defs []Definition, names []string, include, exclude []Label
 	return selected, notes, nil
 }
 
-// subtractExcluded removes every --exclude-alerts name from the selected set.
-// The names resolve exactly like --alerts, so a typo or an unsupported kind is
-// an error rather than a silent no-op; a name that resolves but was not
-// selected simply removes nothing.
+// subtractExcluded drops every --exclude-alerts name from the selected set.
+// Names resolve like --alerts, so a typo is an error; a name outside the
+// selection removes nothing.
 func subtractExcluded(all, selected []Definition, excludeAlerts []string, folder string) ([]Definition, error) {
 	if len(excludeAlerts) == 0 {
 		return selected, nil
@@ -98,8 +95,7 @@ func subtractExcluded(all, selected []Definition, excludeAlerts []string, folder
 	return out, nil
 }
 
-// labelSelectionHeader describes a label selection in one line: the include
-// pairs, the exclude pairs when present, and the --exclude-alerts subtraction.
+// labelSelectionHeader names the include/exclude pairs and any --exclude-alerts.
 func labelSelectionHeader(include, exclude []LabelMatcher, excludeCount int) string {
 	header := fmt.Sprintf("alerts matching --include-labels %s", formatLabelMatchers(include))
 	if len(exclude) > 0 {
@@ -111,8 +107,7 @@ func labelSelectionHeader(include, exclude []LabelMatcher, excludeCount int) str
 	return header
 }
 
-// printLabelSelection lists the rules a label selection actually matched, one
-// per line, so an operator can see the set before the run starts.
+// printLabelSelection lists the matched rules, one per line.
 func printLabelSelection(w io.Writer, resolved []Definition, include, exclude []LabelMatcher, excludeCount int) {
 	fmt.Fprintf(w, "%s:\n", labelSelectionHeader(include, exclude, excludeCount))
 	for _, d := range resolved {

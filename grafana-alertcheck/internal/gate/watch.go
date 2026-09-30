@@ -52,10 +52,9 @@ type WatchConfig struct {
 	Alerts []string
 	Folder string
 
-	// IncludeLabels selects the watched rules by exact-match labels instead of
-	// names; ExcludeLabels drops matching rules from that set. The two
-	// selection modes cannot be combined (validate refuses it). ExcludeAlerts
-	// is an enumerated list subtracted from whichever set was selected.
+	// IncludeLabels selects by labels instead of names; ExcludeLabels drops
+	// matching rules. The two modes cannot be combined. ExcludeAlerts is an
+	// enumerated list subtracted from either selection.
 	IncludeLabels, ExcludeLabels []LabelMatcher
 	ExcludeAlerts                []string
 

@@ -37,11 +37,9 @@ type Config struct {
 	Alerts []string
 	Folder string
 
-	// IncludeLabels selects the watched rules by exact-match labels instead of
-	// names; ExcludeLabels drops matching rules from that set. Both are refused
-	// in log mode, where the header IS the alert set. ExcludeAlerts is an
-	// enumerated list subtracted from whichever set was selected, and works
-	// with names and labels alike.
+	// IncludeLabels selects by labels instead of names; ExcludeLabels drops
+	// matching rules. Both are refused in log mode. ExcludeAlerts is an
+	// enumerated list subtracted from either selection.
 	IncludeLabels, ExcludeLabels []LabelMatcher
 	ExcludeAlerts                []string
 
