@@ -167,6 +167,25 @@ func TestWatchLoopContinuesTheSeededSchedule(t *testing.T) {
 		"the first poll must be the seeded due time (now), not a fresh stagger")
 }
 
+// observeAll dispatches in uids order, which the handoff proof assumes.
+func TestObserveAllDispatchesInOrder(t *testing.T) {
+	var mu sync.Mutex
+	var order []string
+	src := newLoopSource(func(title string, _ int) (Observation, error) {
+		mu.Lock()
+		order = append(order, title)
+		mu.Unlock()
+		return observation(testNow, testStateRule(title, title, time.Minute, testNow)), nil
+	})
+	uids := []string{"r1", "r2", "r3", "r4"}
+	titles := map[string]string{"r1": "One", "r2": "Two", "r3": "Three", "r4": "Four"}
+
+	out, err := observeAll(context.Background(), src, titles, uids, 1)
+	require.NoError(t, err)
+	require.Len(t, out, 4)
+	require.Equal(t, []string{"One", "Two", "Three", "Four"}, order)
+}
+
 // Fail-closed from the recorder's side: a recorder that dies must look exactly
 // like a coverage gap, so it must not sign off the log on its way out.
 func TestWatchLoopHardErrorLeavesNoSentinel(t *testing.T) {

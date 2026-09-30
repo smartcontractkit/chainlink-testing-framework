@@ -378,7 +378,8 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 	if err := CheckBudget(activeTimings, measured, cfg.Concurrency); err != nil {
 		return nil, err
 	}
-	if err := CheckStartupHandoff(activeTimings, measured, polls, readyAt, cfg.Concurrency); err != nil {
+	// The from-bounds tolerance can open the window a whole second early.
+	if err := CheckStartupHandoff(activeTimings, measured, polls, readyAt, readyAt.Truncate(time.Second), cfg.Concurrency); err != nil {
 		return nil, err
 	}
 
@@ -487,40 +488,49 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 	return polls, measured, nil
 }
 
-// observeAll polls every rule in uids concurrently, bounded by concurrency,
-// returning one Observation per rule that answered. Each rule is polled by
-// TITLE (the ?rule_name= filter is a title filter) and selected by UID — a
-// filtered response can carry several rules sharing a title. Returns the
-// successes alongside the first error in UID order, so a caller can keep the
-// good heartbeats.
+// observeAll polls every rule in uids with at most concurrency requests in
+// flight, dispatching in uids order (a worker takes the next uid as it frees)
+// so the startup-handoff simulation matches. Polls by TITLE, selects by UID,
+// and returns the first error in UID order alongside the successes.
 func observeAll(ctx context.Context, src Source, titles map[string]string, uids []string, concurrency int) (map[string]Observation, error) {
 	if concurrency < 1 {
 		concurrency = 1
+	}
+	if concurrency > len(uids) {
+		concurrency = len(uids)
 	}
 	var (
 		mu          sync.Mutex
 		out         = make(map[string]Observation, len(uids))
 		firstErr    error
 		firstErrUID string
+		next        int
 	)
-	sem := make(chan struct{}, concurrency)
 	var wg sync.WaitGroup
-	for _, uid := range uids {
+	for range concurrency {
 		wg.Go(func() {
-			sem <- struct{}{}
-			defer func() { <-sem }()
-
-			obs, err := src.RuleState(ctx, titles[uid])
-
-			mu.Lock()
-			defer mu.Unlock()
-			if err != nil {
-				if firstErr == nil || uid < firstErrUID {
-					firstErr, firstErrUID = err, uid
+			for {
+				mu.Lock()
+				if next == len(uids) {
+					mu.Unlock()
+					return
 				}
-				return
+				uid := uids[next]
+				next++
+				mu.Unlock()
+
+				obs, err := src.RuleState(ctx, titles[uid])
+
+				mu.Lock()
+				if err != nil {
+					if firstErr == nil || uid < firstErrUID {
+						firstErr, firstErrUID = err, uid
+					}
+				} else {
+					out[uid] = obs
+				}
+				mu.Unlock()
 			}
-			out[uid] = obs
 		})
 	}
 	wg.Wait()

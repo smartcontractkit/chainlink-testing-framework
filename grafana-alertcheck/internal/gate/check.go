@@ -328,7 +328,8 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		if err := CheckBudget(activeRT, measured, cfg.Concurrency); err != nil {
 			return Result{}, err
 		}
-		if err := CheckStartupHandoff(activeRT, measured, initial, readyAt, cfg.Concurrency); err != nil {
+		// The clamp below is exact, so the window cannot open before readyAt.
+		if err := CheckStartupHandoff(activeRT, measured, initial, readyAt, readyAt, cfg.Concurrency); err != nil {
 			return Result{}, err
 		}
 
