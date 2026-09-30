@@ -127,3 +127,17 @@ func TestCheckStartupHandoff_BudgetsTheWholeSecondFromTolerance(t *testing.T) {
 	// Recorder mode: the same run can open at base, making the gap 4.5s.
 	require.Error(t, CheckStartupHandoff(timings, measured, first, readyAt, readyAt.Truncate(time.Second), 1))
 }
+
+// A handoff that fails even at one worker per rule: no concurrency can fix it,
+// so the message must not suggest raising it.
+func TestCheckStartupHandoff_NoConcurrencyCanFixIt(t *testing.T) {
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	timings := map[string]RuleTimings{"r": {pollEvery: time.Second, maxGap: 2 * time.Second}}
+	measured := map[string]time.Duration{"r": 100 * time.Millisecond}
+	first := []Poll{{RuleUID: "r", GrafanaNow: base, Found: true}}
+
+	err := CheckStartupHandoff(timings, measured, first, base, base.Add(-time.Second), 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "fix by: raising poll-interval")
+	require.NotContains(t, err.Error(), "raising concurrency")
+}

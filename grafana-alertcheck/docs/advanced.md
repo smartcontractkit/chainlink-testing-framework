@@ -25,7 +25,7 @@ The gate records one observation of every rule up front and checks the schedule 
 - **Burst bound** — the slowest request exceeds the fleet's tightest cadence, which can open a mid-run gap.
 - **Startup handoff** — draining the first-observation pass's backlog at `--concurrency` would leave some rule unpolled past its own `maxGap`. A rule the pass observed early is seeded overdue, and a tight rule observed late can queue behind every rule due before it. The gate simulates the poller's first cycles from the recorded observation times and measured latencies — each wake takes every rule due at that instant, polls the batch at `--concurrency`, and wakes again when it ends — and refuses if any rule's first poll would land past its `maxGap`. Steady-state utilization cannot see this — a long pass at low concurrency is exactly the case it passes.
 
-The error names the three levers only: raise `--concurrency`, raise `--poll-interval`, or watch fewer alerts. It never prescribes a single interval.
+The error names only the levers that can fix it: the minimum `--concurrency` when the schedule is concurrency-bound, and `--poll-interval` or a smaller alert set for single-request shapes concurrency cannot shorten. It never prescribes a single interval.
 
 ## The startup pass and `ready_at`
 

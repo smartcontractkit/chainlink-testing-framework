@@ -357,6 +357,8 @@ func TestCheckBudget_SingleRuleExceedsOwnCadence(t *testing.T) {
 	err := CheckBudget(timings, measured, 10)
 	require.Error(t, err, "measured 6s exceeds its own 5s poll-interval")
 	assertBudgetMessage(t, err.Error())
+	require.NotContains(t, err.Error(), "raising concurrency",
+		"concurrency cannot shorten a single request")
 }
 
 func TestCheckBudget_BurstBoundViolation(t *testing.T) {
@@ -372,6 +374,8 @@ func TestCheckBudget_BurstBoundViolation(t *testing.T) {
 	require.Error(t, err, "slow's 3s measured exceeds tight's 2s cadence")
 	require.Contains(t, err.Error(), "burst bound")
 	assertBudgetMessage(t, err.Error())
+	require.NotContains(t, err.Error(), "raising concurrency",
+		"concurrency cannot shorten a single request")
 }
 
 func TestCheckBudget_BurstBoundOKWhenNotExceeded(t *testing.T) {
