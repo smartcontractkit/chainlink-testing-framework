@@ -8,6 +8,17 @@ import (
 	"github.com/smartcontractkit/chainlink-testing-framework/grafana-alertcheck/internal/gate"
 )
 
+func TestReadAlerts_ErrorNamesTheFlag(t *testing.T) {
+	missing := t.TempDir() + "/missing.txt"
+	for _, flagName := range []string{"--alerts", "--exclude-alerts"} {
+		t.Run(flagName, func(t *testing.T) {
+			_, err := readAlerts(nil, flagName, missing)
+			require.Error(t, err)
+			require.Contains(t, err.Error(), flagName)
+		})
+	}
+}
+
 func TestParseLabelPairs(t *testing.T) {
 	tests := []struct {
 		name    string

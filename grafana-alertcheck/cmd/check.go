@@ -15,9 +15,9 @@ import (
 )
 
 const checkUsage = "usage: grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339 " +
-	"[--alerts ... [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]] " +
+	"[--alerts ... [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]] [--exclude-alerts ...] " +
 	"[--states ...] [--preexisting ...] [--min-observed N] [--allow-paused] " +
-	"[--nodata-is-unobservable] [--no-fail-fast] [--concurrency N] [--output json]"
+	"[--nodata-is-unobservable] [--fail-fast=false] [--concurrency N] [--output json]"
 
 // runCheck is the classify step's CLI surface: parse flags into a gate.Config,
 // run gate.Check, and translate its (Result, error) into output and an exit
@@ -39,7 +39,7 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	minObserved := fs.Int("min-observed", 0, "minimum rules that must be observed (default: every resolved rule)")
 	allowPaused := fs.Bool("allow-paused", false, "do not count a rule paused before the window against --min-observed")
 	nodataIsUnobservable := fs.Bool("nodata-is-unobservable", false, "treat a sustained health=nodata as unobservable rather than a note")
-	noFailFast := fs.Bool("no-fail-fast", false, "collect to to+transitionGrace even after a certain failure, for a full-window coverage proof instead of the fastest feedback")
+	failFast := fs.Bool("fail-fast", true, "stop as soon as a failure that cannot become a pass is observed; --fail-fast=false waits for the full window and its coverage proof")
 	output := fs.String("output", "", `"json" writes the machine-readable Result to stdout in addition to the table; default is the table alone`)
 
 	if err := fs.Parse(args); err != nil {
@@ -60,6 +60,15 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, "check: --alerts cannot be combined with label selection")
 		return 2
 	}
+	if *common.alerts == "-" && *common.excludeAlerts == "-" {
+		fmt.Fprintln(stderr, "check: --alerts and --exclude-alerts cannot both read from stdin")
+		return 2
+	}
+	// Refused with a log before reading: `--exclude-alerts -` would block on stdin.
+	if *in != "" && *common.excludeAlerts != "" {
+		fmt.Fprintf(stderr, "check: --exclude-alerts is refused with a recorded log: %s already names the alert set it recorded\n", *in)
+		return 2
+	}
 	includeLabels, err := parseLabelPairs("--include-labels", *common.includeLabels)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
@@ -76,7 +85,12 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		fmt.Fprintln(stderr, err)
 		return 2
 	}
-	alerts, err := readAlerts(stdin, *common.alerts)
+	alerts, err := readAlerts(stdin, "--alerts", *common.alerts)
+	if err != nil {
+		fmt.Fprintln(stderr, err)
+		return 2
+	}
+	excludeAlerts, err := readAlerts(stdin, "--exclude-alerts", *common.excludeAlerts)
 	if err != nil {
 		fmt.Fprintln(stderr, err)
 		return 2
@@ -99,12 +113,13 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 		Folder:               *common.folder,
 		IncludeLabels:        includeLabels,
 		ExcludeLabels:        excludeLabels,
+		ExcludeAlerts:        excludeAlerts,
 		States:               stateList,
 		Preexisting:          preexistingPolicy,
 		MinObserved:          *minObserved,
 		AllowPaused:          *allowPaused,
 		NodataIsUnobservable: *nodataIsUnobservable,
-		NoFailFast:           *noFailFast,
+		NoFailFast:           !*failFast,
 		Log:                  *in,
 		PidFile:              *pidfile,
 		Concurrency:          *common.concurrency,

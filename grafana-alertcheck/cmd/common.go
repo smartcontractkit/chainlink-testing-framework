@@ -21,6 +21,7 @@ type commonFlags struct {
 	folder        *string
 	concurrency   *int
 	alerts        *string
+	excludeAlerts *string
 	includeLabels *string
 	excludeLabels *string
 }
@@ -30,6 +31,8 @@ func registerCommon(fs *flag.FlagSet) *commonFlags {
 		folder:      fs.String("folder", "", "default folder to scope an unqualified alert name to"),
 		concurrency: fs.Int("concurrency", 1, "maximum concurrent requests to Grafana"),
 		alerts:      fs.String("alerts", "", "path to a file of alert names, one per line, or - for stdin"),
+		excludeAlerts: fs.String("exclude-alerts", "",
+			"path to a file of alert names to subtract from the selected set, one per line, or - for stdin"),
 		includeLabels: fs.String("include-labels", "",
 			"comma-separated key=value pairs selecting rules by label, e.g. team=bcm,env=stage (cannot be combined with --alerts)"),
 		excludeLabels: fs.String("exclude-labels", "",
@@ -66,11 +69,10 @@ func parseLabelPairs(flagName, s string) ([]gate.LabelMatcher, error) {
 	return out, nil
 }
 
-// readAlerts reads alert names, one per line, from a file or from
-// stdin when path is "-". An empty path is not an error here — watch and
-// check each decide for themselves whether an empty list is allowed
-// (log mode never wants one; single-step / record mode always does).
-func readAlerts(stdin io.Reader, path string) ([]string, error) {
+// readAlerts reads alert names, one per line, from a file or stdin ("-").
+// flagName names the caller's flag so errors point at the right input. An
+// empty path is not an error: callers decide whether an empty list is allowed.
+func readAlerts(stdin io.Reader, flagName, path string) ([]string, error) {
 	if path == "" {
 		return nil, nil
 	}
@@ -80,7 +82,7 @@ func readAlerts(stdin io.Reader, path string) ([]string, error) {
 	} else {
 		f, err := os.Open(path)
 		if err != nil {
-			return nil, fmt.Errorf("read --alerts %s: %w", path, err)
+			return nil, fmt.Errorf("read %s %s: %w", flagName, path, err)
 		}
 		defer f.Close()
 		r = f
@@ -91,7 +93,7 @@ func readAlerts(stdin io.Reader, path string) ([]string, error) {
 		lines = append(lines, sc.Text())
 	}
 	if err := sc.Err(); err != nil {
-		return nil, fmt.Errorf("read --alerts %s: %w", path, err)
+		return nil, fmt.Errorf("read %s %s: %w", flagName, path, err)
 	}
 	return lines, nil
 }

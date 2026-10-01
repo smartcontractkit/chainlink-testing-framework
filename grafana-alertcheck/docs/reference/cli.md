@@ -27,7 +27,7 @@ grafana-alertcheck list
 ```bash
 grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
   (--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) \
-  [--poll-interval D] [--concurrency N] [--until RFC3339]
+  [--exclude-alerts <file|->] [--poll-interval D] [--concurrency N] [--until RFC3339]
 ```
 
 | Flag | Default | Meaning |
@@ -39,6 +39,7 @@ grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
 | `--folder` | — | Default folder to scope unqualified names (with `--alerts` only) |
 | `--include-labels` | — | Comma-separated exact-match `key=value` pairs selecting rules by label (cannot be combined with `--alerts`) |
 | `--exclude-labels` | — | Comma-separated exact-match `key=value` pairs; a rule carrying any of them is dropped (requires `--include-labels`) |
+| `--exclude-alerts` | — | File of alert names, one per line, or `-` for stdin; subtracted from the selected set (works with `--alerts` and with labels) |
 | `--poll-interval` | half the rule's interval | Override every rule's cadence (never clamped) |
 | `--concurrency` | `1` | Max concurrent requests to Grafana |
 | `--until` | run until signalled | Optional hard stop |
@@ -66,9 +67,9 @@ Use it when the work failed and the alert verdict no longer matters, but the rec
 
 ```bash
 grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339 \
-  [--alerts ... [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]] \
+  [--alerts ... [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]] [--exclude-alerts ...] \
   [--states ...] [--preexisting ...] [--min-observed N] \
-  [--allow-paused] [--nodata-is-unobservable] [--no-fail-fast] [--concurrency N] [--output json]
+  [--allow-paused] [--nodata-is-unobservable] [--fail-fast=false] [--concurrency N] [--output json]
 ```
 
 | Flag | Default | Meaning |
@@ -81,18 +82,19 @@ grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339
 | `--folder` | — | Default folder to scope unqualified names (with `--alerts` only) |
 | `--include-labels` | — | Comma-separated exact-match `key=value` pairs selecting rules by label (cannot be combined with `--alerts`) |
 | `--exclude-labels` | — | Comma-separated exact-match `key=value` pairs; a rule carrying any of them is dropped (requires `--include-labels`) |
+| `--exclude-alerts` | — | File of alert names, one per line, or `-` for stdin; subtracted from the selected set (works with `--alerts` and with labels; refused **with** `--in`) |
 | `--states` | `firing` | Comma-separated bad states: `firing,pending,nodata,error` |
 | `--preexisting` | `fail-unless-recovered` | `fail-unless-recovered` \| `fail` \| `ignore` |
 | `--min-observed` | every resolved rule | Minimum rules that must be observed |
 | `--allow-paused` | `false` | Don't count pre-window-paused rules against `--min-observed` |
 | `--nodata-is-unobservable` | `false` | Treat sustained `health=nodata` as unobservable |
-| `--no-fail-fast` | `false` | Wait for the full window even after a certain failure |
+| `--fail-fast` | `true` | Stop as soon as a failure that cannot become a pass is observed; `--fail-fast=false` waits for the full window and its coverage proof |
 | `--concurrency` | `1` | Max concurrent requests |
 | `--output` | `table` | `json` also writes the machine-readable result to stdout |
 
-By default `check` **exits early** on a failure that cannot become a pass: a post-`from` bad onset, or an inability (a heartbeat gap, a sustained `health=error`, a stale evaluation, an in-window pause, an absent rule). This is a latency optimization, not a weaker gate — it never exits `0` early. The one observable difference is that an early exit can report `1` where a full run would have discovered an inability later and reported `2`. `--no-fail-fast` always waits for `to + transitionGrace` and the full coverage proof; the `Result` then carries no `terminated_early` marker. With early exit the JSON result includes `terminated_early` naming the rule, kind, reason and time.
+By default `check` **exits early** on a failure that cannot become a pass: a post-`from` bad onset, or an inability (a heartbeat gap, a sustained `health=error`, a stale evaluation, an in-window pause, an absent rule). This is a latency optimization, not a weaker gate — it never exits `0` early. The one observable difference is that an early exit can report `1` where a full run would have discovered an inability later and reported `2`. `--fail-fast=false` always waits for `to + transitionGrace` and the full coverage proof; the `Result` then carries no `terminated_early` marker. With early exit the JSON result includes `terminated_early` naming the rule, kind, reason and time.
 
-`--from` and `--to` are RFC3339 with an explicit offset and must come from your work — `from` from the deploy step, `to` from the step that finishes. In recorder mode an absent `--from` is a hard error, and a `from` before the recording's first-observation pass is refused; in single-step mode an absent `from`, or one inside `check`'s own first-observation pass, is a declared blind interval — the window is classified from the pass completion, with a warning.
+`--from` and `--to` are RFC3339 with an explicit offset and must come from your work — `from` from the deploy step, `to` from the step that finishes. In recorder mode an absent `--from` is a hard error; in single-step mode it falls back (with a warning) to the start of the step. A window with a subsecond part is rounded up to the next whole second by extending `to`, so the plan never reads `window 9m59.99445781s`.
 
 ## Naming alerts
 
@@ -118,7 +120,9 @@ grafana-alertcheck check --to "$finished_at" --include-labels team=bcm --exclude
 
 `--include-labels` takes comma-separated exact-match `key=value` pairs; a rule must carry **all** of them. `--exclude-labels` is optional and drops any rule carrying **one** of its pairs. A rule that does not carry the label is never dropped, only never included. Values cannot contain commas; `key=` matches only rules that carry the label with an empty value.
 
-The label flags cannot be combined with `--alerts` or `--folder`, and they are refused with `--in` — the recorded log names its own alert set. A selection that matches no rules, whose matches are all excluded, or that matches a recording rule exits `2`: an empty watch set must never pass.
+`--exclude-alerts` is an enumerated list (a file, or `-` for stdin) subtracted from whichever set was selected — names or labels. It is the escape hatch for a rule that carries the include labels but must not be watched.
+
+The label flags cannot be combined with `--alerts` or `--folder`, and they are refused with `--in` — the recorded log names its own alert set. A selection that matches no rules, whose matches are all excluded, or that matches a recording rule exits `2`: an empty watch set must never pass. When rules are selected by labels, the resolved set is printed one rule per line before the run starts, so an operator can see exactly what matched.
 
 ## Output and exit codes
 

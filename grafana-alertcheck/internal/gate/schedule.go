@@ -23,10 +23,6 @@ const fromFutureTolerance = 60 * time.Second
 // fleet of tight rules still lets a healthy in-flight poll land.
 const minDrainTimeout = 2 * time.Minute
 
-// graceWarnFraction is the share of the window above which transitionGrace is
-// worth warning about.
-const graceWarnFraction = 0.25
-
 // RuleTimings groups the per-rule thresholds derived from a rule's poll
 // cadence and its own evaluation interval. title is carried for operator-facing
 // messages only — it is never compared or applied.
@@ -413,21 +409,24 @@ func graceSourceOrNone(source string) string {
 
 // StartupSummary formats the pre-run print an operator sees before the wait:
 // the total planned run time and the rule (with its `for` value) that set
-// transitionGrace, plus a warning when the grace eats more than
-// graceWarnFraction of the requested window. from/to are the requested
-// classification window.
-func StartupSummary(from, to time.Time, global GlobalTimings) (summary, warning string) {
+// transitionGrace. from/to are the requested classification window.
+func StartupSummary(from, to time.Time, global GlobalTimings) string {
 	window := to.Sub(from)
 	total := window + global.transitionGrace + global.drainTimeout
 	source := graceSourceOrNone(global.graceSource)
-	summary = fmt.Sprintf(
+	return fmt.Sprintf(
 		"planned run time: %s\n  window %s + transitionGrace %s + drainTimeout %s\n  transitionGrace source: %s",
 		total, window, global.transitionGrace, global.drainTimeout, source)
+}
 
-	if window > 0 && float64(global.transitionGrace) > float64(window)*graceWarnFraction {
-		warning = fmt.Sprintf(
-			"transitionGrace %s is more than %.0f%% of the window %s — the window may be too short for this alert's `for`\n  source: %s",
-			global.transitionGrace, graceWarnFraction*100, window, source)
+// roundWindowUp extends to so the window is a whole number of seconds. from is
+// never moved: it is the deploy-completion fact.
+func roundWindowUp(from, to time.Time) time.Time {
+	if from.IsZero() || to.IsZero() {
+		return to
 	}
-	return summary, warning
+	if r := to.Sub(from) % time.Second; r > 0 {
+		to = to.Add(time.Second - r)
+	}
+	return to
 }

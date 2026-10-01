@@ -431,44 +431,44 @@ func uidN(i int) string {
 	return "slack" + string(rune('a'+i)) // nolint:gosec // test-only uid generator
 }
 
-func TestStartupSummary_WarningWhenGraceTooLarge(t *testing.T) {
+func TestStartupSummary_PlansTheWholeRunTime(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(10 * time.Minute)
 	global := GlobalTimings{transitionGrace: 5 * time.Minute, graceSource: "R (for=4m30s, interval=30s)", drainTimeout: time.Minute}
-	summary, warning := StartupSummary(from, to, global)
-	require.Contains(t, summary, "planned run time")
-	require.NotEmpty(t, warning, "transitionGrace (5m) > 1/4 of the 10m window")
-	require.Contains(t, warning, "R (for=4m30s, interval=30s)")
-}
-
-// The test above pins the warning formula with a hand-built globalTimings.
-// This drives the same warning off the real ruler_rules.json fixture's for:1w
-// rule instead, tying ParseDefinitions and DeriveTimings into the warning end
-// to end.
-func TestStartupSummary_RealForOneWeekRuleTriggersWarning(t *testing.T) {
-	defs := rulerDefs(t)
-	_, global, notes := DeriveTimings(defs, 0)
-	require.Empty(t, notes)
-
-	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := from.Add(10 * time.Minute) // transitionGrace (>1w) dwarfs 1/4 of this window
-	summary, warning := StartupSummary(from, to, global)
-	require.Contains(t, summary, "planned run time")
-	require.NotEmpty(t, warning)
-	require.Contains(t, warning, "Example Failure Ratio Above 10 Percent Weekly")
-}
-
-func TestStartupSummary_NoWarningWhenGraceSmall(t *testing.T) {
-	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
-	to := from.Add(time.Hour)
-	global := GlobalTimings{transitionGrace: time.Minute, graceSource: "R (for=30s, interval=30s)", drainTimeout: time.Minute}
-	_, warning := StartupSummary(from, to, global)
-	require.Empty(t, warning)
+	summary := StartupSummary(from, to, global)
+	require.Contains(t, summary, "planned run time: 16m0s")
+	require.Contains(t, summary, "window 10m0s")
+	require.Contains(t, summary, "transitionGrace 5m0s")
+	require.Contains(t, summary, "R (for=4m30s, interval=30s)")
 }
 
 func TestStartupSummary_NoGraceSourceReadsNone(t *testing.T) {
 	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
 	to := from.Add(time.Hour)
-	summary, _ := StartupSummary(from, to, GlobalTimings{})
+	summary := StartupSummary(from, to, GlobalTimings{})
 	require.Contains(t, summary, "none")
+}
+
+// A window with a subsecond part is rounded UP by moving `to`, never `from`:
+// from is the deploy-completion fact and moving it earlier could fall before
+// the recording started.
+func TestRoundWindowUp(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	tests := []struct {
+		name   string
+		window time.Duration
+		want   time.Duration
+	}{
+		{"whole seconds unchanged", 10 * time.Minute, 10 * time.Minute},
+		{"subsecond rounds up", 9*time.Minute + 59*time.Second + 994457810*time.Nanosecond, 10 * time.Minute},
+		{"just over a second rounds up", time.Second + time.Nanosecond, 2 * time.Second},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := roundWindowUp(from, from.Add(tt.window))
+			require.Equal(t, tt.want, got.Sub(from))
+		})
+	}
+
+	require.Equal(t, from, roundWindowUp(time.Time{}, from), "a zero `from` leaves `to` alone")
 }

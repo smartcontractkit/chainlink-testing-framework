@@ -27,7 +27,8 @@ grafana-alertcheck check --in /tmp/run.jsonl --from "$deployed_at" --to "$finish
 ```
 
 Or select alerts by label instead of a file: `--include-labels team=bcm,env=stage` (optionally
-`--exclude-labels`). See the [CLI reference](./docs/reference/cli.md#selecting-alerts-by-labels).
+`--exclude-labels`). Either selection can be refined with `--exclude-alerts <file>`. See the
+[CLI reference](./docs/reference/cli.md#selecting-alerts-by-labels).
 
 Requires Grafana >= 13.0.0 and < 14.0.0. Connection details come from the environment only — the token is
 never a flag.

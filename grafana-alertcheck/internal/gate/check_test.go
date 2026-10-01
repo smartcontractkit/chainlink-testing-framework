@@ -201,6 +201,20 @@ func TestCheckValidateRejectsBadConfigurations(t *testing.T) {
 			wantErr: "refused with a recorded log",
 		},
 		{
+			name: "log mode with excluded alerts",
+			mutate: func(c *Config) {
+				c.Log = "log.jsonl"
+				c.ExcludeAlerts = []string{"A"}
+			},
+			wantErr: "--exclude-alerts is refused with a recorded log",
+		},
+		{
+			// Exclusions subtract from a selection; they never name one.
+			name:    "excluded alerts without a selection",
+			mutate:  func(c *Config) { c.ExcludeAlerts = []string{"A"} },
+			wantErr: "no alert names given",
+		},
+		{
 			name: "alerts and labels",
 			mutate: func(c *Config) {
 				c.Alerts = []string{"A"}
@@ -289,6 +303,20 @@ func TestCheckValidateAcceptsLabelSelection(t *testing.T) {
 		Clock:         newFakeClock(testNow),
 		IncludeLabels: []LabelMatcher{{Key: "team", Value: "bcm"}},
 		ExcludeLabels: []LabelMatcher{{Key: "env", Value: "stage"}},
+		ExcludeAlerts: []string{"uid:other"},
+	}.withDefaults()
+
+	require.NoError(t, cfg.validate())
+}
+
+func TestCheckValidateAcceptsExcludeAlertsWithNames(t *testing.T) {
+	cfg := Config{
+		URL:           "https://grafana.example.com",
+		Alerts:        []string{"A"},
+		ExcludeAlerts: []string{"B"},
+		From:          testNow,
+		To:            testNow.Add(5 * time.Minute),
+		Clock:         newFakeClock(testNow),
 	}.withDefaults()
 
 	require.NoError(t, cfg.validate())
@@ -371,6 +399,63 @@ func TestCheckSingleStepSelectsByLabels(t *testing.T) {
 	require.Len(t, res.Verdicts, 1)
 	require.Equal(t, checkUID, res.Verdicts[0].RuleUID)
 	require.Empty(t, res.Violations)
+
+	// The matched set is listed, by name, before the plan.
+	notes := notesOf(cfg)
+	require.Contains(t, notes, "alerts matching --include-labels team=bcm and --exclude-labels env=stage:\n")
+	require.Contains(t, notes, "  - Rule One (rule-one)\n")
+	require.Less(t, strings.Index(notes, "alerts matching"), strings.Index(notes, "planned run time"),
+		"the matched alerts must be printed before the planned run time")
+}
+
+// --exclude-alerts subtracts from the enumerated set end to end: the excluded
+// rule is never polled and the run classifies only what remains.
+func TestCheckSingleStepExcludesNamedAlerts(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.Alerts = []string{"uid:" + checkUID, "uid:other"}
+	cfg.ExcludeAlerts = []string{"uid:other"}
+
+	excluded := checkDef()
+	excluded.UID, excluded.Title = "other", "Other"
+
+	src := newCheckSource(func(title string, _ int) (Observation, error) {
+		uid := checkUID
+		if title == excluded.Title {
+			uid = excluded.UID
+		}
+		now := clock.Now()
+		return Observation{
+			Rules:      []StateRule{testStateRule(uid, title, time.Minute, now, testInstance(StateNormal, "", "a"))},
+			GrafanaNow: now,
+			Latency:    200 * time.Millisecond,
+		}, nil
+	})
+	src.defs = []Definition{checkDef(), excluded}
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, checkUID, res.Verdicts[0].RuleUID)
+	require.Zero(t, src.callCount(excluded.Title), "the excluded rule must never be polled")
+}
+
+// A subsecond `to` is rounded up before the plan is printed, so a window never
+// reads as 9m59.99445781s.
+func TestCheckSingleStepRoundsWindowUp(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.To = cfg.From.Add(10*time.Minute - 5542190*time.Nanosecond) // 9m59.99445781s
+
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		return healthyObservation(clock.Now()), nil
+	})
+
+	_, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Contains(t, notesOf(cfg), "window 10m0s")
+	require.False(t, clock.Now().Before(cfg.From.Add(10*time.Minute+checkGrace)),
+		"collection must run to the rounded-up window end + grace, not the subsecond one")
 }
 
 // A label selection matching nothing is exit 2, before any poll — never an
@@ -505,8 +590,8 @@ func TestCheckSingleStepPreexistingBadDoesNotExitEarly(t *testing.T) {
 		"exited early; collection must run to to+grace for a preexisting bad instance")
 }
 
-// --no-fail-fast runs the same fresh onset to to+transitionGrace.
-func TestCheckSingleStepNewOnsetNoFailFastRunsToTheEnd(t *testing.T) {
+// --fail-fast=false runs the same fresh onset to to+transitionGrace.
+func TestCheckSingleStepFailFastDisabledRunsToTheEnd(t *testing.T) {
 	clock := newVirtualClock(testNow)
 	cfg := baseConfig(t, clock)
 	cfg.NoFailFast = true
@@ -530,7 +615,7 @@ func TestCheckSingleStepNewOnsetNoFailFastRunsToTheEnd(t *testing.T) {
 	require.Equal(t, OutcomeNewFailure, res.Violations[0].Outcome)
 	require.Nil(t, res.TerminatedEarly)
 	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
-		"with --no-fail-fast the loop must run to to+grace")
+		"with --fail-fast=false the loop must run to to+grace")
 }
 
 // An ABSENT `from` in single-step mode (as opposed to recorder mode, which
@@ -909,8 +994,8 @@ func TestCheckRecorderModeExitsEarlyOnANewOnset(t *testing.T) {
 	require.True(t, res.To.Equal(cfg.To), "the requested window is still reported")
 }
 
-// --no-fail-fast over the same recording runs to to+transitionGrace.
-func TestCheckRecorderModeNoFailFastRunsToTheEnd(t *testing.T) {
+// --fail-fast=false over the same recording runs to to+transitionGrace.
+func TestCheckRecorderModeFailFastDisabledRunsToTheEnd(t *testing.T) {
 	onset := testNow.Add(time.Minute)
 	logPath := recordedLogWithOnset(t, t.TempDir(), onset)
 	writePid(t, logPath+".pid", fmt.Sprintf("%d\n", deadPid(t)))
@@ -924,7 +1009,7 @@ func TestCheckRecorderModeNoFailFastRunsToTheEnd(t *testing.T) {
 	require.Len(t, res.Violations, 1)
 	require.Equal(t, OutcomeNewFailure, res.Violations[0].Outcome)
 	require.False(t, clock.Now().Before(cfg.To.Add(checkGrace)),
-		"with --no-fail-fast the loop must run to to+grace")
+		"with --fail-fast=false the loop must run to to+grace")
 }
 
 // The identity of the log is not correct. The check runs against the header

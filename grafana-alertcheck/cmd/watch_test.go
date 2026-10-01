@@ -38,6 +38,9 @@ func TestRunWatch_FlagValidation(t *testing.T) {
 		{"alerts and labels", true, func(t *testing.T) []string {
 			return []string{"--out", t.TempDir() + "/log.jsonl", "--alerts", writeTempAlerts(t), "--include-labels", "team=bcm"}
 		}, "cannot be combined with label selection"},
+		{"alerts and excluded alerts both stdin", true, func(t *testing.T) []string {
+			return []string{"--out", t.TempDir() + "/log.jsonl", "--alerts", "-", "--exclude-alerts", "-"}
+		}, "cannot both read from stdin"},
 		{"bad label pair", true, func(t *testing.T) []string {
 			return []string{"--out", t.TempDir() + "/log.jsonl", "--include-labels", "team"}
 		}, "--include-labels"},
