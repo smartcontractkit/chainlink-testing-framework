@@ -60,7 +60,7 @@ Skip the recorder and observe the window inline, from inside `check` itself:
 grafana-alertcheck check --alerts alerts.txt --to "$finished_at"
 ```
 
-In single-step mode the window starts at `check`'s first observation; if you give no `--from`, the interval before that first observation is declared as a blind spot with a warning (not an error).
+In single-step mode the window starts at `check`'s first-observation pass completion; if you give no `--from`, or a `--from` inside the pass, the interval before that point is declared as a blind spot with a warning (not an error).
 
 ## Exit codes
 

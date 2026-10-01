@@ -572,6 +572,75 @@ func TestCheckSingleStepFromBeforeFirstObservationWarnsAndPasses(t *testing.T) {
 	require.True(t, res.From.Equal(testNow))
 }
 
+// A `from` inside single-step's measurement pass is a declared blind interval:
+// the earliest rules have no observation yet, so the window is classified from
+// the pass completion instead of opening inside it.
+func TestCheckSingleStepFromInsideTheMeasurementPassIsClampedToThePassCompletion(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.From = testNow
+	cfg.To = testNow.Add(30 * time.Second)
+
+	// A 10s rule: pollEvery 5s, maxGap 10s. The 12s pass is longer than its
+	// maxGap, so without the clamp its first in-window poll would already be a
+	// heartbeat gap — exactly the live-mode incident's shape.
+	src := newCheckSource(func(_ string, call int) (Observation, error) {
+		if call == 1 {
+			clock.Advance(12 * time.Second) // the pass takes real time
+		}
+		return healthyObservation(clock.Now()), nil
+	})
+	src.defs = []Definition{{
+		UID: checkUID, Title: checkTitle, Folder: "F", Group: "G",
+		IntervalSeconds: 10, NoDataState: "OK", ExecErrState: "OK",
+		Kind: KindGrafanaManaged,
+	}}
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	notes := notesOf(cfg)
+	require.Contains(t, notes, "cannot see [")
+	require.Contains(t, notes, "first observation pass completed")
+	require.True(t, res.From.Equal(testNow.Add(12*time.Second)),
+		"the classified window must start at the pass completion, not inside the pass")
+	require.False(t, res.Coverage[checkUID].Unobservable,
+		"clamping must not leave the first rule's heartbeat gap inside the window")
+	require.LessOrEqual(t, res.Coverage[checkUID].LargestGap, 5*time.Second,
+		"only the rule's own 5s cadence may remain between the clamped open and the polls")
+}
+
+// The measurement pass can outlast the requested window when `--to` is close
+// ahead; clamping `from` past `to` would invert the window and prove nothing,
+// so check must fail closed instead.
+func TestCheckSingleStepPassOutlastingTheWindowFailsClosed(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.To = testNow.Add(time.Second)
+
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		clock.Advance(5 * time.Second) // the pass runs past `to`
+		return healthyObservation(clock.Now()), nil
+	})
+
+	_, err := check(context.Background(), cfg, src)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "no window remains")
+}
+
+// The live poller continues the measurement pass's schedule: an overdue rule is
+// due immediately instead of waiting out a fresh stagger.
+func TestNewLivePollerContinuesTheMeasurementPass(t *testing.T) {
+	seed := []Poll{{RuleUID: checkUID, GrafanaNow: testNow.Add(-90 * time.Second), Found: true}}
+	p := newLivePoller(nil, NewReducer(),
+		[]Definition{{UID: checkUID, Title: checkTitle}},
+		map[string]RuleTimings{checkUID: {pollEvery: 30 * time.Second}},
+		1, testNow, seed)
+
+	require.Equal(t, testNow.Add(-60*time.Second), p.sched.next[checkUID],
+		"the live poller must continue the measurement pass, not re-stagger")
+	require.Contains(t, p.sched.Due(testNow), checkUID)
+}
+
 // The failure limit was exceeded. The measurement pass succeeds and the
 // collection loop then hits a terminal failure, so this exercises the path a
 // live run really takes.
@@ -644,9 +713,55 @@ func TestCheckSingleStepRefusesAScheduleThatDoesNotFit(t *testing.T) {
 
 	_, err := check(context.Background(), cfg, src)
 	require.Error(t, err, "the budget check to refuse the schedule")
-	for _, want := range []string{"raising concurrency", "raising poll-interval", "watching fewer alerts"} {
+	for _, want := range []string{"raising --concurrency to at least 2", "raising poll-interval", "watching fewer alerts"} {
 		require.Contains(t, err.Error(), want)
 	}
+}
+
+// A tight rule observed late queues behind every rule due before it; if that
+// backlog cannot drain within its maxGap, check must refuse at startup rather
+// than discover the gap mid-window.
+func TestCheckSingleStepRefusesAnUnsafeStartupHandoff(t *testing.T) {
+	clock := newFakeClock(testNow)
+	cfg := baseConfig(t, clock)
+	cfg.Concurrency = 3 // enough for the steady-state utilization, not for the startup backlog
+
+	const slack = 20
+	defs := make([]Definition, 0, slack+1)
+	alerts := make([]string, 0, slack+1)
+	observed := make(map[string]time.Time, slack+1)
+	for i := range slack {
+		uid := fmt.Sprintf("slack%02d", i)
+		defs = append(defs, Definition{
+			UID: uid, Title: uid, IntervalSeconds: 40, NoDataState: "OK", ExecErrState: "OK",
+			Kind: KindGrafanaManaged,
+		})
+		alerts = append(alerts, "uid:"+uid)
+		observed[uid] = testNow.Add(time.Duration(i) * 2 * time.Second)
+	}
+	defs = append(defs, Definition{
+		UID: checkUID, Title: checkTitle, IntervalSeconds: 8, NoDataState: "OK", ExecErrState: "OK",
+		Kind: KindGrafanaManaged,
+	})
+	alerts = append(alerts, "uid:"+checkUID)
+	observed[checkTitle] = testNow.Add(40 * time.Second) // observed last
+
+	cfg.Alerts = alerts
+	src := newCheckSource(func(title string, _ int) (Observation, error) {
+		at := observed[title]
+		if at.After(clock.Now()) {
+			clock.Advance(at.Sub(clock.Now()))
+		}
+		obs := healthyObservation(at)
+		obs.Latency = 2 * time.Second
+		return obs, nil
+	})
+	src.defs = defs
+
+	_, err := check(context.Background(), cfg, src)
+	require.Error(t, err, "the startup handoff to refuse the schedule")
+	require.Contains(t, err.Error(), "startup handoff")
+	assertBudgetMessage(t, err.Error())
 }
 
 // ---------------------------------------------------------------------------
@@ -667,6 +782,7 @@ func recordedLog(t *testing.T, dir string, url string, startedAt, start, end, se
 		URL:            url,
 		GrafanaVersion: "13.1.0",
 		StartedAt:      startedAt,
+		ReadyAt:        startedAt,
 		Rules: []LoggedRule{{
 			UID: checkUID, Title: checkTitle, Folder: "F", Group: "G",
 			IntervalSeconds: 60, NoDataState: "OK", ExecErrState: "OK",
@@ -889,6 +1005,35 @@ func TestCheckRecorderModeFromSameSecondAsStartedAtPasses(t *testing.T) {
 	require.Empty(t, res.Violations)
 	require.Len(t, res.Verdicts, 1)
 	require.Equal(t, OutcomeHealthy, res.Verdicts[0].Outcome)
+}
+
+// A `from` between StartedAt and ReadyAt sits inside the recorder's sequential
+// first-observation pass, so the rules observed first have no poll in the
+// window's opening stretch. ReadyAt is in the immutable header, so this fails
+// before the wait.
+func TestCheckRecorderModeRefusesFromInsideTheInitialObservationPass(t *testing.T) {
+	dir := t.TempDir()
+	windowEnd := testNow.Add(5*time.Minute + checkGrace)
+	path := filepath.Join(dir, "log.jsonl")
+	w, err := NewWriter(path, newFakeClock(windowEnd.Add(30*time.Second)))
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
+		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0",
+		StartedAt: testNow.Add(-time.Minute),
+		ReadyAt:   testNow.Add(30 * time.Second),
+		Rules: []LoggedRule{{
+			UID: checkUID, Title: checkTitle, IntervalSeconds: 60,
+			PollEverySeconds: checkPollEvery.Seconds(),
+		}},
+	}))
+	require.NoError(t, w.Stop())
+
+	clock := newVirtualClock(testNow)
+	cfg := recorderConfig(t, clock, path) // From = testNow, inside [StartedAt, ReadyAt)
+	_, err = check(context.Background(), cfg, newCheckSource(nil))
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "initial observation pass")
+	require.True(t, clock.Now().Equal(testNow), "it must fail before the wait")
 }
 
 // The coverage proof failed: a hole in the middle of the recording is not

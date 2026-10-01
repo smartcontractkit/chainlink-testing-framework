@@ -244,6 +244,41 @@ func TestNewScheduler_StaggersWithinPollEvery(t *testing.T) {
 	require.Less(t, offset, 100*time.Second)
 }
 
+// The handoff scheduler continues the recorded schedule — last observation plus
+// cadence — so the child adds no fresh stagger; an overdue rule is due
+// immediately.
+func TestNewSchedulerFromPolls_ContinuesTheRecordedCadence(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	polls := []Poll{
+		{RuleUID: "r1", GrafanaNow: now.Add(-2 * time.Minute)},
+		{RuleUID: "r1", GrafanaNow: now.Add(-90 * time.Second)}, // the latest observation wins
+		{RuleUID: "stranger", GrafanaNow: now},                  // not in the cadence map
+	}
+	every := map[string]time.Duration{"r1": 30 * time.Second, "fresh": 10 * time.Second}
+	s := NewSchedulerFromPolls(every, polls, now)
+
+	require.Equal(t, now.Add(-60*time.Second), s.next["r1"], "last observation + cadence, kept in the past")
+	require.Contains(t, s.Due(now), "r1", "an overdue rule must be due immediately")
+
+	// No recorded observation: the fresh stagger applies, as it does for a
+	// hand-started child.
+	offset := s.next["fresh"].Sub(now)
+	require.GreaterOrEqual(t, offset, time.Duration(0))
+	require.Less(t, offset, 10*time.Second)
+
+	_, ok := s.next["stranger"]
+	require.False(t, ok, "a poll of a rule the scheduler does not own must not create an entry")
+}
+
+// The seed uses the runner-domain observation time (GrafanaNow - skew), so a
+// skewed poll does not shift the schedule.
+func TestNewSchedulerFromPolls_TranslatesSkew(t *testing.T) {
+	now := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	polls := []Poll{{RuleUID: "r1", GrafanaNow: now, SkewMS: 1500}}
+	s := NewSchedulerFromPolls(map[string]time.Duration{"r1": time.Minute}, polls, now)
+	require.Equal(t, now.Add(-1500*time.Millisecond).Add(time.Minute), s.next["r1"])
+}
+
 func TestScheduler_EarliestDueEmpty(t *testing.T) {
 	s := &Scheduler{next: map[string]time.Time{}, every: map[string]time.Duration{}}
 	_, ok := s.earliestDue()
@@ -288,6 +323,21 @@ func TestCheckBudget_MixedIntervalRegression(t *testing.T) {
 	require.NoError(t, CheckBudget(timings, measured, 1))
 }
 
+// The budget error is read by a human: a titled rule must be named by its
+// title, with the UID kept for machine correlation.
+func TestCheckBudget_NamesRulesByTitle(t *testing.T) {
+	timings := map[string]RuleTimings{
+		"a": {title: "WorkflowLimit Exceeded", pollEvery: 10 * time.Second},
+		"b": {title: "Node Down", pollEvery: 10 * time.Second},
+	}
+	measured := map[string]time.Duration{"a": 9 * time.Second, "b": 9 * time.Second}
+
+	err := CheckBudget(timings, measured, 1)
+	require.Error(t, err)
+	require.Contains(t, err.Error(), `rule "WorkflowLimit Exceeded" (a): measured`)
+	require.Contains(t, err.Error(), `rule "Node Down" (b): measured`)
+}
+
 func TestCheckBudget_UtilizationExceeded(t *testing.T) {
 	timings := map[string]RuleTimings{
 		"a": {pollEvery: 10 * time.Second},
@@ -297,6 +347,8 @@ func TestCheckBudget_UtilizationExceeded(t *testing.T) {
 	err := CheckBudget(timings, measured, 1)
 	require.Error(t, err)
 	assertBudgetMessage(t, err.Error())
+	require.Contains(t, err.Error(), "raising --concurrency to at least 2",
+		"utilization 1.8 needs concurrency 2; the error must name it")
 }
 
 func TestCheckBudget_SingleRuleExceedsOwnCadence(t *testing.T) {
@@ -305,6 +357,8 @@ func TestCheckBudget_SingleRuleExceedsOwnCadence(t *testing.T) {
 	err := CheckBudget(timings, measured, 10)
 	require.Error(t, err, "measured 6s exceeds its own 5s poll-interval")
 	assertBudgetMessage(t, err.Error())
+	require.NotContains(t, err.Error(), "raising concurrency",
+		"concurrency cannot shorten a single request")
 }
 
 func TestCheckBudget_BurstBoundViolation(t *testing.T) {
@@ -320,6 +374,8 @@ func TestCheckBudget_BurstBoundViolation(t *testing.T) {
 	require.Error(t, err, "slow's 3s measured exceeds tight's 2s cadence")
 	require.Contains(t, err.Error(), "burst bound")
 	assertBudgetMessage(t, err.Error())
+	require.NotContains(t, err.Error(), "raising concurrency",
+		"concurrency cannot shorten a single request")
 }
 
 func TestCheckBudget_BurstBoundOKWhenNotExceeded(t *testing.T) {

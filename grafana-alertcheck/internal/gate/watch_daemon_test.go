@@ -208,8 +208,8 @@ func waitFor(t *testing.T, what string, timeout time.Duration, cond func() bool)
 // It asserts the four things only a real spawn can show — the pidfile points
 // at a live process, that process is in its own session (setsid, not a bare
 // `&`), it keeps appending after Watch returned, and SIGTERM makes it finish
-// the log in the stop order — and it uses a 200ms --poll-interval to do it in
-// about a second, which also exercises the unclamped-override path.
+// the log in the stop order — with a 2s --poll-interval, which also exercises
+// the unclamped-override path.
 func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 	srv := grafanaTestServer(t)
 	t.Setenv("GRAFANA_URL", srv.URL)
@@ -222,7 +222,7 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 		Token:       testBearerToken,
 		Alerts:      []string{"uid:" + watchActiveUID},
 		Out:         out,
-		PollEvery:   200 * time.Millisecond,
+		PollEvery:   2 * time.Second,
 		Concurrency: 2,
 		Notes:       &notes,
 	}
@@ -264,7 +264,7 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 	require.Equal(t, srv.URL, header.URL)
 	require.Equal(t, "13.1.0", header.GrafanaVersion)
 	require.Len(t, header.Rules, 1)
-	require.Equal(t, float64(0.2), header.Rules[0].PollEverySeconds)
+	require.Equal(t, float64(2), header.Rules[0].PollEverySeconds)
 	for i, p := range polls {
 		require.Equalf(t, watchActiveUID, p.RuleUID, "poll %d", i)
 		require.Truef(t, p.Found, "poll %d", i)
@@ -322,7 +322,6 @@ func TestWatchFailsWhenTheChildCannotStartRecording(t *testing.T) {
 		Token:       testBearerToken,
 		Alerts:      []string{"uid:" + watchActiveUID},
 		Out:         out,
-		PollEvery:   200 * time.Millisecond,
 		Concurrency: 2,
 		Notes:       &notes,
 	})

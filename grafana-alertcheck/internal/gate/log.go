@@ -64,11 +64,25 @@ type LoggedRule struct {
 // unfiltered, so the same log can be re-classified under different --states
 // without re-recording.
 type Header struct {
-	SchemaVersion  int          `json:"schema_version"`
-	URL            string       `json:"url"` // the log's identity
-	GrafanaVersion string       `json:"grafana_version"`
-	StartedAt      time.Time    `json:"started_at"` // the record start
-	Rules          []LoggedRule `json:"rules"`      // THE alert set
+	SchemaVersion  int       `json:"schema_version"`
+	URL            string    `json:"url"` // the log's identity
+	GrafanaVersion string    `json:"grafana_version"`
+	StartedAt      time.Time `json:"started_at"` // the record start
+	// ReadyAt is when the first-observation pass completed — the earliest
+	// instant a `from` can honestly name, since before it some rules were
+	// never observed. Zero on older logs and single-step synthesis; readyAt()
+	// then falls back to StartedAt.
+	ReadyAt time.Time    `json:"ready_at,omitzero"`
+	Rules   []LoggedRule `json:"rules"` // THE alert set
+}
+
+// readyAt is ReadyAt when the log records it, StartedAt otherwise. The one
+// place the two are collapsed, so check and proveCoverage cannot disagree.
+func (h Header) readyAt() time.Time {
+	if h.ReadyAt.IsZero() {
+		return h.StartedAt
+	}
+	return h.ReadyAt
 }
 
 // pausedAtStart reports, per rule UID, whether the rule was paused when the
