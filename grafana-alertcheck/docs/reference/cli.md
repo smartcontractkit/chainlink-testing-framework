@@ -44,7 +44,7 @@ grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
 | `--concurrency` | `1` | Max concurrent requests to Grafana |
 | `--until` | run until signalled | Optional hard stop |
 
-`watch` writes the header, observes every non-paused rule once, checks the budget, then detaches a background recorder and returns. Recording is **unfiltered** — there is no `--states` here, so the same log can be re-classified later under different `--states` without re-recording.
+`watch` observes every non-paused rule once, checks the budget, writes the header (with `ready_at` stamped once the observation pass completes) and those observations, then detaches a background recorder and returns. Recording is **unfiltered** — there is no `--states` here, so the same log can be re-classified later under different `--states` without re-recording.
 
 ## `stop` — reap the recorder
 

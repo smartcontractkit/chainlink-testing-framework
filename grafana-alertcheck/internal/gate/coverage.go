@@ -10,7 +10,7 @@ const keepLastReason = "KeepLast"
 
 // Two things this file leaves to its callers: the "from too far ahead" bound is
 // Config.validate's once-per-run input validation (check 2 owns only the
-// "from < StartedAt" half), and a rule paused at the window open never reaches
+// "from < readyAt" half), and a rule paused at the window open never reaches
 // proveCoverage — decide reads `skipped` from Header.pausedAtStart first, so a
 // paused rule's zero polls read as skipped, not as one large heartbeat gap.
 
@@ -85,19 +85,23 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 			sentinel.Format(time.RFC3339), windowEnd.Format(time.RFC3339)))
 	}
 
-	// Check 2 — from bounds: from < StartedAt makes coverage unprovable, no
-	// matter how healthy the polls that DO exist look. Both are runner-domain
-	// clock reads (the recorder's own Clock.Now()), so no cross-domain
-	// translation applies here. The comparison is at whole-second granularity:
-	// `from` is supplied at second precision (--from RFC3339) while StartedAt
-	// carries the recorder's sub-second clock stamp, so an operator naming the
-	// exact second the recording opened must not be judged early for the
-	// sub-second sliver inside that same second. The other half of the bound —
-	// from too far ahead of the runner's clock — is Check's input validation,
-	// once per run rather than per rule.
-	if from.Truncate(time.Second).Before(h.StartedAt.Truncate(time.Second)) {
-		fail(ReasonFromBeforeRecord, fmt.Sprintf(
-			"requested from %s is before recording started at %s", from.Format(time.RFC3339Nano), h.StartedAt.Format(time.RFC3339Nano)))
+	// Check 2 — from bounds: from < the recording's readiness makes coverage
+	// unprovable, no matter how healthy the polls that DO exist look. The
+	// authority is readyAt() — ReadyAt when the log records it, StartedAt
+	// otherwise — because the first-observation pass is sequential: a `from`
+	// inside it names a window in which the earliest rules were never observed.
+	// Both are runner-domain clock reads, so no cross-domain translation
+	// applies. The comparison is at whole-second granularity, matching `from`'s
+	// second precision. The other half of the bound — from too far ahead of the
+	// runner's clock — is Check's input validation, once per run not per rule.
+	if readyAt := h.readyAt(); from.Truncate(time.Second).Before(readyAt.Truncate(time.Second)) {
+		note := fmt.Sprintf("requested from %s is before recording started at %s",
+			from.Format(time.RFC3339Nano), readyAt.Format(time.RFC3339Nano))
+		if !h.ReadyAt.IsZero() {
+			note = fmt.Sprintf("requested from %s is before the recorder was ready at %s (the initial observation pass had not completed)",
+				from.Format(time.RFC3339Nano), readyAt.Format(time.RFC3339Nano))
+		}
+		fail(ReasonFromBeforeRecord, note)
 	}
 
 	// Filtered once and threaded through every remaining check.

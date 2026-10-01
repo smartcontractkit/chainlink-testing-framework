@@ -183,6 +183,48 @@ func TestProveCoverage_FromSubSecondEarlierAcrossSecondBoundaryIsUnobservable(t 
 	require.False(t, res.Proved)
 }
 
+// ReadyAt, not StartedAt, is the from-bounds authority: a `from` before the
+// first-observation pass completed names a window the pass cannot cover.
+func TestProveCoverage_FromBeforeReadyAtIsUnobservable(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	rt := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	var polls []Poll
+	for ts := from.Add(30 * time.Second); !ts.After(to); ts = ts.Add(30 * time.Second) {
+		polls = append(polls, Poll{RuleUID: "r1", GrafanaNow: ts, Found: true, Health: "ok", State: "inactive", LastEvaluation: ts})
+	}
+	sentinel := to
+
+	res := proveCoverage(Header{StartedAt: from.Add(-time.Minute), ReadyAt: from.Add(30 * time.Second)},
+		polls, &sentinel, rt, def, from, to, 0)
+	require.Equal(t, ReasonFromBeforeRecord, res.Reason)
+	require.True(t, res.Unobservable)
+	require.False(t, res.Proved)
+	require.Contains(t, strings.Join(res.Notes, "; "), "initial observation pass")
+}
+
+// The whole-second tolerance applies to ReadyAt too: a `from` in the same
+// second the pass completed is not judged early.
+func TestProveCoverage_FromSameSecondAsReadyAtIsProved(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	rt := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	var polls []Poll
+	for ts := from; !ts.After(to); ts = ts.Add(30 * time.Second) {
+		polls = append(polls, Poll{RuleUID: "r1", GrafanaNow: ts, Found: true, Health: "ok", State: "inactive", LastEvaluation: ts})
+	}
+	sentinel := to
+
+	res := proveCoverage(Header{StartedAt: from.Add(-time.Minute), ReadyAt: from.Add(500 * time.Millisecond)},
+		polls, &sentinel, rt, def, from, to, 0)
+	require.True(t, res.Proved)
+	require.False(t, res.Unobservable)
+}
+
 // --- Check 3: heartbeat continuity ---
 
 // The core heartbeat regression: data at both ends with a hole between is not

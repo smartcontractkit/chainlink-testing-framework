@@ -2,6 +2,7 @@ package gate
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"sort"
 	"strings"
@@ -23,8 +24,10 @@ const fromFutureTolerance = 60 * time.Second
 const minDrainTimeout = 2 * time.Minute
 
 // RuleTimings groups the per-rule thresholds derived from a rule's poll
-// cadence and its own evaluation interval.
+// cadence and its own evaluation interval. title is carried for operator-facing
+// messages only — it is never compared or applied.
 type RuleTimings struct {
+	title          string
 	pollEvery      time.Duration
 	maxGap         time.Duration
 	healthGrace    time.Duration
@@ -82,7 +85,9 @@ func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]
 					d.Title, override, d.IntervalSeconds, def))
 			}
 		}
-		rules[d.UID] = newRuleTimings(pollEvery, d.IntervalSeconds)
+		rt := newRuleTimings(pollEvery, d.IntervalSeconds)
+		rt.title = d.Title
+		rules[d.UID] = rt
 	}
 	// In this mode defs ARE the start-of-step snapshot, so they answer what was
 	// paused at the window open; only the log-mode counterpart uses the header.
@@ -136,7 +141,9 @@ func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]RuleTim
 				lr.PollEverySeconds, lr.UID, lr.Title)
 		}
 		pollEvery := time.Duration(lr.PollEverySeconds * float64(time.Second))
-		rules[lr.UID] = newRuleTimings(pollEvery, def.IntervalSeconds)
+		rt := newRuleTimings(pollEvery, def.IntervalSeconds)
+		rt.title = def.Title // the current title: the header's may predate a rename
+		rules[lr.UID] = rt
 	}
 	// The header, not defs, decides which rules are excluded from the grace:
 	// defs were resolved after the window closed. See deriveGlobalTimings.
@@ -172,6 +179,15 @@ func deriveGlobalTimings(defs []Definition, pausedAtStart map[string]bool) Globa
 	return g
 }
 
+// ruleLabel names a rule for a human, keeping the UID for correlation:
+// `"Title" (uid)`, or the bare UID when there is no title.
+func ruleLabel(title, uid string) string {
+	if title == "" {
+		return uid
+	}
+	return fmt.Sprintf("%q (%s)", title, uid)
+}
+
 // Scheduler drives one per-rule schedule, never a global cycle: a rule at
 // intervalSeconds=10 alongside twenty at 300 keeps its own 5s cadence without
 // forcing the same cadence onto the other twenty.
@@ -195,6 +211,42 @@ func NewScheduler(every map[string]time.Duration, now time.Time) *Scheduler {
 		var offset time.Duration
 		if pollEvery > 0 {
 			offset = rand.N(pollEvery) // nolint:gosec // we don't need strong randomness, just a spread across [0, pollEvery)
+		}
+		s.next[uid] = now.Add(offset)
+	}
+	return s
+}
+
+// NewSchedulerFromPolls continues an existing recording instead of starting a
+// fresh phase: each rule is due one cadence after its last recorded observation,
+// so the parent/child handoff keeps the spread the first-observation pass
+// created and adds no stagger. An overdue rule keeps its recorded due time and
+// is due immediately. Polls outside every are ignored; a rule with no recorded
+// observation falls back to the fresh stagger.
+func NewSchedulerFromPolls(every map[string]time.Duration, polls []Poll, now time.Time) *Scheduler {
+	s := &Scheduler{
+		next:  make(map[string]time.Time, len(every)),
+		every: make(map[string]time.Duration, len(every)),
+	}
+	last := make(map[string]time.Time, len(every))
+	for _, p := range polls {
+		if _, owned := every[p.RuleUID]; !owned || p.GrafanaNow.IsZero() {
+			continue
+		}
+		at := runnerTime(p, p.GrafanaNow)
+		if cur, ok := last[p.RuleUID]; !ok || at.After(cur) {
+			last[p.RuleUID] = at
+		}
+	}
+	for uid, pollEvery := range every {
+		s.every[uid] = pollEvery
+		if at, ok := last[uid]; ok {
+			s.next[uid] = at.Add(pollEvery)
+			continue
+		}
+		var offset time.Duration
+		if pollEvery > 0 {
+			offset = rand.N(pollEvery) // nolint:gosec // spread only, same as NewScheduler
 		}
 		s.next[uid] = now.Add(offset)
 	}
@@ -279,10 +331,10 @@ func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, co
 
 	for _, uid := range uids {
 		if _, ok := measured[uid]; !ok {
-			return fmt.Errorf("schedule budget: rule %s was never measured", uid)
+			return fmt.Errorf("schedule budget: rule %s was never measured", ruleLabel(t[uid].title, uid))
 		}
 		if t[uid].pollEvery <= 0 {
-			return fmt.Errorf("schedule budget: rule %s has a non-positive poll-interval %s", uid, t[uid].pollEvery)
+			return fmt.Errorf("schedule budget: rule %s has a non-positive poll-interval %s", ruleLabel(t[uid].title, uid), t[uid].pollEvery)
 		}
 	}
 
@@ -311,12 +363,14 @@ func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, co
 	}
 	for _, uid := range overCadence {
 		problems = append(problems, fmt.Sprintf(
-			"rule %s: measured %s exceeds its own poll-interval %s", uid, measured[uid], t[uid].pollEvery))
+			"rule %s: measured %s exceeds its own poll-interval %s",
+			ruleLabel(t[uid].title, uid), measured[uid], t[uid].pollEvery))
 	}
 	if maxMeasured > t[tightestUID].pollEvery {
 		problems = append(problems, fmt.Sprintf(
-			"burst bound: rule %s's measured %s exceeds the fleet's tightest poll-interval %s (rule %s)",
-			maxMeasuredUID, maxMeasured, t[tightestUID].pollEvery, tightestUID))
+			"burst bound: the slowest request is rule %s at %s, longer than the fleet's tightest poll-interval %s (rule %s)",
+			ruleLabel(t[maxMeasuredUID].title, maxMeasuredUID), maxMeasured,
+			t[tightestUID].pollEvery, ruleLabel(t[tightestUID].title, tightestUID)))
 	}
 
 	if len(problems) == 0 {
@@ -326,12 +380,20 @@ func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, co
 	var b strings.Builder
 	fmt.Fprintf(&b, "schedule does not fit at concurrency %d:\n", concurrency)
 	for _, uid := range uids {
-		fmt.Fprintf(&b, "  rule %s: measured %s, poll-interval %s\n", uid, measured[uid], t[uid].pollEvery)
+		fmt.Fprintf(&b, "  rule %s: measured %s, poll-interval %s\n",
+			ruleLabel(t[uid].title, uid), measured[uid], t[uid].pollEvery)
 	}
 	for _, p := range problems {
 		fmt.Fprintf(&b, "  - %s\n", p)
 	}
-	b.WriteString("fix by: raising concurrency, raising poll-interval, or watching fewer alerts")
+	// Utilization is the one condition concurrency fixes, so name the exact
+	// value; the other two are single-request shapes no concurrency shortens.
+	if utilization > float64(concurrency) {
+		fmt.Fprintf(&b, "fix by: raising --concurrency to at least %d (currently %d), raising poll-interval, or watching fewer alerts",
+			int(math.Ceil(utilization)), concurrency)
+	} else {
+		b.WriteString("fix by: raising poll-interval or watching fewer alerts")
+	}
 	return fmt.Errorf("%s", b.String())
 }
 
