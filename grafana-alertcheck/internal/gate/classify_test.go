@@ -1002,6 +1002,27 @@ func TestClassifyRule_FirstSeenRecoveringIsPreexistingAndRecovers(t *testing.T) 
 	require.Empty(t, viols)
 }
 
+// A Recovering instance first observed after an in-window non-bad observation
+// is an in-window fire whose Alerting poll was missed: it must fail closed as a
+// new failure, never read as preexisting (which would let it pass as recovered).
+func TestClassifyRule_RecoveringAfterInWindowPendingIsNewFailure(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	pendingAt := from.Add(2 * time.Minute)
+	recoveryAt := from.Add(3 * time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := []Poll{
+		abnormalPoll("r1", pendingAt, StatePending, lbl("a"), pendingAt),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		clearedPoll("r1", to.Add(2*time.Minute), instanceKey(lbl("a"))), // extension poll
+	}
+	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeNewFailure, outcome)
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomeNewFailure, viols[0].Outcome)
+}
+
 // A recovering episode that never resolves inside its KeepFiringFor stays open
 // and fails closed.
 func TestClassifyRule_UnresolvedRecoveringIsStillFailing(t *testing.T) {

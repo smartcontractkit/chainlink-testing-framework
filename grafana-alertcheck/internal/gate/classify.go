@@ -294,11 +294,10 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 					}
 				}
 			case bad && !tl.badOpen:
-				if inst.State == StateRecovering {
-					openRecovering(tl)
-				} else {
-					openEpisode(tl, onsetOf(p, inst))
-				}
+				// Already observed in-window and not bad: a Recovering here
+				// means the fire happened in-window (a missed Alerting poll
+				// hides it), so it must never be preexisting.
+				openEpisode(tl, onsetOf(p, inst))
 			case !bad && tl.badOpen:
 				closeEpisode(tl, runnerTime(p, p.GrafanaNow), true)
 			}
