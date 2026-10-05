@@ -121,6 +121,10 @@ type Poll struct {
 	SkewMS      int64 `json:"skew_ms"`
 	SkewBoundMS int64 `json:"skew_bound_ms"`
 	LatencyMS   int64 `json:"latency_ms"`
+	// KeepFiringForMS is the rule's recovery period as reported by this
+	// response; absent/0 means no instance can be Recovering. Per poll so the
+	// bound is the value in effect when the instance was seen.
+	KeepFiringForMS int64 `json:"keep_firing_for_ms,omitempty"`
 	// Found false means an authoritative 2xx in which this rule was absent —
 	// never a transport failure, which the transport retries and never turns
 	// into a Poll. The coverage proof turns it into unobservable.
@@ -163,6 +167,11 @@ func (p Poll) SkewBound() time.Duration { return time.Duration(p.SkewBoundMS) * 
 
 // Latency is the wall time this poll's request took, feeding the budget check.
 func (p Poll) Latency() time.Duration { return time.Duration(p.LatencyMS) * time.Millisecond }
+
+// KeepFiringFor is the rule's recovery period as reported by this poll.
+func (p Poll) KeepFiringFor() time.Duration {
+	return time.Duration(p.KeepFiringForMS) * time.Millisecond
+}
 
 // Reducer turns each Observation into the single Poll record that goes into
 // the log. It holds the previous poll's abnormal instance keys per rule, which
@@ -219,6 +228,7 @@ func (r *Reducer) Reduce(uid string, obs Observation) Poll {
 	p.LastEvaluation = rule.LastEvaluation
 	p.IsPaused = rule.IsPaused
 	p.Histogram = rule.Totals
+	p.KeepFiringForMS = rule.KeepFiringFor.Milliseconds()
 
 	// present indexes every instance in THIS response, normal ones included —
 	// the markers below must resolve a departed key against the same response,

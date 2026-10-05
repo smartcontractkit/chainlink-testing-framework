@@ -1704,3 +1704,346 @@ func TestReadLogHeader(t *testing.T) {
 		require.Contains(t, err.Error(), "schema version 99")
 	})
 }
+
+// ---------------------------------------------------------------------------
+// Recovery observation ("keep firing for")
+// ---------------------------------------------------------------------------
+
+// recoveryObservation is one state response for a rule with a recovery period.
+func recoveryObservation(uid, title string, now time.Time, kff time.Duration, insts ...Instance) Observation {
+	totals := map[string]int{}
+	for _, i := range insts {
+		totals[string(i.State)]++
+	}
+	return Observation{
+		Rules: []StateRule{{
+			UID: uid, Title: title, Folder: "F", Group: "G",
+			Interval: time.Minute, State: "inactive", Health: "ok",
+			LastEvaluation: now, KeepFiringFor: kff,
+			Instances: insts, Totals: totals,
+		}},
+		GrafanaNow: now, Latency: 200 * time.Millisecond,
+	}
+}
+
+func recoveringScenarioDef(uid, title string) Definition {
+	return Definition{
+		UID: uid, Title: title, Folder: "F", Group: "G",
+		For: 3 * time.Minute, IntervalSeconds: 60,
+		NoDataState: "OK", ExecErrState: "OK", Kind: KindGrafanaManaged,
+	}
+}
+
+// recoveringAtWindowEnd reports the instances still recovering at windowEnd and
+// their deadline; an extension poll (after windowEnd) must not count.
+func TestRecoveringAtWindowEnd(t *testing.T) {
+	from := testNow
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	rt := map[string]RuleTimings{"r1": newRuleTimings(30*time.Second, 60)}
+	key := instanceKey(lbl("a"))
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		recoveringPoll("r1", to.Add(time.Minute), lbl("b"), to.Add(time.Minute), 10*time.Minute),
+	}
+	got := recoveringAtWindowEnd(polls, from, to, rt)
+	require.Contains(t, got["r1"], key)
+	require.NotContains(t, got["r1"], instanceKey(lbl("b")), "an extension poll is not in-window evidence")
+	require.Equal(t, recoveryAt.Add(10*time.Minute+rt["r1"].evalStaleAfter+rt["r1"].pollEvery), got["r1"][key])
+
+	// A later in-window clear removes the instance: nothing to observe.
+	polls = append(polls, clearedPoll("r1", to, key))
+	require.NotContains(t, recoveringAtWindowEnd(polls, from, to, rt), "r1")
+}
+
+// The scenario: A is preexisting, starts recovering just before `to`, and only
+// resolves after windowEnd; B goes pending at windowEnd and fires during A's
+// recovery observation. A must end recovered and B healthy, because B's badness
+// is outside the observation window.
+func TestCheckRecoveringInstanceResolvesAndPostWindowOnsetIsIgnored(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	from := clock.Now()
+	to := from.Add(5 * time.Minute)
+	windowEnd := to.Add(4 * time.Minute) // for=3m + interval=60s
+	recoveryAt := to.Add(-10 * time.Second)
+	resolveAt := recoveryAt.Add(10 * time.Minute) // first evaluation at/after KeepFiringFor
+	fireBAt := windowEnd.Add(3 * time.Minute)
+
+	a := map[string]string{"instance": "a"}
+	b := map[string]string{"instance": "b"}
+
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		now := clock.Now()
+		aState, aActive := StateRecovering, recoveryAt
+		switch {
+		case now.Before(recoveryAt):
+			aState, aActive = StateFiring, from.Add(-time.Hour)
+		case !now.Before(resolveAt):
+			aState, aActive = StateNormal, now
+		}
+		bState, bActive := StateNormal, now
+		switch {
+		case !now.Before(fireBAt):
+			bState, bActive = StateFiring, windowEnd
+		case !now.Before(windowEnd):
+			bState, bActive = StatePending, windowEnd
+		}
+		return recoveryObservation("r1", "Rule One", now, 10*time.Minute,
+			Instance{Labels: a, State: aState, ActiveAt: aActive},
+			Instance{Labels: b, State: bState, ActiveAt: bActive},
+		), nil
+	})
+	src.defs = []Definition{recoveringScenarioDef("r1", "Rule One")}
+
+	cfg := Config{
+		URL:    "https://grafana.example.com",
+		Alerts: []string{"uid:r1"},
+		From:   from,
+		To:     to,
+		Clock:  clock,
+		Notes:  &strings.Builder{},
+	}.withDefaults()
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Empty(t, res.Violations, "B's post-window onset must not count")
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeRecovered, res.Verdicts[0].Outcome)
+	require.Contains(t, notesOf(cfg), "recovery wait")
+	require.Contains(t, notesOf(cfg), `rule "Rule One"`)
+}
+
+// A rule with no recovering instance is not observed past windowEnd: only the
+// affected rules pay the recovery wait.
+func TestCheckRecoveryObservationPollsOnlyAffectedRules(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	from := clock.Now()
+	to := from.Add(5 * time.Minute)
+	windowEnd := to.Add(4 * time.Minute)
+	recoveryAt := to.Add(-10 * time.Second)
+	resolveAt := recoveryAt.Add(10 * time.Minute)
+	fireBAt := windowEnd.Add(3 * time.Minute)
+
+	src := newCheckSource(func(title string, _ int) (Observation, error) {
+		now := clock.Now()
+		switch title {
+		case "Alert A":
+			state, active := StateRecovering, recoveryAt
+			switch {
+			case now.Before(recoveryAt):
+				state, active = StateFiring, from.Add(-time.Hour)
+			case !now.Before(resolveAt):
+				state, active = StateNormal, now
+			}
+			return recoveryObservation("a", "Alert A", now, 10*time.Minute,
+				Instance{Labels: map[string]string{"instance": "a"}, State: state, ActiveAt: active}), nil
+		case "Alert B":
+			state, active := StateNormal, now
+			switch {
+			case !now.Before(fireBAt):
+				state, active = StateFiring, windowEnd
+			case !now.Before(windowEnd):
+				state, active = StatePending, windowEnd
+			}
+			return recoveryObservation("b", "Alert B", now, 0,
+				Instance{Labels: map[string]string{"instance": "b"}, State: state, ActiveAt: active}), nil
+		}
+		return Observation{}, fmt.Errorf("unexpected title %q", title)
+	})
+	src.defs = []Definition{
+		recoveringScenarioDef("a", "Alert A"),
+		recoveringScenarioDef("b", "Alert B"),
+	}
+
+	cfg := Config{
+		URL:    "https://grafana.example.com",
+		Alerts: []string{"uid:a", "uid:b"},
+		From:   from,
+		To:     to,
+		Clock:  clock,
+		Notes:  &strings.Builder{},
+	}.withDefaults()
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Empty(t, res.Violations)
+	for _, v := range res.Verdicts {
+		switch v.RuleUID {
+		case "a":
+			require.Equal(t, OutcomeRecovered, v.Outcome)
+		case "b":
+			require.Equal(t, OutcomeHealthy, v.Outcome)
+		default:
+			t.Fatalf("unexpected verdict %q", v.RuleUID)
+		}
+	}
+	require.Greater(t, src.callCount("Alert A"), src.callCount("Alert B"),
+		"only the recovering rule is observed past windowEnd")
+}
+
+// A recovering instance that never resolves inside its KeepFiringFor fails
+// closed: the run terminates at the deadline and the episode stays open.
+func TestCheckRecoveringNeverResolvesFailsClosed(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	from := clock.Now()
+	to := from.Add(5 * time.Minute)
+	recoveryAt := to.Add(-10 * time.Second)
+
+	src := newCheckSource(func(_ string, _ int) (Observation, error) {
+		now := clock.Now()
+		state, active := StateRecovering, recoveryAt
+		if now.Before(recoveryAt) {
+			state, active = StateFiring, from.Add(-time.Hour)
+		}
+		return recoveryObservation("r1", "Rule One", now, time.Minute,
+			Instance{Labels: map[string]string{"instance": "a"}, State: state, ActiveAt: active}), nil
+	})
+	src.defs = []Definition{recoveringScenarioDef("r1", "Rule One")}
+
+	cfg := Config{
+		URL:    "https://grafana.example.com",
+		Alerts: []string{"uid:r1"},
+		From:   from,
+		To:     to,
+		Clock:  clock,
+		Notes:  &strings.Builder{},
+	}.withDefaults()
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Len(t, res.Violations, 1)
+	require.Equal(t, OutcomeStillFailing, res.Violations[0].Outcome)
+	require.Equal(t, OutcomeStillFailing, res.Verdicts[0].Outcome)
+	require.Contains(t, notesOf(cfg), "did not resolve before")
+}
+
+// afterHookClock runs hook once, on the first wait, so a test can append to a
+// log the recovery tail is reading.
+type afterHookClock struct {
+	*virtualClock
+	hook func()
+}
+
+func (c *afterHookClock) After(d time.Duration) <-chan time.Time {
+	if c.hook != nil {
+		h := c.hook
+		c.hook = nil
+		h()
+	}
+	return c.virtualClock.After(d)
+}
+
+// The recovery tail reads the running recorder's log: the resolution poll is
+// appended after the first read and must end the wait.
+func TestRecoveryWaitTailSourceReadsTheRunningRecordersLog(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "log.jsonl")
+	from := testNow
+	to := from.Add(5 * time.Minute)
+	windowEnd := to.Add(checkGrace)
+	recoveryAt := to.Add(-time.Minute)
+	resolveAt := windowEnd.Add(checkPollEvery)
+	key := instanceKey(lbl("a"))
+
+	w, err := NewWriter(path, newFakeClock(resolveAt))
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
+		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: from.Add(-time.Minute),
+		Rules: []LoggedRule{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60, PollEverySeconds: checkPollEvery.Seconds()}},
+	}))
+	for at := from; !at.After(windowEnd); at = at.Add(checkPollEvery) {
+		state, active := StateFiring, from.Add(-time.Hour)
+		if !at.Before(recoveryAt) {
+			state, active = StateRecovering, recoveryAt
+		}
+		require.NoError(t, w.WritePoll(Poll{
+			RuleUID: checkUID, GrafanaNow: at, Found: true, Health: "ok", LastEvaluation: at,
+			KeepFiringForMS: (10 * time.Minute).Milliseconds(),
+			Abnormal:        []Instance{{Labels: lbl("a"), State: state, ActiveAt: active}},
+		}))
+	}
+
+	tail, err := newLogTailer(path)
+	require.NoError(t, err)
+	defer tail.Close()
+	base, sentinel, err := tail.read()
+	require.NoError(t, err)
+	require.Nil(t, sentinel)
+
+	clock := &afterHookClock{virtualClock: newVirtualClock(windowEnd)}
+	clock.hook = func() {
+		require.NoError(t, w.WritePoll(Poll{
+			RuleUID: checkUID, GrafanaNow: resolveAt, Found: true, Health: "ok",
+			LastEvaluation: resolveAt, Cleared: []string{key},
+		}))
+	}
+	cfg := Config{URL: "https://grafana.example.com", Clock: clock, Notes: &strings.Builder{}}.withDefaults()
+	defs := []Definition{recoveringScenarioDef(checkUID, checkTitle)}
+	rt := map[string]RuleTimings{checkUID: newRuleTimings(checkPollEvery, 60)}
+
+	out, err := recoveryWait(context.Background(), cfg, defs, rt, base, from, windowEnd, tailRecoverySource(tail))
+	require.NoError(t, err)
+	require.Len(t, out, 1)
+	require.Equal(t, resolveAt, out[0].GrafanaNow)
+	require.Contains(t, out[0].Cleared, key)
+	require.NoError(t, w.Stop())
+}
+
+// A recording that already contains the recovery resolution classifies from
+// the log alone: no live source is polled.
+func TestCheckRecorderModeReadsRecoveryResolutionFromTheLog(t *testing.T) {
+	from := testNow
+	to := from.Add(5 * time.Minute)
+	windowEnd := to.Add(checkGrace)
+	recoveryAt := to.Add(-time.Minute)
+	resolveAt := windowEnd.Add(checkPollEvery)
+	key := instanceKey(lbl("a"))
+
+	path := filepath.Join(t.TempDir(), "log.jsonl")
+	w, err := NewWriter(path, newFakeClock(resolveAt))
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
+		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0",
+		StartedAt: from.Add(-time.Minute), ReadyAt: from.Add(-time.Minute),
+		Rules: []LoggedRule{{
+			UID: checkUID, Title: checkTitle, Folder: "F", Group: "G",
+			IntervalSeconds: 60, NoDataState: "OK", ExecErrState: "OK",
+			PollEverySeconds: checkPollEvery.Seconds(),
+		}},
+	}))
+	for at := from; !at.After(resolveAt); at = at.Add(checkPollEvery) {
+		p := Poll{
+			RuleUID: checkUID, GrafanaNow: at, Found: true, State: "inactive", Health: "ok",
+			LastEvaluation: at, KeepFiringForMS: (10 * time.Minute).Milliseconds(),
+		}
+		switch {
+		case at.Before(recoveryAt):
+			p.State = "firing"
+			p.Abnormal = []Instance{{Labels: lbl("a"), State: StateFiring, ActiveAt: from.Add(-time.Hour)}}
+		case at.Before(resolveAt):
+			p.Abnormal = []Instance{{Labels: lbl("a"), State: StateRecovering, ActiveAt: recoveryAt}}
+		default:
+			p.Cleared = []string{key}
+		}
+		require.NoError(t, w.WritePoll(p))
+	}
+	require.NoError(t, w.Stop())
+	writePid(t, path+".pid", fmt.Sprintf("%d\n", deadPid(t)))
+
+	clock := newVirtualClock(testNow)
+	cfg := recorderConfig(t, clock, path)
+	cfg.NoFailFast = true
+	// The log proves the evaluations and holds the resolution, so no live poll
+	// may happen.
+	src := newCheckSource(func(title string, _ int) (Observation, error) {
+		require.Fail(t, "unexpected live poll: the log is the evidence")
+		return Observation{}, errors.New("unexpected poll")
+	})
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Empty(t, res.Violations)
+	require.Len(t, res.Verdicts, 1)
+	require.Equal(t, OutcomeRecovered, res.Verdicts[0].Outcome)
+}

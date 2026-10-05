@@ -101,13 +101,13 @@ func readAlerts(stdin io.Reader, flagName, path string) ([]string, error) {
 // parseStates parses check's --states flag: a comma-separated list of the
 // "bad" state vocabulary Config.States matches against (classify.go's
 // badStateSet). An empty string is not resolved here — it means "use the
-// library default of {firing}" — so this returns nil, nil for "" rather than
-// an error.
+// library default of {firing, recovering}" — so this returns nil, nil for ""
+// rather than an error.
 //
 // normal is deliberately NOT accepted. The vocabulary is fixed to
-// firing | pending | nodata | error precisely because "normal" is the good
-// state, never a bad one to classify against: --states normal would turn every
-// healthy instance into a violation and fail every healthy fleet.
+// firing | pending | recovering | nodata | error precisely because "normal" is
+// the good state, never a bad one to classify against: --states normal would
+// turn every healthy instance into a violation and fail every healthy fleet.
 func parseStates(s string) ([]gate.State, error) {
 	if strings.TrimSpace(s) == "" {
 		return nil, nil
@@ -119,10 +119,10 @@ func parseStates(s string) ([]gate.State, error) {
 			continue
 		}
 		switch gate.State(part) {
-		case gate.StateFiring, gate.StatePending, gate.StateNodata, gate.StateError:
+		case gate.StateFiring, gate.StatePending, gate.StateRecovering, gate.StateNodata, gate.StateError:
 			out = append(out, gate.State(part))
 		default:
-			return nil, fmt.Errorf("--states: unknown state %q (want any of: firing, pending, nodata, error)", part)
+			return nil, fmt.Errorf("--states: unknown state %q (want any of: firing, pending, recovering, nodata, error)", part)
 		}
 	}
 	if len(out) == 0 {

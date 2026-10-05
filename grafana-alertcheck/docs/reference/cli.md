@@ -83,7 +83,7 @@ grafana-alertcheck check [--in <file>] [--pidfile F] --from RFC3339 --to RFC3339
 | `--include-labels` | — | Comma-separated exact-match `key=value` pairs selecting rules by label (cannot be combined with `--alerts`) |
 | `--exclude-labels` | — | Comma-separated exact-match `key=value` pairs; a rule carrying any of them is dropped (requires `--include-labels`) |
 | `--exclude-alerts` | — | File of alert names, one per line, or `-` for stdin; subtracted from the selected set (works with `--alerts` and with labels; refused **with** `--in`) |
-| `--states` | `firing` | Comma-separated bad states: `firing,pending,nodata,error` |
+| `--states` | `firing,recovering` | Comma-separated bad states: `firing,pending,recovering,nodata,error` |
 | `--preexisting` | `fail-unless-recovered` | `fail-unless-recovered` \| `fail` \| `ignore` |
 | `--min-observed` | every resolved rule | Minimum rules that must be observed |
 | `--allow-paused` | `false` | Don't count pre-window-paused rules against `--min-observed` |
