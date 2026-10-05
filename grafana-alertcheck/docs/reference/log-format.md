@@ -34,22 +34,39 @@ The header must be line 1, appear once, and carry `schema_version` `1` (any othe
   "ready_at": "2026-09-07T10:00:27Z",
   "rules": [
     {
+      "key": "rule0000001",
       "uid": "rule0000001",
       "title": "HighErrorRate",
       "folder": "Platform",
       "group": "api",
+      "source_kind": "grafana",
       "for_seconds": 300,
       "interval_seconds": 60,
       "is_paused": false,
       "no_data_state": "OK",
       "exec_err_state": "OK",
       "poll_every_seconds": 30
+    },
+    {
+      "key": "ds:[\"vm\",\"ExampleMetrics\",\"ExampleTargetDown\"]",
+      "uid": "",
+      "title": "ExampleTargetDown",
+      "group": "ExampleMetrics",
+      "source_kind": "datasource",
+      "datasource_uid": "vm",
+      "datasource_name": "VM Prod",
+      "file": "/etc/vm/rules/example.yml",
+      "for_seconds": 300,
+      "interval_seconds": 60,
+      "is_paused": false,
+      "poll_every_seconds": 30
     }
   ]
 }
 ```
 
-- `url` and `rules` are the log's identity — `check` validates them against the current environment and a fresh ruler read.
+- `url` and `rules` are the log's identity — `check` validates them against the current environment and a fresh read.
+- `key` is the rule's identity across both source kinds; `uid` is the API-given uid and is empty for a datasource-managed rule. `source_kind`, `datasource_uid`, `datasource_name` and `file` are additive (schema stays `1`) and let `check` re-resolve a datasource rule without discovery. A v1 log written before these fields existed still reads.
 - `started_at` is when the recording opened; `ready_at` is when the first-observation pass completed and every watched, non-paused rule had been observed once. The pass is sequential, so `check` refuses a `from` before `ready_at` (a window opening inside the pass would rest on observations that do not exist). `ready_at` is absent on logs written before the field existed; `check` then falls back to `started_at`.
 - `is_paused` records the pause state at record start (the moment `paused` means).
 - `poll_every_seconds` is the cadence the recording **actually used** (after any `--poll-interval` override). `check` derives `maxGap` from it, never from `interval_seconds`.
@@ -60,6 +77,7 @@ The header must be line 1, appear once, and carry `schema_version` `1` (any othe
 ```json
 {
   "type": "poll",
+  "rule_key": "rule0000001",
   "rule_uid": "rule0000001",
   "grafana_now": "2026-09-07T10:00:30Z",
   "skew_ms": 20,
@@ -80,6 +98,7 @@ The header must be line 1, appear once, and carry `schema_version` `1` (any othe
 
 Field notes:
 
+- `rule_key` is the identity across both kinds; `rule_uid` is kept for compatibility and is empty for a datasource-managed rule. A reader uses `rule_key` when present, else `rule_uid`, so an old v1 log stays readable.
 - `grafana_now` is the response's `Date` header — never the runner clock.
 - `skew_ms`/`skew_bound_ms` are the per-poll clock-skew estimate and its uncertainty (RTT/2), in milliseconds for compactness only.
 - `found: false` is an authoritative `2xx` in which this rule was absent — a transport failure is retried and never becomes a poll.

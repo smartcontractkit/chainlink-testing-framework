@@ -25,7 +25,7 @@ func SelectByLabels(defs []Definition, include, exclude []LabelMatcher) ([]Defin
 			continue
 		}
 		matchedInclude++
-		if d.Kind != KindGrafanaManaged {
+		if d.Kind == KindRecording || (d.Kind == KindDatasourceManaged && d.DatasourceUID == "") {
 			return nil, fmt.Errorf("label selection matches %q, a %s, which is not supported", d.Title, kindName(d.Kind))
 		}
 		if matchesAny(d.Labels, exclude) {
@@ -81,11 +81,11 @@ func subtractExcluded(all, selected []Definition, excludeAlerts []string, folder
 	}
 	drop := make(map[string]bool, len(excluded))
 	for _, d := range excluded {
-		drop[d.UID] = true
+		drop[defKey(d)] = true
 	}
 	out := make([]Definition, 0, len(selected))
 	for _, d := range selected {
-		if !drop[d.UID] {
+		if !drop[defKey(d)] {
 			out = append(out, d)
 		}
 	}

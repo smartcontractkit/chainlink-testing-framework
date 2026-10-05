@@ -59,16 +59,17 @@ func handoffProblems(t map[string]RuleTimings, measured map[string]time.Duration
 	}
 	jobs := make([]job, 0, len(t))
 	for _, p := range first {
-		rt, ok := t[p.RuleUID]
+		key := pollKey(p)
+		rt, ok := t[key]
 		if !ok {
 			continue
 		}
-		m, ok := measured[p.RuleUID]
+		m, ok := measured[key]
 		if !ok {
-			return nil, fmt.Errorf("startup handoff: rule %s was never measured", ruleLabel(rt.title, p.RuleUID))
+			return nil, fmt.Errorf("startup handoff: rule %s was never measured", ruleLabel(rt.title, key))
 		}
 		jobs = append(jobs, job{
-			uid:       p.RuleUID,
+			uid:       key,
 			title:     rt.title,
 			due:       runnerTime(p, p.GrafanaNow).Add(rt.pollEvery),
 			latency:   m,

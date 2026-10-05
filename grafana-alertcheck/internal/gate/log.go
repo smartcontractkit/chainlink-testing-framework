@@ -36,10 +36,19 @@ const missingSeriesReason = "MissingSeries"
 // the header URL it IS the log's identity, which check validates, and it
 // supplies the alert set in check mode.
 type LoggedRule struct {
-	UID    string `json:"uid"`
-	Title  string `json:"title"`
-	Folder string `json:"folder"`
-	Group  string `json:"group"`
+	// Key is the rule's identity across both source kinds; uid stays empty for
+	// datasource-managed rules. SourceKind, DatasourceUID/Name and File are
+	// additive (schema 1) and let a later check re-resolve a ds rule without
+	// discovery.
+	Key            string `json:"key,omitempty"`
+	UID            string `json:"uid"`
+	Title          string `json:"title"`
+	Folder         string `json:"folder"`
+	Group          string `json:"group"`
+	SourceKind     string `json:"source_kind,omitempty"`
+	DatasourceUID  string `json:"datasource_uid,omitempty"`
+	DatasourceName string `json:"datasource_name,omitempty"`
+	File           string `json:"file,omitempty"`
 	// ForSeconds, IntervalSeconds, NoDataState and ExecErrState are purely
 	// forensic: a resolve-time snapshot that makes the uploaded artifact
 	// self-describing to a human reading it after the runner is gone. check
@@ -104,7 +113,7 @@ func (h Header) readyAt() time.Time {
 func (h Header) pausedAtStart() map[string]bool {
 	paused := make(map[string]bool, len(h.Rules))
 	for _, lr := range h.Rules {
-		paused[lr.UID] = lr.IsPaused
+		paused[loggedKey(lr)] = lr.IsPaused
 	}
 	return paused
 }
@@ -112,7 +121,12 @@ func (h Header) pausedAtStart() map[string]bool {
 // Poll is one reduced observation of one rule — the log's heartbeat and the
 // only input the pure coverage and classification layers ever see.
 type Poll struct {
-	RuleUID    string    `json:"rule_uid"`
+	// RuleKey is the map key across both source kinds; RuleUID is kept for
+	// compatibility and is empty for datasource-managed rules. pollKey reads
+	// RuleKey when present, else RuleUID, so a v1 log written before rule_key
+	// stays readable.
+	RuleKey    string    `json:"rule_key,omitempty"`
+	RuleUID    string    `json:"rule_uid,omitempty"`
 	GrafanaNow time.Time `json:"grafana_now"` // the response's Date header
 	// SkewMS, SkewBoundMS and LatencyMS are milliseconds for JSONL
 	// compactness ONLY. The pure layer never touches raw ms: it reads
@@ -196,23 +210,28 @@ func (r *Reducer) Reduce(uid string, obs Observation) Poll {
 	defer r.mu.Unlock()
 
 	p := Poll{
-		RuleUID:     uid,
+		RuleKey:     uid,
 		GrafanaNow:  obs.GrafanaNow,
 		SkewMS:      obs.Skew.Milliseconds(),
 		SkewBoundMS: obs.SkewBound.Milliseconds(),
 		LatencyMS:   obs.Latency.Milliseconds(),
 	}
 
-	rule := stateRuleByUID(obs.Rules, uid)
+	rule := stateRuleByKey(obs.Rules, uid)
 	if rule == nil {
 		// An authoritative "the rule is absent". No markers are computed and
 		// the previous abnormal set is kept untouched: if the rule comes back
 		// with an instance missing, the next poll still reports that instance
-		// as vanished rather than losing the transition entirely.
+		// as vanished rather than losing the transition entirely. The uid is
+		// kept for a Grafana rule (uid == key); a datasource key is not a uid.
+		if !strings.HasPrefix(uid, dsKeyPrefix) {
+			p.RuleUID = uid
+		}
 		return p
 	}
 
 	p.Found = true
+	p.RuleUID = rule.UID
 	p.State = rule.State
 	p.Health = rule.Health
 	p.LastError = rule.LastError
@@ -246,6 +265,12 @@ func (r *Reducer) Reduce(uid string, obs Observation) Poll {
 		}
 		inst, found := present[key]
 		switch {
+		case !found && rule.DatasourceUID != "":
+			// A datasource-managed response carries only active instances, so
+			// an instance leaving it IS the resolution. Documented weaker
+			// guarantee: a vanished series is indistinguishable from a
+			// recovery, and is treated as one.
+			p.Cleared = append(p.Cleared, key)
 		case !found:
 			// Fully absent from the response: a discontinuity, not a recovery.
 			p.Vanished = append(p.Vanished, key)
@@ -291,17 +316,17 @@ func (r *Reducer) seedFrom(polls []Poll) {
 		for _, inst := range p.Abnormal {
 			keys[instanceKey(inst.Labels)] = struct{}{}
 		}
-		r.prevAbnormal[p.RuleUID] = keys
+		r.prevAbnormal[pollKey(p)] = keys
 	}
 }
 
-// stateRuleByUID picks one rule out of a state response BY UID (nil = the
+// stateRuleByKey picks one rule out of a state response BY KEY (nil = the
 // authoritative "rule absent"). Never by title: the ?rule_name= filter is a
 // title filter and can return several rules sharing a title. The single
 // selection for the package — Reduce and the drain wait both use it.
-func stateRuleByUID(rules []StateRule, uid string) *StateRule {
+func stateRuleByKey(rules []StateRule, key string) *StateRule {
 	for i := range rules {
-		if rules[i].UID == uid {
+		if stateRuleKey(rules[i]) == key {
 			return &rules[i]
 		}
 	}
@@ -440,7 +465,7 @@ func (w *Writer) WritePoll(p Poll) error {
 		return fmt.Errorf("log writer already stopped")
 	}
 	if err := w.enc.Encode(pollRecord{Type: RecordPoll, Poll: p}); err != nil {
-		return fmt.Errorf("write poll for rule %s: %w", p.RuleUID, err)
+		return fmt.Errorf("write poll for rule %s: %w", pollKey(p), err)
 	}
 	return nil
 }

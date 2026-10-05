@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "data": {
+    "groups": [
+      {
+        "name": "ExampleMetrics",
+        "file": "/etc/vm/rules/example.yml",
+        "interval": 60,
+        "rules": [
+          {
+            "state": "firing",
+            "name": "ExampleTargetDown",
+            "query": "up == 0",
+            "duration": 300,
+            "labels": {
+              "severity": "warning",
+              "team": "example-team"
+            },
+            "annotations": {
+              "summary": "target down"
+            },
+            "alerts": [
+              {
+                "labels": {
+                  "instance": "example-host-1"
+                },
+                "annotations": {
+                  "summary": "target down"
+                },
+                "state": "firing",
+                "activeAt": "2026-08-01T00:00:00Z",
+                "value": "0"
+              }
+            ],
+            "health": "ok",
+            "lastEvaluation": "2026-08-01T00:01:00Z",
+            "type": "alerting"
+          },
+          {
+            "name": "example:recorded_metric:rate5m",
+            "query": "rate(example_metric_total[5m])",
+            "health": "ok",
+            "lastEvaluation": "2026-08-01T00:01:00Z",
+            "type": "recording"
+          }
+        ]
+      }
+    ]
+  }
+}

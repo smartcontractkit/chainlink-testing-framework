@@ -27,14 +27,23 @@ const (
 // relativeTimeRange and keep_firing_for are deliberately not parsed: nothing in
 // the gate reads them.
 type Definition struct {
+	// Key is the map key across both source kinds (identity.go). UID stays the
+	// API-given uid and is empty for datasource-managed rules.
+	Key                                  string
 	UID, Title, Folder, FolderUID, Group string
-	For                                  time.Duration
-	IntervalSeconds                      int
-	NoDataState                          string
-	ExecErrState                         string
-	IsPaused                             bool
-	Kind                                 RuleKind
-	Labels                               map[string]string
+	// DatasourceUID, DatasourceName and File are populated for
+	// KindDatasourceManaged only; File is the Prometheus rule group's file.
+	DatasourceUID, DatasourceName, File string
+	For                                 time.Duration
+	IntervalSeconds                     int
+	NoDataState                         string
+	ExecErrState                        string
+	IsPaused                            bool
+	Kind                                RuleKind
+	// PauseObservable is true only for Grafana-managed rules, whose state
+	// endpoint reports isPaused. A datasource-managed rule has no pause signal.
+	PauseObservable bool
+	Labels          map[string]string
 }
 
 // ParseDefinitions strictly parses a ruler-endpoint response body
@@ -140,7 +149,7 @@ func parseDefinition(raw json.RawMessage, folder, group string) (Definition, err
 	if err := req(ga, "uid", &uid); err != nil {
 		return Definition{}, fmt.Errorf("grafana_alert: %w", err)
 	}
-	def := Definition{Folder: folder, Group: group, For: forDur, UID: uid, Labels: labels}
+	def := Definition{Key: uid, Folder: folder, Group: group, For: forDur, UID: uid, Labels: labels}
 
 	// Classify by the presence of "record" before requiring anything else.
 	// no_data_state/exec_err_state/is_paused/intervalSeconds are alerting-only
@@ -172,6 +181,7 @@ func parseDefinition(raw json.RawMessage, folder, group string) (Definition, err
 	}
 
 	def.Kind = KindGrafanaManaged
+	def.PauseObservable = true
 	if err := req(ga, "title", &def.Title); err != nil {
 		return Definition{}, fmt.Errorf("rule %q: grafana_alert: %w", uid, err)
 	}

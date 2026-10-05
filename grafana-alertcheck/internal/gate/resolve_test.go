@@ -61,7 +61,6 @@ func TestResolve_NoMatch(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no rule matched")
 	require.Contains(t, err.Error(), "list")
-	require.Contains(t, err.Error(), "datasource-managed alert rules cannot be observed")
 }
 
 func TestResolve_NoMatchSubstringSuggestion(t *testing.T) {
@@ -124,7 +123,7 @@ func TestResolve_UnsupportedKindsExcludedFromNoMatchSurfaces(t *testing.T) {
 	_, _, err = Resolve(combined, []string{"Example"}, "")
 	require.Error(t, err, "want a no-match error for a name matching no title exactly")
 
-	wantCount := fmt.Sprintf("(%d grafana-managed rules available", len(supported))
+	wantCount := fmt.Sprintf("(%d rules available", len(supported))
 	require.Contains(t, err.Error(), wantCount)
 	require.NotContains(t, err.Error(), "ExampleTargetDown")
 	require.NotContains(t, err.Error(), "example:recorded_metric:rate5m")
@@ -195,6 +194,41 @@ func TestResolve_EmptyAndBlankLinesDiscarded(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resolved, 1)
 	require.Equal(t, "rule0000007", resolved[0].UID)
+}
+
+func dsResolveDef(ds, dsName, group, title string) Definition {
+	return Definition{
+		Key: ruleKey(ds, group, title, ""), Title: title, Group: group,
+		Kind: KindDatasourceManaged, DatasourceUID: ds, DatasourceName: dsName,
+	}
+}
+
+func TestResolve_DatasourceFormsAndKey(t *testing.T) {
+	defs := []Definition{dsResolveDef("vm", "VictoriaMetrics - Prod", "ExampleMetrics", "ExampleTargetDown")}
+
+	for _, name := range []string{
+		"ExampleTargetDown",
+		"ExampleMetrics/ExampleTargetDown",
+		"VictoriaMetrics - Prod/ExampleMetrics/ExampleTargetDown",
+		"key:" + ruleKey("vm", "ExampleMetrics", "ExampleTargetDown", ""),
+	} {
+		resolved, _, err := Resolve(defs, []string{name}, "")
+		require.NoErrorf(t, err, "name %q", name)
+		require.Len(t, resolved, 1)
+		require.Equal(t, "vm", resolved[0].DatasourceUID)
+	}
+}
+
+func TestResolve_DatasourceAmbiguityAcrossSources(t *testing.T) {
+	defs := []Definition{
+		dsResolveDef("vm-a", "A", "G", "Same"),
+		dsResolveDef("vm-b", "B", "G", "Same"),
+	}
+	_, _, err := Resolve(defs, []string{"Same"}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "matches 2 rules")
+	require.Contains(t, err.Error(), "A")
+	require.Contains(t, err.Error(), "B")
 }
 
 func TestResolve_FolderScopesBareTitle(t *testing.T) {

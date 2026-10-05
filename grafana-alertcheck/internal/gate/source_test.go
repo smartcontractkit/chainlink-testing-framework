@@ -146,7 +146,7 @@ func TestHTTPSource_RuleState_EmptyIsNotAnError(t *testing.T) {
 
 	clock := newFakeClock(time.Now())
 	src := NewHTTPSource(srv.URL, "", clock)
-	obs, err := src.RuleState(context.Background(), "Anything")
+	obs, err := src.RuleState(context.Background(), RuleRef{Title: "Anything"})
 	require.NoError(t, err)
 	require.Empty(t, obs.Rules, "an authoritative 2xx is not a transport error")
 	require.False(t, obs.GrafanaNow.IsZero(), "want the response's Date header value")
@@ -165,7 +165,7 @@ func TestHTTPSource_RuleState_EscapesRuleName(t *testing.T) {
 	clock := newFakeClock(time.Now())
 	src := NewHTTPSource(srv.URL, "", clock)
 	title := "[JD] No Job Proposals & More"
-	_, err := src.RuleState(context.Background(), title)
+	_, err := src.RuleState(context.Background(), RuleRef{Title: title})
 	require.NoError(t, err)
 	require.Equal(t, "rule_name="+url.QueryEscape(title), gotQuery)
 }
@@ -182,7 +182,7 @@ func TestHTTPSource_Definitions_HappyPath(t *testing.T) {
 
 	clock := newFakeClock(time.Now())
 	src := NewHTTPSource(srv.URL, "", clock)
-	defs, err := src.Definitions(context.Background())
+	defs, err := src.GrafanaDefinitions(context.Background())
 	require.NoError(t, err)
 	require.NotEmpty(t, defs)
 }
@@ -287,7 +287,7 @@ func TestHTTPSource_ObservationTiming(t *testing.T) {
 				}, emptyStateBody())
 			})
 			src := NewHTTPSource(srv.URL, "", clock)
-			obs, err := src.RuleState(context.Background(), "Anything")
+			obs, err := src.RuleState(context.Background(), RuleRef{Title: "Anything"})
 			require.NoError(t, err)
 			require.Equal(t, c.drift, obs.Skew)
 			require.Equal(t, time.Second, obs.SkewBound, "RTT/2 with a 2s round trip to headers")
@@ -324,7 +324,7 @@ func TestHTTPSourceStalenessNeverFalsePositiveUnderSkew(t *testing.T) {
 	})
 
 	src := NewHTTPSource(srv.URL, "", clock)
-	obs, err := src.RuleState(context.Background(), def.Title)
+	obs, err := src.RuleState(context.Background(), RuleRef{Title: def.Title})
 	require.NoError(t, err)
 	require.True(t, obs.GrafanaNow.Equal(serverDate),
 		"want the Date header, never the runner's clock")
@@ -409,7 +409,7 @@ func TestHTTPSource_RuleState_GarbageBodyRetries(t *testing.T) {
 
 	clock := newFakeClock(time.Now())
 	src := NewHTTPSource(srv.URL, "", clock)
-	obs, err := src.RuleState(context.Background(), "Anything")
+	obs, err := src.RuleState(context.Background(), RuleRef{Title: "Anything"})
 	require.NoError(t, err)
 	require.Empty(t, obs.Rules)
 	mu.Lock()
@@ -429,7 +429,7 @@ func TestHTTPSource_Definitions_GarbageBodyGivesUp(t *testing.T) {
 
 	clock := newFakeClock(time.Now())
 	src := NewHTTPSource(srv.URL, "", clock)
-	_, err := src.Definitions(context.Background())
+	_, err := src.GrafanaDefinitions(context.Background())
 	require.Error(t, err)
 	require.Equal(t, int32(6), calls.Load(),
 		"a persistently unparseable 2xx body retries like any other transport failure")
@@ -514,7 +514,7 @@ func TestFakeSource(t *testing.T) {
 	v, err := f.Version(ctx)
 	require.NoError(t, err)
 	require.Equal(t, "13.1.0", v)
-	defs, err := f.Definitions(ctx)
+	defs, err := f.GrafanaDefinitions(ctx)
 	require.NoError(t, err)
 	require.Len(t, defs, 1)
 
@@ -522,18 +522,18 @@ func TestFakeSource(t *testing.T) {
 	f.script("Rule One", Observation{}, fmt.Errorf("boom"))
 	f.script("Rule One", Observation{Rules: nil}, nil)
 
-	obs, err := f.RuleState(ctx, "Rule One")
+	obs, err := f.RuleState(ctx, RuleRef{Title: "Rule One"})
 	require.NoError(t, err)
 	require.Len(t, obs.Rules, 1)
-	_, err = f.RuleState(ctx, "Rule One")
+	_, err = f.RuleState(ctx, RuleRef{Title: "Rule One"})
 	require.Error(t, err, "RuleState() call 2: want the scripted error, got nil")
-	obs, err = f.RuleState(ctx, "Rule One")
+	obs, err = f.RuleState(ctx, RuleRef{Title: "Rule One"})
 	require.NoError(t, err)
 	require.Nil(t, obs.Rules, "last script entry, then repeats")
-	obs, err = f.RuleState(ctx, "Rule One")
+	obs, err = f.RuleState(ctx, RuleRef{Title: "Rule One"})
 	require.NoError(t, err)
 	require.Nil(t, obs.Rules)
 
-	_, err = f.RuleState(ctx, "Unscripted Rule")
+	_, err = f.RuleState(ctx, RuleRef{Title: "Unscripted Rule"})
 	require.Error(t, err)
 }

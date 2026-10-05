@@ -61,6 +61,15 @@ When an instance leaves the bad set, the gate looks it up **in the same response
 
 A vanished instance that was bad stays `still_failing`. A metric that stops being emitted is not evidence of health — this is deliberate and can surprise users whose fix is to remove a metric rather than drive it to a good value.
 
+### Datasource-managed rules
+
+Datasource-managed (Prometheus-flavored) rules are read through Grafana's per-datasource Prometheus API, not the ruler. Their response carries only **active** instances, so an instance leaving the active set is treated as a real recovery (`cleared`). The weaker guarantee is documented deliberately: a vanished series is indistinguishable from a resolution, so a fix that stops emitting a metric passes for a datasource-managed rule where it would fail for a Grafana-managed one.
+
+Two coverage checks differ for these rules:
+
+- **Pause is not observable** — the datasource API has no `isPaused` signal, so check 7 is skipped with an explicit note. A pause is not treated as a pass; it simply cannot be seen.
+- **Health** — the datasource vocabulary reports `err`, which is normalized to `error`, so a sustained failing evaluation still triggers check 4. There are no `totals`, reasons or normal instances, so checks 5 and 9 never fire.
+
 ## Coverage proof
 
 Before classifying, `check` must **prove** continuous coverage of `[from, to]` for each alert. Nine checks run; any failure makes the rule `not_verified`:

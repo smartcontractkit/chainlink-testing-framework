@@ -75,13 +75,44 @@ func (e *RetryExhaustedError) Error() string {
 	return fmt.Sprintf("gave up after %d sequential failures: %v", e.Failures, e.Cause)
 }
 
+// RuleSource is one discovered datasource that can serve alerting rules.
+type RuleSource struct{ UID, Name string }
+
+// RuleRef is everything a poll needs to find one rule again: the identity key,
+// the source kind, and the exact filters each source API expects.
+type RuleRef struct {
+	Key                      string
+	Kind                     RuleKind
+	DatasourceUID            string // "" = Grafana-managed
+	UID                      string // Grafana-managed only
+	Group, Name, File, Title string
+}
+
+// ruleRefOf narrows a Definition to the poll identity.
+func ruleRefOf(d Definition) RuleRef {
+	return RuleRef{
+		Key:           defKey(d),
+		Kind:          d.Kind,
+		DatasourceUID: d.DatasourceUID,
+		UID:           d.UID,
+		Group:         d.Group,
+		Name:          d.Title,
+		File:          d.File,
+		Title:         d.Title,
+	}
+}
+
 // Source is everything the gate reads from Grafana. httpSource is the one
 // production implementation; the tests use a scripted fake
 // (source_fake_test.go) instead of real HTTP.
 type Source interface {
 	Version(ctx context.Context) (string, error)
-	Definitions(ctx context.Context) ([]Definition, error)
-	RuleState(ctx context.Context, title string) (Observation, error)
+	GrafanaDefinitions(ctx context.Context) ([]Definition, error)
+	DiscoverRuleSources(ctx context.Context) ([]RuleSource, error)
+	// DatasourceDefinitions names empty = fetch every rule; names non-empty =
+	// one request with repeated rule_name[] params.
+	DatasourceDefinitions(ctx context.Context, src RuleSource, names []string) ([]Definition, error)
+	RuleState(ctx context.Context, ref RuleRef) (Observation, error)
 }
 
 // grafanaVersion is a parsed major.minor.patch triple.
@@ -196,7 +227,7 @@ func (s *httpSource) Version(ctx context.Context) (string, error) {
 	})
 }
 
-func (s *httpSource) Definitions(ctx context.Context) ([]Definition, error) {
+func (s *httpSource) GrafanaDefinitions(ctx context.Context) ([]Definition, error) {
 	return retryTransport(ctx, s.clock, s.maxSequentialFailures, s.backoffBase, s.backoffCap, func() ([]Definition, error) {
 		r, err := s.doRequest(ctx, "/api/ruler/grafana/api/v1/rules")
 		if err != nil {
@@ -210,14 +241,100 @@ func (s *httpSource) Definitions(ctx context.Context) ([]Definition, error) {
 	})
 }
 
-func (s *httpSource) RuleState(ctx context.Context, title string) (Observation, error) {
-	path := "/api/prometheus/grafana/api/v1/rules?rule_name=" + url.QueryEscape(title)
+// DiscoverRuleSources lists every datasource that can serve Prometheus-flavored
+// alerting rules. The filter is strict — type=="prometheus" AND
+// jsonData.manageAlerts==true — because the AlertStateHistoryBackend datasource
+// shares VictoriaMetrics' backend and would otherwise make every rule name
+// ambiguous. Each candidate is probed; a probe failure is a hard error naming
+// the datasource, since a silently dropped source is a fail-open.
+func (s *httpSource) DiscoverRuleSources(ctx context.Context) ([]RuleSource, error) {
+	return retryTransport(ctx, s.clock, s.maxSequentialFailures, s.backoffBase, s.backoffCap, func() ([]RuleSource, error) {
+		r, err := s.doRequest(ctx, "/api/datasources")
+		if err != nil {
+			return nil, datasourceReadError(err)
+		}
+		var listed []struct {
+			UID      string `json:"uid"`
+			Name     string `json:"name"`
+			Type     string `json:"type"`
+			JSONData struct {
+				ManageAlerts bool `json:"manageAlerts"`
+			} `json:"jsonData"`
+		}
+		if err := json.Unmarshal(r.Body, &listed); err != nil {
+			return nil, &TransportError{Err: fmt.Errorf("parse /api/datasources: %w", err)}
+		}
+		var out []RuleSource
+		for _, d := range listed {
+			if d.Type != "prometheus" || !d.JSONData.ManageAlerts {
+				continue
+			}
+			if err := s.probeRuleSource(ctx, d.UID); err != nil {
+				return nil, fmt.Errorf("datasource %q (%s) has manageAlerts=true but its rule API is unusable: %w", d.Name, d.UID, err)
+			}
+			out = append(out, RuleSource{UID: d.UID, Name: d.Name})
+		}
+		return out, nil
+	})
+}
+
+// datasourceReadError names the missing permission on a 403/400, since that is
+// the one operator action the error can suggest.
+func datasourceReadError(err error) error {
+	return fmt.Errorf("list datasources (requires datasources:read plus datasource query permission): %w", err)
+}
+
+// probeRuleSource confirms a candidate serves rules: a 200 with no groups for a
+// probe name means a working, permitted rule API. A non-2xx is returned as-is.
+func (s *httpSource) probeRuleSource(ctx context.Context, uid string) error {
+	path := "/api/prometheus/" + url.PathEscape(uid) + "/api/v1/rules" + datasourceQuery([]string{"__probe__"}, "", "")
+	_, err := s.doRequest(ctx, path)
+	return err
+}
+
+func (s *httpSource) DatasourceDefinitions(ctx context.Context, src RuleSource, names []string) ([]Definition, error) {
+	path := "/api/prometheus/" + url.PathEscape(src.UID) + "/api/v1/rules" + datasourceQuery(names, "", "")
+	return retryTransport(ctx, s.clock, s.maxSequentialFailures, s.backoffBase, s.backoffCap, func() ([]Definition, error) {
+		r, err := s.doRequest(ctx, path)
+		if err != nil {
+			return nil, err
+		}
+		rules, parseErr := ParseDatasourceRules(r.Body, src.UID, src.Name)
+		if parseErr != nil {
+			return nil, &TransportError{Err: fmt.Errorf("parse datasource rule definitions: %w", parseErr)}
+		}
+		return DefinitionsFromDatasource(rules, src.UID, src.Name), nil
+	})
+}
+
+// datasourceQuery builds the vmalert filter query. The keys are literally
+// rule_name[], rule_group[] and file[] — vmalert reads only the []-suffixed
+// forms and ignores plain rule_name= (pinned by a unit test).
+func datasourceQuery(names []string, group, file string) string {
+	if len(names) == 0 && group == "" && file == "" {
+		return ""
+	}
+	v := url.Values{}
+	for _, n := range names {
+		v.Add("rule_name[]", n)
+	}
+	if group != "" {
+		v.Add("rule_group[]", group)
+	}
+	if file != "" {
+		v.Add("file[]", file)
+	}
+	return "?" + v.Encode()
+}
+
+func (s *httpSource) RuleState(ctx context.Context, ref RuleRef) (Observation, error) {
+	path, parse := s.ruleStateRequest(ref)
 	return retryTransport(ctx, s.clock, s.maxSequentialFailures, s.backoffBase, s.backoffCap, func() (Observation, error) {
 		r, err := s.doRequest(ctx, path)
 		if err != nil {
 			return Observation{}, err
 		}
-		rules, parseErr := ParseState(r.Body)
+		rules, parseErr := parse(r.Body)
 		if parseErr != nil {
 			// Treated as transient, not a schema break: an unparseable 2xx
 			// is far more likely a mid-stream hiccup than a permanent shape
@@ -233,6 +350,20 @@ func (s *httpSource) RuleState(ctx context.Context, title string) (Observation, 
 			Latency:    r.Latency,
 		}, nil
 	})
+}
+
+// ruleStateRequest picks the endpoint and parser for one ref. Grafana selects by
+// title (the ?rule_name= filter can return several rules sharing a title, so the
+// caller selects by key); a datasource rule is filtered by name, group and file
+// so the response carries exactly that rule.
+func (s *httpSource) ruleStateRequest(ref RuleRef) (string, func([]byte) ([]StateRule, error)) {
+	if ref.Kind == KindDatasourceManaged {
+		path := "/api/prometheus/" + url.PathEscape(ref.DatasourceUID) + "/api/v1/rules" +
+			datasourceQuery([]string{ref.Name}, ref.Group, ref.File)
+		return path, func(b []byte) ([]StateRule, error) { return ParseDatasourceRules(b, ref.DatasourceUID, "") }
+	}
+	path := "/api/prometheus/grafana/api/v1/rules?rule_name=" + url.QueryEscape(ref.Title)
+	return path, ParseState
 }
 
 // requestResult is the outcome of one successful HTTP attempt in doRequest:

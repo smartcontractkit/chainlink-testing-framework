@@ -32,6 +32,12 @@ HTTP ──> Source ──> []StateRule ──> reduce ──> []Poll ──> pr
                        JSONL log ──> ReadLog ──┘
 ```
 
+The `Source` interface is the only HTTP boundary and covers both rule kinds: `GrafanaDefinitions` reads the ruler, `DiscoverRuleSources` + `DatasourceDefinitions` read per-datasource Prometheus rules, and `RuleState` takes a `RuleRef` describing exactly how to find one rule again.
+
+### Key vs uid
+
+A rule's map key is its **key**, not its uid. For a Grafana-managed rule the key *is* the uid; a datasource-managed rule has no uid, so its key is a JSON-encoded `(datasource, group, name)` tuple. The key, not the uid, is what `rt`, the scheduler, the `Reducer`, `pausedAtStart`, exclusions, `Coverage`, `Thresholds` and `Verdicts` are indexed by. The log records both: `key` and, for a Grafana rule, `uid`; the poll reader uses `rule_key` when present and falls back to `rule_uid`, so an old v1 log stays readable. Identity is not weakened — for Grafana-managed rules behavior is byte-for-byte unchanged, because key == uid there.
+
 - `proveCoverage` (the nine coverage checks) and `decide` (the instance timelines and outcomes) are pure; tests drive them with `[]Poll` literals and a fake `Clock`, with no sleeping or fixture server.
 - `Check`/`Watch` are I/O shells: HTTP, signals, the pidfile, file reads, the countdown print. The only test doubles needed are the `Source` and `Clock` interfaces.
 - `Policy` is the narrowed view of `Config` that reaches the pure layer — classification knobs and the window, no URL and no token. The token must never cross that line, which is the cheapest guarantee it never lands in an error string or a result.

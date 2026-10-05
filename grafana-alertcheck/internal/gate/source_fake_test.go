@@ -134,11 +134,17 @@ type fakeSource struct {
 	defs    []Definition
 	defsErr error
 
-	// states maps a rule title to a queue of scripted results, popped one
-	// per call to RuleState. Once the queue is down to its last entry, that
-	// entry repeats — so a test can script the interesting transitions and
-	// let a long collection loop settle into steady state without scripting
-	// every single poll.
+	// ruleSources is what DiscoverRuleSources returns; dsDefs maps a datasource
+	// UID to the definitions DatasourceDefinitions returns.
+	ruleSources []RuleSource
+	sourcesErr  error
+	dsDefs      map[string][]Definition
+
+	// states maps a rule title (Grafana) or key (datasource) to a queue of
+	// scripted results, popped one per call to RuleState. Once the queue is down
+	// to its last entry, that entry repeats — so a test can script the
+	// interesting transitions and let a long collection loop settle into steady
+	// state without scripting every single poll.
 	states map[string][]scriptedObservation
 }
 
@@ -152,7 +158,7 @@ func (f *fakeSource) Version(_ context.Context) (string, error) {
 	return f.version, f.versionErr
 }
 
-func (f *fakeSource) Definitions(_ context.Context) ([]Definition, error) {
+func (f *fakeSource) GrafanaDefinitions(_ context.Context) ([]Definition, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	// Defensive copy: Definition is a value type, so Clone copies the
@@ -161,16 +167,46 @@ func (f *fakeSource) Definitions(_ context.Context) ([]Definition, error) {
 	return slices.Clone(f.defs), f.defsErr
 }
 
-func (f *fakeSource) RuleState(_ context.Context, title string) (Observation, error) {
+func (f *fakeSource) DiscoverRuleSources(_ context.Context) ([]RuleSource, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	q := f.states[title]
+	return slices.Clone(f.ruleSources), f.sourcesErr
+}
+
+func (f *fakeSource) DatasourceDefinitions(_ context.Context, src RuleSource, names []string) ([]Definition, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	defs := slices.Clone(f.dsDefs[src.UID])
+	if len(names) == 0 {
+		return defs, nil
+	}
+	want := make(map[string]bool, len(names))
+	for _, n := range names {
+		want[n] = true
+	}
+	var out []Definition
+	for _, d := range defs {
+		if want[d.Title] {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeSource) RuleState(_ context.Context, ref RuleRef) (Observation, error) {
+	key := ref.Title
+	if ref.Kind == KindDatasourceManaged {
+		key = ref.Key
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	q := f.states[key]
 	if len(q) == 0 {
-		return Observation{}, fmt.Errorf("fakeSource: no scripted response for %q", title)
+		return Observation{}, fmt.Errorf("fakeSource: no scripted response for %q", key)
 	}
 	next := q[0]
 	if len(q) > 1 {
-		f.states[title] = q[1:]
+		f.states[key] = q[1:]
 	}
 	// Defensive copy of the shared Rules slice so a caller mutating the
 	// returned Observation can't corrupt the scripted state other calls read.
@@ -179,11 +215,18 @@ func (f *fakeSource) RuleState(_ context.Context, title string) (Observation, er
 }
 
 // script appends one scripted (Observation, error) pair to be returned, in
-// order, by RuleState(ctx, title).
+// order, by RuleState(ctx, ref) for the Grafana rule with this title.
 func (f *fakeSource) script(title string, obs Observation, err error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.states[title] = append(f.states[title], scriptedObservation{obs: obs, err: err})
+}
+
+// scriptKey is script's datasource counterpart, keyed by the rule key.
+func (f *fakeSource) scriptKey(key string, obs Observation, err error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.states[key] = append(f.states[key], scriptedObservation{obs: obs, err: err})
 }
 
 var _ Source = (*fakeSource)(nil)

@@ -147,6 +147,8 @@ func grafanaTestServer(t *testing.T) *httptest.Server {
 			fmt.Fprint(w, healthBody("13.1.0"))
 		case strings.HasPrefix(r.URL.Path, "/api/ruler/"):
 			_, _ = w.Write(ruler)
+		case r.URL.Path == "/api/datasources":
+			_, _ = w.Write([]byte(`[]`))
 		case strings.HasPrefix(r.URL.Path, "/api/prometheus/"):
 			if r.URL.Query().Get("rule_name") == "" {
 				// The gate must never read the state endpoint unfiltered.

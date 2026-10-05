@@ -45,7 +45,8 @@ func runList(args []string, stdout, stderr io.Writer) int {
 		return 2
 	}
 
-	defs, err := src.Definitions(context.Background())
+	fmt.Fprintln(stderr, "discovering rule sources and reading definitions (this can take seconds per source)...")
+	defs, err := gate.ListAllDefinitions(context.Background(), src)
 	if err != nil {
 		fmt.Fprintf(stderr, "reading rule definitions: %v\n", err)
 		return 2
@@ -62,9 +63,11 @@ func runList(args []string, stdout, stderr io.Writer) int {
 	})
 
 	tw := tabwriter.NewWriter(stdout, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "KIND\tFOLDER\tGROUP\tTITLE\tUID")
+	fmt.Fprintln(tw, "KIND\tDATASOURCE\tFOLDER\tGROUP\tTITLE\tKEY\tUID")
 	for _, d := range defs {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", kindLabel(d.Kind), d.Folder, d.Group, d.Title, uidOrDash(d.UID))
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
+			kindLabel(d.Kind), datasourceOrDash(d.DatasourceName), d.Folder, d.Group, d.Title,
+			keyOrDash(d.Key, d.UID), uidOrDash(d.UID))
 	}
 	if err := tw.Flush(); err != nil {
 		fmt.Fprintf(stderr, "writing output: %v\n", err)
@@ -89,4 +92,21 @@ func uidOrDash(uid string) string {
 		return "-"
 	}
 	return uid
+}
+
+func datasourceOrDash(name string) string {
+	if name == "" {
+		return "-"
+	}
+	return name
+}
+
+func keyOrDash(key, uid string) string {
+	if key == "" {
+		key = uid
+	}
+	if key == "" {
+		return "-"
+	}
+	return key
 }

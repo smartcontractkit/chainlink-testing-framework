@@ -63,7 +63,7 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 
 	// pollsForRule (classify.go) is the single filter+sort implementation; this
 	// and classifyRule must not carry two independent copies.
-	rulePolls := pollsForRule(polls, def.UID)
+	rulePolls := pollsForRule(polls, defKey(def))
 
 	var res CoverageResult
 	fail := func(reason UnobservableReason, note string) {
@@ -173,19 +173,28 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 	// Check 7 — isPaused in-window. The PRIMARY pause detector: liveness
 	// (check 6) is only the backup for what IsPaused cannot show (a deleted
 	// rule, a stopped scheduler, a blocked evaluation). This is what catches
-	// pause-then-unpause, which the drain wait alone passes.
-	var pausedCount int
-	var pausedAt time.Time
-	for _, p := range inWindow {
-		if p.IsPaused {
-			pausedCount++
-			if pausedAt.IsZero() {
-				pausedAt = p.GrafanaNow
+	// pause-then-unpause, which the drain wait alone passes. A
+	// datasource-managed rule has no pause signal at all, so the check is
+	// skipped with an explicit note rather than passed silently.
+	if def.Kind == KindDatasourceManaged && !def.PauseObservable {
+		res.Notes = append(res.Notes, fmt.Sprintf(
+			"rule %q: pause is not observable for a datasource-managed rule; check 7 skipped", def.Title))
+		res.Notes = append(res.Notes, fmt.Sprintf(
+			"rule %q: a datasource-managed instance leaving the active set is treated as a recovery (a vanished series is indistinguishable from a resolution)", def.Title))
+	} else {
+		var pausedCount int
+		var pausedAt time.Time
+		for _, p := range inWindow {
+			if p.IsPaused {
+				pausedCount++
+				if pausedAt.IsZero() {
+					pausedAt = p.GrafanaNow
+				}
 			}
 		}
-	}
-	if pausedCount > 0 {
-		fail(ReasonPausedInWindow, fmt.Sprintf("observed paused on %d poll(s), first at %s", pausedCount, pausedAt.Format(time.RFC3339)))
+		if pausedCount > 0 {
+			fail(ReasonPausedInWindow, fmt.Sprintf("observed paused on %d poll(s), first at %s", pausedCount, pausedAt.Format(time.RFC3339)))
+		}
 	}
 
 	// Check 8 — rule absent. Found==false is authoritative (the transport
@@ -213,7 +222,7 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 	// comma-joined, so membership via reasonsContain, never a literal index).
 	nds, ees := def.NoDataState, def.ExecErrState
 	for _, lr := range h.Rules {
-		if lr.UID == def.UID {
+		if loggedKey(lr) == defKey(def) {
 			nds, ees = lr.NoDataState, lr.ExecErrState
 			break
 		}

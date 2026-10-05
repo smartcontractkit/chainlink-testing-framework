@@ -20,6 +20,7 @@ const (
 type Termination struct {
 	Kind    TerminationKind    `json:"kind"`
 	Alert   string             `json:"alert,omitempty"`
+	RuleKey string             `json:"rule_key,omitempty"`
 	RuleUID string             `json:"rule_uid,omitempty"`
 	Outcome Outcome            `json:"outcome,omitempty"`
 	Reason  UnobservableReason `json:"reason,omitempty"`
@@ -42,21 +43,23 @@ func terminalVerdict(h Header, polls []Poll, defs []Definition, rt map[string]Ru
 
 	var violation *Termination
 	for _, def := range defs {
-		if pausedAtStart[def.UID] {
+		key := defKey(def)
+		if pausedAtStart[key] {
 			continue
 		}
 		// The synthetic sentinel at `at` satisfies check 1, leaving only the
 		// checks decidable from the polls so far. The policy-specific nodata
 		// escalation is applied here too, or a configured terminal inability
 		// would never fail fast.
-		cov := proveCoverage(h, polls, &at, rt[def.UID], def, from, at, 0)
+		cov := proveCoverage(h, polls, &at, rt[key], def, from, at, 0)
 		if pol.NodataIsUnobservable {
-			applyNodataPolicy(def, polls, &cov, rt[def.UID], from, at)
+			applyNodataPolicy(def, polls, &cov, rt[key], from, at)
 		}
 		if cov.Unobservable {
 			return Termination{
 				Kind:    TerminationNotVerified,
 				Alert:   def.Title,
+				RuleKey: key,
 				RuleUID: def.UID,
 				Outcome: OutcomeNotVerified,
 				Reason:  cov.Reason,
@@ -70,6 +73,7 @@ func terminalVerdict(h Header, polls []Poll, defs []Definition, rt map[string]Ru
 				v := Termination{
 					Kind:    TerminationViolation,
 					Alert:   def.Title,
+					RuleKey: key,
 					RuleUID: def.UID,
 					Outcome: outcome,
 					At:      at,

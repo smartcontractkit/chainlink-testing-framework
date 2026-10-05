@@ -16,7 +16,7 @@ Connection details are always from the environment: `GRAFANA_URL` and `GRAFANA_T
 
 ## `list`
 
-Lists every rule from the ruler endpoint — kind, folder, group, title, uid. Useful to check auth and to find `uid:` names.
+Lists every rule — kind, datasource, folder, group, title, key, uid. Grafana-managed rules come from the ruler endpoint; datasource-managed rules are auto-discovered per datasource through the Prometheus API. Useful to check auth and to find `uid:`/`key:` names. The bulk datasource fetch can take seconds per source.
 
 ```bash
 grafana-alertcheck list
@@ -98,16 +98,21 @@ By default `check` **exits early** on a failure that cannot become a pass: a pos
 
 ## Naming alerts
 
-Alert names take one of four forms:
+Alert names take one of these forms. Grafana-managed rules use folder/group; datasource-managed rules use datasource/group, and are auto-discovered — there is no selection flag.
 
 | Form | Meaning |
 | ---- | ------- |
-| `HighErrorRate` | Title only, scoped by `--folder` |
-| `Platform/HighErrorRate` | Folder + title |
-| `Platform/api/HighErrorRate` | Folder + group + title (may still be ambiguous; use `uid:` for guaranteed uniqueness) |
-| `uid:abc123` | Exact uid (present on both endpoints) |
+| `HighErrorRate` | Title only; scoped by `--folder` for Grafana rules |
+| `Platform/HighErrorRate` | Grafana folder + title |
+| `Platform/api/HighErrorRate` | Grafana folder + group + title |
+| `ExampleMetrics/HighErrorRate` | Datasource group + title |
+| `VM Prod/ExampleMetrics/HighErrorRate` | Datasource name + group + title |
+| `uid:abc123` | Exact Grafana uid |
+| `key:ds:[…]` | Exact rule key across both kinds (copyable from `list`) |
 
-Recording rules are refused with a specific error. Datasource-managed rules never reach resolution at all: the Grafana-managed ruler endpoint this tool queries does not return them. A no-match errors with case-insensitive substring suggestions and points at `list`, and states that datasource-managed rules cannot be observed and are not supported. A name matching multiple rules errors listing every candidate with the copyable `Folder/Group/Title` and its `uid:` form. Duplicate names that resolve to the same uid collapse to one (a note, not an error).
+`--folder` scopes a bare Grafana title only; it does not apply to datasource-managed rules. A recording rule is refused with a specific error, as is a datasource-managed rule whose datasource could not be identified. A no-match errors with case-insensitive substring suggestions and points at `list`. A name matching multiple rules errors listing every candidate with its copyable full name, its source and its `uid:`/`key:` form. Duplicate names that resolve to the same rule collapse to one (a note, not an error).
+
+Auto-discovery reads `/api/datasources` and keeps only `type == "prometheus"` with `jsonData.manageAlerts == true`, then probes each. The token needs `datasources:read` plus datasource query permission; a failure names the permission.
 
 ## Selecting alerts by labels
 
