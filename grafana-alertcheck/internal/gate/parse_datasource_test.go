@@ -70,14 +70,31 @@ func TestParseDatasourceRules_LastError(t *testing.T) {
 	require.Equal(t, "query failed: bad", rules[0].LastError)
 }
 
-// vmalert's keep-firing-for is snake_case and in seconds; the alert stays
-// firing for it, so it is recorded but never a recovering state.
+// The keep-firing-for is in seconds and spelled keep_firing_for by vmalert and
+// keepFiringFor by Prometheus/Mimir; the alert stays firing for it, so it is
+// recorded but never a recovering state.
 func TestParseDatasourceRules_KeepFiringFor(t *testing.T) {
+	for name, body := range map[string][]byte{
+		"vmalert": []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+			{"name":"A","type":"alerting","health":"ok","state":"firing","keep_firing_for":300}]}]}}`),
+		"prometheus": []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+			{"name":"A","type":"alerting","health":"ok","state":"firing","keepFiringFor":300}]}]}}`),
+	} {
+		t.Run(name, func(t *testing.T) {
+			rules, err := ParseDatasourceRules(body, "d")
+			require.NoError(t, err)
+			require.Equal(t, 5*time.Minute, rules[0].KeepFiringFor)
+		})
+	}
+}
+
+// An unknown rule type must fail closed, not be dropped from the inventory.
+func TestParseDatasourceRules_UnknownTypeIsError(t *testing.T) {
 	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
-		{"name":"A","type":"alerting","health":"ok","state":"firing","keep_firing_for":300}]}]}}`)
-	rules, err := ParseDatasourceRules(body, "d")
-	require.NoError(t, err)
-	require.Equal(t, 5*time.Minute, rules[0].KeepFiringFor)
+		{"name":"A","type":"future","health":"ok","state":"firing"}]}]}}`)
+	_, err := ParseDatasourceRules(body, "d")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown rule type")
 }
 
 func TestParseDatasourceRules_ZeroLastEvaluationAllowed(t *testing.T) {

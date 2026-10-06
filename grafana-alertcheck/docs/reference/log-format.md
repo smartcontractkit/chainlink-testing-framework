@@ -102,7 +102,7 @@ Field notes:
 - `grafana_now` is the response's `Date` header — never the runner clock.
 - `skew_ms`/`skew_bound_ms` are the per-poll clock-skew estimate and its uncertainty (RTT/2), in milliseconds for compactness only.
 - `found: false` is an authoritative `2xx` in which this rule was absent — a transport failure is retried and never becomes a poll.
-- `keep_firing_for_ms` is the rule's recovery period as reported by this response; `0`/absent means no instance can be `recovering`. A datasource rule reports it from the backend's `keep_firing_for`, but such a rule never reaches `recovering` (the backend keeps it firing, then drops it).
+- `keep_firing_for_ms` is the rule's recovery period as reported by this response; `0`/absent means no instance can be `recovering`. A datasource rule reports it from the backend's keep-firing-for (`keep_firing_for` on vmalert, `keepFiringFor` on Prometheus/Mimir), but such a rule never reaches `recovering` (the backend keeps it firing, then drops it).
 - `state`, `health`, `last_error` are raw rule-level strings, reporting-only.
 - `histogram` is a verbatim copy of the response `totals`; written, never analysed.
 - `reasons` counts non-empty instance reasons (`NoData`, `Error`, `KeepLast`, …); composite states stay visible only here.

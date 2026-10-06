@@ -85,6 +85,11 @@ func parseDatasourceRule(raw json.RawMessage, dsUID, group, file string, interva
 	if err := req(m, "type", &ruleType); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
 	}
+	// Reject an unrecognized type rather than dropping it: a schema change must
+	// not silently shrink the rule set the run proceeds over.
+	if ruleType != "alerting" && ruleType != "recording" {
+		return StateRule{}, fmt.Errorf("rule %q: unknown rule type %q (want alerting or recording)", name, ruleType)
+	}
 
 	r := StateRule{
 		Key:           ruleKey(dsUID, group, name, file, ""),
@@ -136,11 +141,15 @@ func parseDatasourceRule(raw json.RawMessage, dsUID, group, file string, interva
 	if err := opt(m, "lastError", &r.LastError); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
 	}
-	// vmalert reports the alerting rule's keep-firing-for in seconds under the
-	// snake_case key. Unlike Grafana it has no recovering state: the alert stays
-	// firing for this long and is then dropped, so this is informational.
+	// The keep-firing-for period, in seconds. vmalert spells it keep_firing_for,
+	// Prometheus and Mimir keepFiringFor. Unlike Grafana there is no recovering
+	// state: the alert stays firing for this long and is then dropped, so this
+	// is informational.
 	var keepFiringForSeconds float64
 	if err := opt(m, "keep_firing_for", &keepFiringForSeconds); err != nil {
+		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
+	}
+	if err := opt(m, "keepFiringFor", &keepFiringForSeconds); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
 	}
 	r.KeepFiringFor = time.Duration(keepFiringForSeconds * float64(time.Second))
