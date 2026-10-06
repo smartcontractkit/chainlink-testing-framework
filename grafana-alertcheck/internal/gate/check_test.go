@@ -1919,6 +1919,76 @@ func TestCheckRecoveringNeverResolvesFailsClosed(t *testing.T) {
 	require.Contains(t, notesOf(cfg), "did not resolve before")
 }
 
+// Recovery runs before the drain: B's drain alone runs past A's deadline, and
+// A must still resolve.
+func TestCheckRecoveryRunsBeforeTheDrain(t *testing.T) {
+	clock := newVirtualClock(testNow)
+	from := clock.Now()
+	to := from.Add(5 * time.Minute)
+	windowEnd := to.Add(10 * time.Minute) // transitionGrace = B's 600s interval
+	recoveryAt := to.Add(-10 * time.Second)
+	kff := 12 * time.Minute
+	resolveAt := to.Add(11*time.Minute + 50*time.Second)
+	catchup := to.Add(15 * time.Minute) // after A's deadline
+
+	src := newCheckSource(func(title string, _ int) (Observation, error) {
+		now := clock.Now()
+		switch title {
+		case "Alert A":
+			state, active := StateRecovering, recoveryAt
+			switch {
+			case now.Before(recoveryAt):
+				state, active = StateFiring, from.Add(-time.Hour)
+			case !now.Before(resolveAt):
+				state, active = StateNormal, now
+			}
+			return recoveryObservation("a", "Alert A", now, kff,
+				Instance{Labels: map[string]string{"instance": "a"}, State: state, ActiveAt: active}), nil
+		case "Alert B":
+			lastEval := now
+			if now.Before(catchup) {
+				lastEval = windowEnd.Add(-time.Minute) // behind, so the drain waits
+				if lastEval.After(now) {
+					lastEval = now
+				}
+			}
+			obs := recoveryObservation("b", "Alert B", now, 0,
+				Instance{Labels: map[string]string{"instance": "b"}, State: StateNormal, ActiveAt: now})
+			obs.Rules[0].LastEvaluation = lastEval
+			return obs, nil
+		}
+		return Observation{}, fmt.Errorf("unexpected title %q", title)
+	})
+	src.defs = []Definition{
+		{UID: "a", Title: "Alert A", Folder: "F", Group: "G", IntervalSeconds: 60, NoDataState: "OK", ExecErrState: "OK", Kind: KindGrafanaManaged},
+		{UID: "b", Title: "Alert B", Folder: "F", Group: "G", IntervalSeconds: 600, NoDataState: "OK", ExecErrState: "OK", Kind: KindGrafanaManaged},
+	}
+
+	cfg := Config{
+		URL:    "https://grafana.example.com",
+		Alerts: []string{"uid:a", "uid:b"},
+		From:   from,
+		To:     to,
+		Clock:  clock,
+		Notes:  &strings.Builder{},
+	}.withDefaults()
+
+	res, err := check(context.Background(), cfg, src)
+	require.NoError(t, err)
+	require.Empty(t, res.Violations)
+	for _, v := range res.Verdicts {
+		switch v.RuleUID {
+		case "a":
+			require.Equal(t, OutcomeRecovered, v.Outcome, "A must resolve before its deadline, not expire during the drain")
+		case "b":
+			require.Equal(t, OutcomeHealthy, v.Outcome)
+		default:
+			t.Fatalf("unexpected verdict %q", v.RuleUID)
+		}
+	}
+	require.False(t, clock.Now().Before(catchup), "the drain still ran past A's deadline")
+}
+
 // afterHookClock runs hook once, on the first wait, so a test can append to a
 // log the recovery tail is reading.
 type afterHookClock struct {

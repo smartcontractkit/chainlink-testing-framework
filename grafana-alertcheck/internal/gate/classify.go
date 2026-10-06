@@ -161,9 +161,8 @@ type episode struct {
 // report it first — a poll's own cadence is not evidence of when the condition
 // actually began.
 //
-// recoveryOpen marks an episode last seen Recovering: unresolved, so an
-// extension poll after windowEnd may still close it — but only until
-// recoveryDeadline, past which a late clear must not read as a recovery.
+// recoveryOpen marks an episode last seen Recovering: an extension poll may
+// close it only until recoveryDeadline.
 type instanceTimeline struct {
 	labels           map[string]string
 	preexisting      bool
@@ -189,11 +188,7 @@ func runnerTime(p Poll, grafanaDomain time.Time) time.Time {
 // [from, windowEnd] and reduces them to the rule's worst outcome, merged
 // BadFor, and the Violations the preexisting policy charges against the run.
 // PURE: no I/O, no clock reads; polls need not be pre-filtered to this rule.
-// t supplies the recovery deadline margin, so the wait and the classifier
-// bound a recovering episode identically.
-//
-// Polls after windowEnd are extension polls: only an instance still Recovering
-// may consume them, so post-`to` badness elsewhere is never classified.
+// t bounds a recovering episode, identically to the recovery wait.
 func classifyRule(def Definition, t RuleTimings, polls []Poll, from, windowEnd time.Time, badStates map[State]bool, pol PreexistingPolicy) (Outcome, time.Duration, []Violation) {
 	rulePolls := pollsForRule(polls, def.UID)
 
@@ -249,16 +244,14 @@ func classifyRule(def Definition, t RuleTimings, polls []Poll, from, windowEnd t
 		}
 		return start
 	}
-	// openRecovering opens a first-seen Recovering episode. Recovering is only
-	// reachable from Alerting, so the fire predates this observation and its
-	// recovery onset (ActiveAt) must never start a new in-window episode.
+	// openRecovering: Recovering is only reachable from Alerting, so the fire
+	// predates this observation; ActiveAt is the recovery onset, not the fire.
 	openRecovering := func(tl *instanceTimeline) {
 		tl.preexisting = true
 		openEpisode(tl, from)
 	}
 
-	// recoveryExpired reports an extension poll past the episode's recovery
-	// deadline: its clear must not resolve the episode.
+	// recoveryExpired: an extension clear past the deadline does not resolve.
 	recoveryExpired := func(tl *instanceTimeline, p Poll) bool {
 		return tl.recoveryDeadline.IsZero() || runnerTime(p, p.GrafanaNow).After(tl.recoveryDeadline)
 	}
@@ -269,8 +262,7 @@ func classifyRule(def Definition, t RuleTimings, polls []Poll, from, windowEnd t
 		}
 		extension := pollAfterWindow(p, windowEnd)
 		if extension && (p.IsPaused || !p.Found) {
-			// A pause or an absent rule is not a resolution: retire
-			// eligibility so no later clear can close the episode.
+			// Not a resolution: retire eligibility, leave the episode open.
 			for _, tl := range timelines {
 				tl.recoveryOpen = false
 			}

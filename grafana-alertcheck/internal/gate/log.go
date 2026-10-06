@@ -122,8 +122,7 @@ type Poll struct {
 	SkewBoundMS int64 `json:"skew_bound_ms"`
 	LatencyMS   int64 `json:"latency_ms"`
 	// KeepFiringForMS is the rule's recovery period as reported by this
-	// response; absent/0 means no instance can be Recovering. Per poll so the
-	// bound is the value in effect when the instance was seen.
+	// response; 0/absent means no instance can be Recovering.
 	KeepFiringForMS int64 `json:"keep_firing_for_ms,omitempty"`
 	// Found false means an authoritative 2xx in which this rule was absent —
 	// never a transport failure, which the transport retries and never turns

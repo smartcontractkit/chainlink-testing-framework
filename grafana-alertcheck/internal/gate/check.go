@@ -497,20 +497,9 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		return result, err
 	}
 
-	// ---- The drain wait. --------------------------------------------------
-	// The last instance of the liveness check: did this rule evaluate through
-	// the end of the window? It is I/O and it is deliberately NOT part of
-	// proveCoverage — adding it there would put HTTP inside the pure layer and
-	// destroy the seam this design depends on.
-	drained, err := drainWait(ctx, cfg, src, resolved, header.pausedAtStart(), rt, polls, windowEnd, gt.drainTimeout)
-	if err != nil {
-		return Result{}, err
-	}
-
 	// ---- Recovery observation, single-step mode. --------------------------
-	// Recorder mode already observed it above, while the recorder was running;
-	// here check polls the affected rules directly. Skipped when recovering is
-	// not a bad state: the episode already closes at the recovery onset.
+	// Before the drain: a lagging rule can hold the drain past a recovering
+	// instance's deadline, and the drain keeps no instance evidence.
 	if !logHasHdr && badStateSet(pol.States)[StateRecovering] {
 		reducer := NewReducer()
 		reducer.seedFrom(polls)
@@ -520,6 +509,16 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			return Result{}, err
 		}
 		polls = append(polls, recoveryPolls...)
+	}
+
+	// ---- The drain wait. --------------------------------------------------
+	// The last instance of the liveness check: did this rule evaluate through
+	// the end of the window? It is I/O and it is deliberately NOT part of
+	// proveCoverage — adding it there would put HTTP inside the pure layer and
+	// destroy the seam this design depends on.
+	drained, err := drainWait(ctx, cfg, src, resolved, header.pausedAtStart(), rt, polls, windowEnd, gt.drainTimeout)
+	if err != nil {
+		return Result{}, err
 	}
 
 	// ---- Classify. --------------------------------------------------------
@@ -982,17 +981,10 @@ func applyRecoveryPoll(pending map[string]map[string]time.Time, poll Poll) {
 }
 
 // recoveryWait observes instances still Recovering at windowEnd until they
-// resolve or their own recovery deadline passes. The source decides how:
-// direct polling in single-step mode, the recorder's log in recorder mode —
-// where the extension evidence must land so a later re-classification sees it.
-// It returns the extension polls it saw; recorder mode discards them because
-// ReadLog re-reads the same records authoritatively. A rule that pauses or
-// disappears stops the wait; its episode then stays open and reads
-// still_failing.
-//
-// prime is true in recorder mode: the source is read once BEFORE the pending
-// set is selected, so a Recovering poll written after collection stopped but
-// before this wait is not missed.
+// resolve or their own deadline passes. It returns the extension polls; the
+// recorder-mode caller discards them because ReadLog re-reads the log.
+// prime reads the source once before selecting, so a Recovering poll written
+// after collection stopped is not missed.
 func recoveryWait(ctx context.Context, cfg Config, defs []Definition, rt map[string]RuleTimings,
 	polls []Poll, from, windowEnd time.Time, src recoverySource, prime bool) ([]Poll, error) {
 
@@ -1031,9 +1023,8 @@ func recoveryWait(ctx context.Context, cfg Config, defs []Definition, rt map[str
 
 	for len(pending) > 0 {
 		now := cfg.Clock.Now()
-		// Expire instances individually: a key past its own deadline must not
-		// be resolved by a later clear that another instance kept the wait
-		// alive for.
+		// Expire keys individually: a key past its own deadline must not be
+		// resolved by a clear another instance kept the wait alive for.
 		for uid, keys := range pending {
 			for key, deadline := range keys {
 				if !now.Before(deadline) {

@@ -42,10 +42,8 @@ type Instance struct {
 type StateRule struct {
 	UID, Title, Folder, Group string
 	Interval                  time.Duration
-	// KeepFiringFor is the rule's recovery period ("keep firing for") in
-	// seconds; 0/absent means no instance can be Recovering. Carried onto the
-	// Poll so the recovery observation uses the value in effect when the
-	// instance was seen.
+	// KeepFiringFor is the rule's recovery period in seconds; 0/absent means
+	// no instance can be Recovering. Carried onto the Poll.
 	KeepFiringFor time.Duration
 	// State and Health are raw, lowercase, and reporting-only — never
 	// classified. State in particular is never normalized.
