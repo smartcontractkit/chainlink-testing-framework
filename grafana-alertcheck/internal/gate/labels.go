@@ -65,9 +65,10 @@ func resolveAlertSet(defs []Definition, names []string, include, exclude []Label
 	if err != nil {
 		return nil, nil, err
 	}
-	// Only the rules actually being watched must be distinct: a collision in
-	// the loaded inventory is harmless unless the selection matches both.
-	if err := rejectDuplicateKeys(selected); err != nil {
+	// A collision in the inventory is harmless until a selected rule's identity
+	// is shared: the state query cannot tell the siblings apart, so such a rule
+	// is unobservable even when the selection narrows to it.
+	if err := rejectSharedSelectedKeys(defs, selected); err != nil {
 		return nil, nil, err
 	}
 	return selected, notes, nil

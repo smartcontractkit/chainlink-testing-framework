@@ -104,10 +104,10 @@ func TestSelectByLabels_EmptyIncludeIsNotAnError(t *testing.T) {
 }
 
 // Two distinct datasource rules can share one identity (same datasource,
-// group, name and file, differing only by labels/query). A selection that
-// matches both cannot observe them distinctly and must fail closed; one that
-// matches a single rule is fine.
-func TestResolveAlertSet_DuplicateIdentityOnlyFailsWhenBothSelected(t *testing.T) {
+// group, name and file, differing only by labels/query). The state query cannot
+// tell them apart, so a selected rule with a shared identity is unobservable
+// even when the selection narrows to it; an unrelated selection is fine.
+func TestResolveAlertSet_SharedIdentityFailsEvenWhenOneSelected(t *testing.T) {
 	a := Definition{
 		Key: "ds:k", Title: "Same", Group: "G", Kind: KindDatasourceManaged,
 		DatasourceUID: "vm", DatasourceName: "VM",
@@ -115,16 +115,28 @@ func TestResolveAlertSet_DuplicateIdentityOnlyFailsWhenBothSelected(t *testing.T
 	}
 	b := a
 	b.Labels = map[string]string{"product": "ccip", "severity": "warning"}
-	defs := []Definition{a, b}
+	other := Definition{
+		Key: "ds:other", Title: "Other", Group: "G", Kind: KindDatasourceManaged,
+		DatasourceUID: "vm", DatasourceName: "VM",
+		Labels: map[string]string{"product": "branch-out"},
+	}
+	defs := []Definition{a, b, other}
 
+	// Both siblings selected.
 	_, _, err := resolveAlertSet(defs, nil, []LabelMatcher{{Key: "product", Value: "ccip"}}, nil, nil, "")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "share the identity")
-	require.Contains(t, err.Error(), "narrow the selection")
+	require.Contains(t, err.Error(), "cannot be told apart")
 
-	selected, _, err := resolveAlertSet(defs, nil, []LabelMatcher{{Key: "severity", Value: "critical"}}, nil, nil, "")
+	// ONE sibling selected: still unobservable, so still an error.
+	_, _, err = resolveAlertSet(defs, nil, []LabelMatcher{{Key: "severity", Value: "critical"}}, nil, nil, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot be told apart")
+
+	// An unrelated rule is fine even though the inventory has a collision.
+	selected, _, err := resolveAlertSet(defs, nil, []LabelMatcher{{Key: "product", Value: "branch-out"}}, nil, nil, "")
 	require.NoError(t, err)
 	require.Len(t, selected, 1)
+	require.Equal(t, "Other", selected[0].Title)
 }
 
 // --exclude-alerts subtracts from an enumerated set: the names resolve like

@@ -3,6 +3,7 @@ package gate
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 // dsKeyPrefix marks a datasource-managed key, so a caller without the
@@ -62,28 +63,58 @@ func verdictKey(v RuleVerdict) string {
 	return v.RuleUID
 }
 
-// rejectDuplicateKeys fails closed on two definitions sharing a key. A Grafana
-// uid is unique by construction; a backend may serve two distinct
-// datasource-managed rules under one (datasource, group, name, file), and those
-// cannot be told apart, so a selection that matches both must be narrowed
-// rather than silently observing one of them.
+// rejectDuplicateKeys fails closed on two definitions in one list sharing a
+// key. It is the key: selector's guard: a key shared by two rules cannot pick
+// one of them.
 func rejectDuplicateKeys(defs []Definition) error {
-	seen := make(map[string]Definition, len(defs))
+	byKey := make(map[string][]Definition, len(defs))
 	for _, d := range defs {
 		key := defKey(d)
-		prev, ok := seen[key]
-		if !ok {
-			seen[key] = d
-			continue
+		byKey[key] = append(byKey[key], d)
+	}
+	for key, group := range byKey {
+		if len(group) > 1 {
+			return duplicateKeyError(key, group)
 		}
-		if d.Kind == KindDatasourceManaged {
-			return fmt.Errorf(
-				"two datasource-managed rules share the identity %s: %s and %s; narrow the selection (e.g. a distinguishing label) so only one matches",
-				key, describeRule(prev), describeRule(d))
-		}
-		return fmt.Errorf("two rules share the key %s: %s and %s", key, describeRule(prev), describeRule(d))
 	}
 	return nil
+}
+
+// rejectSharedSelectedKeys fails closed when a SELECTED rule's identity is
+// shared in the loaded inventory. The state query is by
+// datasource/group/name/file, so both siblings come back and stateRuleByKey
+// would reduce whichever the backend lists first — not necessarily the one the
+// selection matched. Narrowing the selection therefore does not make the rule
+// observable; it must be excluded.
+func rejectSharedSelectedKeys(all, selected []Definition) error {
+	byKey := make(map[string][]Definition, len(all))
+	for _, d := range all {
+		key := defKey(d)
+		byKey[key] = append(byKey[key], d)
+	}
+	for _, d := range selected {
+		key := defKey(d)
+		if group := byKey[key]; len(group) > 1 {
+			return duplicateKeyError(key, group)
+		}
+	}
+	return nil
+}
+
+// duplicateKeyError explains a key collision. A datasource collision is the
+// interesting one: the rules are genuinely distinct (a backend may serve two
+// same-name rules in one group/file) but cannot be told apart by the state API.
+func duplicateKeyError(key string, defs []Definition) error {
+	descs := make([]string, len(defs))
+	for i, d := range defs {
+		descs[i] = describeRule(d)
+	}
+	if defs[0].Kind == KindDatasourceManaged {
+		return fmt.Errorf(
+			"%d datasource-managed rules share the identity %s (%s) and cannot be told apart: the state query is by datasource/group/name/file, so this rule cannot be observed; exclude it from the selection",
+			len(defs), key, strings.Join(descs, "; "))
+	}
+	return fmt.Errorf("%d rules share the key %s (%s)", len(defs), key, strings.Join(descs, "; "))
 }
 
 // describeRule names a definition for a duplicate-key error.

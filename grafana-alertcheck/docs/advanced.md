@@ -41,7 +41,7 @@ Datasource-managed rules are auto-discovered — there is no selection flag. The
 
 Each candidate is probed with a `rule_name[]=__probe__` request; a `manageAlerts=true` source whose probe fails is a hard error naming the source, never a silently dropped source.
 
-vmalert allows two distinct alerting rules to share a name within one group. Such rules get the same identity, so a selection that matches both cannot observe them separately and fails closed with a message asking you to narrow the selection (a distinguishing label selects one); loading and `list` still show both.
+vmalert allows two distinct alerting rules to share a name within one group. They get the same identity, and the state query is by datasource/group/name/file, so the tool cannot tell them apart: loading and `list` still show both, but a selection that includes either one fails closed — narrowing by a distinguishing label does not help, because the poll would still reduce whichever sibling the backend lists first.
 
 Cost differs by mode. `list` and label selection take the **bulk** response — one request per datasource, several MB and several seconds for a large ruler. Name selection takes a **filtered** request, ~1 KB and ~1 s. The filter uses vmalert's `[]`-suffixed parameters (`rule_name[]`, `rule_group[]`, `file[]`): vmalert reads only those and ignores plain `rule_name=`, an upstream quirk pinned by tests. `limit_alerts` is a Grafana parameter that vmalert ignores and is therefore omitted.
 
