@@ -276,6 +276,11 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	for _, n := range notes {
 		fmt.Fprintf(cfg.Notes, "note: %s\n", n)
 	}
+	// Kind-level caveats are printed once, here, rather than repeated in every
+	// datasource rule's per-row details.
+	for _, c := range datasourceCaveats(resolved) {
+		fmt.Fprintf(cfg.Notes, "note: %s\n", c)
+	}
 	if len(cfg.IncludeLabels) > 0 {
 		printLabelSelection(cfg.Notes, resolved, cfg.IncludeLabels, cfg.ExcludeLabels, len(cfg.ExcludeAlerts))
 	}

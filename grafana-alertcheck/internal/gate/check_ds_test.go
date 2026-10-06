@@ -49,5 +49,7 @@ func TestCheck_DatasourceFireAndResolveIsRecovered(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, res.Violations)
 	require.Equal(t, OutcomeRecovered, res.Verdicts[0].Outcome)
-	require.Contains(t, res.Verdicts[0].Note, "check 7 skipped")
+	require.NotContains(t, res.Verdicts[0].Note, "check 7 skipped")
+	require.Contains(t, notesOf(cfg), "pause is not observable")
+	require.Contains(t, notesOf(cfg), "treated as a recovery")
 }

@@ -13,7 +13,7 @@ import (
 // states, health "err" (not "error"), and a zero lastEvaluation is allowed
 // (liveness treats zero as maximally stale). A missing or unparseable required
 // field is an error, never a zero value.
-func ParseDatasourceRules(body []byte, dsUID, dsName string) ([]StateRule, error) {
+func ParseDatasourceRules(body []byte, dsUID string) ([]StateRule, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(body, &top); err != nil {
 		return nil, fmt.Errorf("datasource rules response: %w", err)
@@ -79,7 +79,7 @@ func parseDatasourceRule(raw json.RawMessage, dsUID, group, file string, interva
 	}
 
 	r := StateRule{
-		Key:           ruleKey(dsUID, group, name, ""),
+		Key:           ruleKey(dsUID, group, name, file, ""),
 		Title:         name,
 		Group:         group,
 		File:          file,

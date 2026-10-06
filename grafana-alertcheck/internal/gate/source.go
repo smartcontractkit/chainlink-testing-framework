@@ -242,11 +242,10 @@ func (s *httpSource) GrafanaDefinitions(ctx context.Context) ([]Definition, erro
 }
 
 // DiscoverRuleSources lists every datasource that can serve Prometheus-flavored
-// alerting rules. The filter is strict — type=="prometheus" AND
-// jsonData.manageAlerts==true — because the AlertStateHistoryBackend datasource
-// shares VictoriaMetrics' backend and would otherwise make every rule name
-// ambiguous. Each candidate is probed; a probe failure is a hard error naming
-// the datasource, since a silently dropped source is a fail-open.
+// rules. The filter is strict (type=="prometheus" AND manageAlerts==true):
+// AlertStateHistoryBackend shares VictoriaMetrics' backend, so a looser filter
+// would make every rule name ambiguous. A probe failure is a hard error — a
+// silently dropped source is a fail-open.
 func (s *httpSource) DiscoverRuleSources(ctx context.Context) ([]RuleSource, error) {
 	return retryTransport(ctx, s.clock, s.maxSequentialFailures, s.backoffBase, s.backoffCap, func() ([]RuleSource, error) {
 		r, err := s.doRequest(ctx, "/api/datasources")
@@ -299,7 +298,7 @@ func (s *httpSource) DatasourceDefinitions(ctx context.Context, src RuleSource, 
 		if err != nil {
 			return nil, err
 		}
-		rules, parseErr := ParseDatasourceRules(r.Body, src.UID, src.Name)
+		rules, parseErr := ParseDatasourceRules(r.Body, src.UID)
 		if parseErr != nil {
 			return nil, &TransportError{Err: fmt.Errorf("parse datasource rule definitions: %w", parseErr)}
 		}
@@ -360,7 +359,7 @@ func (s *httpSource) ruleStateRequest(ref RuleRef) (string, func([]byte) ([]Stat
 	if ref.Kind == KindDatasourceManaged {
 		path := "/api/prometheus/" + url.PathEscape(ref.DatasourceUID) + "/api/v1/rules" +
 			datasourceQuery([]string{ref.Name}, ref.Group, ref.File)
-		return path, func(b []byte) ([]StateRule, error) { return ParseDatasourceRules(b, ref.DatasourceUID, "") }
+		return path, func(b []byte) ([]StateRule, error) { return ParseDatasourceRules(b, ref.DatasourceUID) }
 	}
 	path := "/api/prometheus/grafana/api/v1/rules?rule_name=" + url.QueryEscape(ref.Title)
 	return path, ParseState

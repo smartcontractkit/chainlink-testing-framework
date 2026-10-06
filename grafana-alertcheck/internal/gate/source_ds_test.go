@@ -85,9 +85,37 @@ func TestDatasourceDefinitions_FilteredQuery(t *testing.T) {
 	require.Equal(t, "VM", defs[0].DatasourceName)
 }
 
+func TestDSFilterNames(t *testing.T) {
+	filters, fetchAll := dsFilterNames([]string{"devex-cicd/prod/griddle-github: ContainersNotReady"})
+	require.False(t, fetchAll)
+	require.ElementsMatch(t, []string{
+		"devex-cicd/prod/griddle-github: ContainersNotReady",
+		"griddle-github: ContainersNotReady",
+	}, filters)
+
+	_, fetchAll = dsFilterNames([]string{"key:ds:[\"a\"]"})
+	require.True(t, fetchAll)
+}
+
+// A datasource rule whose name contains "/" is fetched by its full name, so
+// loadDefinitions must request the whole input, not just the last segment.
+func TestLoadDefinitions_SlashyDatasourceName(t *testing.T) {
+	name := "devex-cicd/prod/griddle-github: ContainersNotReady"
+	f := newFakeSource()
+	f.ruleSources = []RuleSource{{UID: "vm", Name: "VM"}}
+	f.dsDefs = map[string][]Definition{"vm": {{
+		Key: ruleKey("vm", "G", name, "f", ""), Title: name, Group: "G",
+		Kind: KindDatasourceManaged, DatasourceUID: "vm", DatasourceName: "VM",
+	}}}
+	defs, err := loadDefinitions(context.Background(), f, []string{name}, false)
+	require.NoError(t, err)
+	require.Len(t, defs, 1)
+	require.Equal(t, name, defs[0].Title)
+}
+
 func TestFakeSource_DatasourceScriptedByKey(t *testing.T) {
 	f := newFakeSource()
-	key := ruleKey("vm", "G", "A", "")
+	key := ruleKey("vm", "G", "A", "f", "")
 	f.scriptKey(key, Observation{Rules: []StateRule{{Key: key, DatasourceUID: "vm", Title: "A"}}}, nil)
 	obs, err := f.RuleState(context.Background(), RuleRef{Key: key, Kind: KindDatasourceManaged, DatasourceUID: "vm"})
 	require.NoError(t, err)
@@ -124,7 +152,7 @@ func TestRuleState_DatasourceAssertsAllFilters(t *testing.T) {
 
 	src := NewHTTPSource(srv.URL, "", newFakeClock(time.Now()))
 	ref := RuleRef{
-		Key:  ruleKey("vm", "ExampleMetrics", "ExampleTargetDown", ""),
+		Key:  ruleKey("vm", "ExampleMetrics", "ExampleTargetDown", "/etc/vm/rules/example.yml", ""),
 		Kind: KindDatasourceManaged, DatasourceUID: "vm",
 		Group: "ExampleMetrics", Name: "ExampleTargetDown", File: "/etc/vm/rules/example.yml",
 	}

@@ -2,6 +2,8 @@ package gate
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -175,13 +177,8 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 	// rule, a stopped scheduler, a blocked evaluation). This is what catches
 	// pause-then-unpause, which the drain wait alone passes. A
 	// datasource-managed rule has no pause signal at all, so the check is
-	// skipped with an explicit note rather than passed silently.
-	if def.Kind == KindDatasourceManaged && !def.PauseObservable {
-		res.Notes = append(res.Notes, fmt.Sprintf(
-			"rule %q: pause is not observable for a datasource-managed rule; check 7 skipped", def.Title))
-		res.Notes = append(res.Notes, fmt.Sprintf(
-			"rule %q: a datasource-managed instance leaving the active set is treated as a recovery (a vanished series is indistinguishable from a resolution)", def.Title))
-	} else {
+	// skipped; the run-level caveat is printed once by datasourceCaveats.
+	if def.Kind != KindDatasourceManaged || def.PauseObservable {
 		var pausedCount int
 		var pausedAt time.Time
 		for _, p := range inWindow {
@@ -241,6 +238,37 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 
 	res.Proved = !res.Unobservable
 	return res
+}
+
+// datasourceCaveats is the one-time, kind-level caveat set for
+// datasource-managed rules. These are policy facts that apply to every such
+// rule — the Prometheus API has no isPaused signal, and returns only active
+// instances — so they are reported once for the run, never per rule.
+func datasourceCaveats(defs []Definition) []string {
+	var names []string
+	seen := make(map[string]bool)
+	for _, d := range defs {
+		if d.Kind != KindDatasourceManaged {
+			continue
+		}
+		name := d.DatasourceName
+		if name == "" {
+			name = d.DatasourceUID
+		}
+		if name != "" && !seen[name] {
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	sort.Strings(names)
+	scope := "datasource-managed rules (" + strings.Join(names, ", ") + ")"
+	return []string{
+		scope + ": pause is not observable, so check 7 is skipped",
+		scope + ": an instance leaving the active set is treated as a recovery (a vanished series is indistinguishable from a resolution)",
+	}
 }
 
 // inWindowPolls filters to polls inside [from, windowEnd] via the cross-domain

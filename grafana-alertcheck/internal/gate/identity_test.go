@@ -7,18 +7,21 @@ import (
 )
 
 func TestRuleKey_GrafanaKeepsUID(t *testing.T) {
-	require.Equal(t, "rule1", ruleKey("", "", "title", "rule1"))
+	require.Equal(t, "rule1", ruleKey("", "", "title", "", "rule1"))
 }
 
-// A ds key must not collide with a Grafana uid and must not let group/name
-// separators collide: a name containing ":" or "/" is still a distinct tuple.
+// A ds key must not collide with a Grafana uid and must not let separators
+// collide: a name containing ":" or "/" is still a distinct tuple, and the
+// same group/name in two files is two rules.
 func TestRuleKey_DatasourceInjectivity(t *testing.T) {
 	keys := []string{
-		ruleKey("dsA", "g", "n", ""),
-		ruleKey("dsA", "g/n", "", ""),
-		ruleKey("dsA", "g", "/n", ""),
-		ruleKey("dsB", "g", "n", ""),
-		ruleKey("", "g", "n", ""),
+		ruleKey("dsA", "g", "n", "f", ""),
+		ruleKey("dsA", "g/n", "", "f", ""),
+		ruleKey("dsA", "g", "/n", "f", ""),
+		ruleKey("dsB", "g", "n", "f", ""),
+		ruleKey("", "g", "n", "f", ""),
+		ruleKey("dsA", "g", "n", "f1", ""),
+		ruleKey("dsA", "g", "n", "f2", ""),
 	}
 	seen := map[string]bool{}
 	for _, k := range keys {
@@ -26,7 +29,7 @@ func TestRuleKey_DatasourceInjectivity(t *testing.T) {
 		require.False(t, seen[k], "key %q collided", k)
 		seen[k] = true
 	}
-	require.Equal(t, "u1", ruleKey("dsA", "g", "n", "u1"), "a uid wins over the ds tuple")
+	require.Equal(t, "u1", ruleKey("dsA", "g", "n", "f", "u1"), "a uid wins over the ds tuple")
 }
 
 func TestDefKey_FallsBackToUID(t *testing.T) {

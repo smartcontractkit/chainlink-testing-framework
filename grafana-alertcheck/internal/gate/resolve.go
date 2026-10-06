@@ -46,17 +46,15 @@ func Resolve(defs []Definition, names []string, folder string) (resolved []Defin
 	return resolved, notes, nil
 }
 
-// resolveOne resolves a single trimmed, non-empty name against defs: one match
-// wins outright, zero is an error with suggestions, two or more is an error
-// listing every candidate. folder scopes a bare Grafana title to one folder; it
-// is ignored for the /-separated forms and for datasource-managed rules, which
-// name their own group and datasource.
+// resolveOne resolves one trimmed, non-empty name against defs: one match wins,
+// zero is an error with suggestions, two or more is ambiguous. folder scopes a
+// bare Grafana title; it is ignored for /-separated forms and for datasource
+// rules.
 //
-// A name matches both kinds: Grafana forms are Title | Folder/Title |
-// Folder/Group/Title, datasource forms are Title | Group/Title |
-// DatasourceName/Group/Title, and an exact key: is unambiguous across both.
-// Unsupported kinds (recording, and a datasource-managed rule with no
-// datasource) are refused, and only supported candidates count for ambiguity.
+// Grafana forms: Title | Folder/Title | Folder/Group/Title. Datasource forms:
+// Title | Group/Title | DatasourceName/Group/Title. key: is exact across both.
+// Recording rules and datasource rules with no datasource are refused, and only
+// supported candidates count for ambiguity.
 func resolveOne(defs []Definition, name, folder string) (Definition, error) {
 	if key, ok := strings.CutPrefix(name, "key:"); ok {
 		if key != "" {
@@ -89,56 +87,101 @@ func resolveOne(defs []Definition, name, folder string) (Definition, error) {
 		return Definition{}, fmt.Errorf("no rule matched %q: no rule has this uid (run 'grafana-alertcheck list' to see uids)", name)
 	}
 
+	// A datasource rule's name can contain "/", so the full input may be a title,
+	// not a segmented form: try an exact title match before splitting.
+	if def, found, err := pickCandidate(defs, name, func(d Definition) bool {
+		return titleMatches(d, name, folder)
+	}); found {
+		return def, err
+	}
+
 	parts, err := parseNameForm(name)
 	if err != nil {
 		return Definition{}, err
 	}
+	if def, found, err := pickCandidate(defs, name, func(d Definition) bool {
+		return matchesName(d, parts, folder)
+	}); found {
+		return def, err
+	}
+	return Definition{}, noMatchError(supportedDefs(defs), name, parts[len(parts)-1])
+}
 
-	var supportedCandidates, unsupportedCandidates []Definition
+// pickCandidate applies the shared one-match/ambiguous/unsupported/no-match
+// policy to a candidate predicate. found is false when nothing matched, so the
+// caller can try the next interpretation.
+func pickCandidate(defs []Definition, name string, match func(Definition) bool) (Definition, bool, error) {
+	var supported, unsupported []Definition
 	for _, d := range defs {
-		if !matchesName(d, parts, folder) {
+		if !match(d) {
 			continue
 		}
-		if d.Kind == KindRecording || (d.Kind == KindDatasourceManaged && d.DatasourceUID == "") {
-			unsupportedCandidates = append(unsupportedCandidates, d)
+		if isSupported(d) {
+			supported = append(supported, d)
 		} else {
-			supportedCandidates = append(supportedCandidates, d)
+			unsupported = append(unsupported, d)
 		}
 	}
-
 	switch {
-	case len(supportedCandidates) == 1:
-		return supportedCandidates[0], nil
-	case len(supportedCandidates) > 1:
-		return Definition{}, ambiguousError(name, supportedCandidates)
-	case len(unsupportedCandidates) > 0:
-		return refuseUnsupportedKind(name, unsupportedCandidates[0])
+	case len(supported) == 1:
+		return supported[0], true, nil
+	case len(supported) > 1:
+		return Definition{}, true, ambiguousError(name, supported)
+	case len(unsupported) > 0:
+		def, err := refuseUnsupportedKind(name, unsupported[0])
+		return def, true, err
 	default:
-		return Definition{}, noMatchError(supportedDefs(defs), name, parts[len(parts)-1])
+		return Definition{}, false, nil
 	}
 }
 
-// matchesName reports whether d matches the /-separated name form. A bare
-// Grafana title is scoped by folder; datasource forms never use folder.
+// titleMatches is the exact-title interpretation: a datasource rule matches by
+// its full name, a Grafana rule by its title scoped to --folder.
+func titleMatches(d Definition, name, folder string) bool {
+	if d.Kind == KindDatasourceManaged {
+		return d.Title == name
+	}
+	return (folder == "" || d.Folder == folder) && d.Title == name
+}
+
+// matchesName reports whether d matches the /-separated name form. Only
+// datasource-managed rules use the datasource forms; every other kind —
+// Grafana-managed and recording alike — uses the folder/group forms, so a
+// recording rule named by its real path is still matched and refused
+// specifically rather than falling through to a generic no-match.
 func matchesName(d Definition, parts []string, folder string) bool {
 	switch len(parts) {
 	case 1:
-		if d.Kind == KindGrafanaManaged {
-			return (folder == "" || d.Folder == folder) && d.Title == parts[0]
+		if d.Kind == KindDatasourceManaged {
+			return d.Title == parts[0]
 		}
-		return d.Title == parts[0]
+		return (folder == "" || d.Folder == folder) && d.Title == parts[0]
 	case 2:
-		if d.Kind == KindGrafanaManaged {
-			return d.Folder == parts[0] && d.Title == parts[1]
+		if d.Kind == KindDatasourceManaged {
+			return d.Group == parts[0] && d.Title == parts[1]
 		}
-		return d.Group == parts[0] && d.Title == parts[1]
+		return d.Folder == parts[0] && d.Title == parts[1]
 	case 3:
-		if d.Kind == KindGrafanaManaged {
-			return d.Folder == parts[0] && d.Group == parts[1] && d.Title == parts[2]
+		if d.Kind == KindDatasourceManaged {
+			return d.DatasourceName == parts[0] && d.Group == parts[1] && d.Title == parts[2]
 		}
-		return d.DatasourceName == parts[0] && d.Group == parts[1] && d.Title == parts[2]
+		return d.Folder == parts[0] && d.Group == parts[1] && d.Title == parts[2]
 	}
 	return false
+}
+
+// isSupported reports whether a definition can be observed: not a recording
+// rule, and not a datasource-managed rule with no datasource. The one predicate
+// for resolve, label selection and the no-match surfaces, so they cannot drift.
+func isSupported(d Definition) bool {
+	switch d.Kind {
+	case KindRecording:
+		return false
+	case KindDatasourceManaged:
+		return d.DatasourceUID != ""
+	default:
+		return true
+	}
 }
 
 // supportedDefs filters out the refused kinds. Only these participate in
@@ -146,7 +189,7 @@ func matchesName(d Definition, parts []string, folder string) bool {
 func supportedDefs(defs []Definition) []Definition {
 	out := make([]Definition, 0, len(defs))
 	for _, d := range defs {
-		if d.Kind == KindRecording || (d.Kind == KindDatasourceManaged && d.DatasourceUID == "") {
+		if !isSupported(d) {
 			continue
 		}
 		out = append(out, d)
@@ -173,14 +216,13 @@ func parseNameForm(name string) ([]string, error) {
 // refuseUnsupportedKind rejects the unsupported kinds with a clear, specific
 // error — distinct from "no match" and from "ambiguous".
 func refuseUnsupportedKind(name string, d Definition) (Definition, error) {
-	switch {
-	case d.Kind == KindRecording:
-		return Definition{}, fmt.Errorf("%q resolves to %s, a recording rule, which is not supported", name, d.Title)
-	case d.Kind == KindDatasourceManaged && d.DatasourceUID == "":
-		return Definition{}, fmt.Errorf("%q resolves to %s, a datasource-managed rule whose datasource is unknown, which is not supported", name, d.Title)
-	default:
+	if isSupported(d) {
 		return d, nil
 	}
+	if d.Kind == KindRecording {
+		return Definition{}, fmt.Errorf("%q resolves to %s, a recording rule, which is not supported", name, d.Title)
+	}
+	return Definition{}, fmt.Errorf("%q resolves to %s, a datasource-managed rule whose datasource is unknown, which is not supported", name, d.Title)
 }
 
 // ruleRefLabel names a rule for a note: a uid for Grafana, a copyable key for a
@@ -231,7 +273,7 @@ func ambiguousError(name string, candidates []Definition) error {
 	fmt.Fprintf(&b, "%q matches %d rules; use key: or the full name:", name, len(sorted))
 	for _, d := range sorted {
 		if d.Kind == KindDatasourceManaged {
-			fmt.Fprintf(&b, "\n  %s/%s/%s (datasource %s, key:%s)", d.DatasourceName, d.Group, d.Title, d.DatasourceName, defKey(d))
+			fmt.Fprintf(&b, "\n  %s/%s/%s (datasource_uid:%s, key:%s)", d.DatasourceName, d.Group, d.Title, d.DatasourceUID, defKey(d))
 			continue
 		}
 		fmt.Fprintf(&b, "\n  %s/%s/%s (uid:%s)", d.Folder, d.Group, d.Title, d.UID)

@@ -13,11 +13,9 @@ func ListAllDefinitions(ctx context.Context, src Source) ([]Definition, error) {
 }
 
 // loadDefinitions reads Grafana-managed definitions from the ruler and
-// datasource-managed definitions from every discovered rule source. wantAll
-// fetches every ds rule (label selection, list); otherwise only the named rules
-// are requested, one request per source. Ruler-returned datasource-managed rules
-// are dropped: discovery is the authority for them, since only it knows the
-// datasource UID.
+// datasource-managed definitions from every discovered source. wantAll fetches
+// every ds rule; otherwise only the named rules are requested. Ruler-returned ds
+// rules are dropped — only discovery knows their datasource UID.
 func loadDefinitions(ctx context.Context, src Source, names []string, wantAll bool) ([]Definition, error) {
 	grafana, err := src.GrafanaDefinitions(ctx)
 	if err != nil {
@@ -55,10 +53,18 @@ func loadDefinitions(ctx context.Context, src Source, names []string, wantAll bo
 	return defs, nil
 }
 
-// dsFilterNames extracts the server-side rule_name[] filters from the raw alert
-// names. A key: or uid: form names no title, so the whole source must be
-// fetched; otherwise the last /-separated segment is the title.
-func dsFilterNames(names []string) (titles []string, fetchAll bool) {
+// dsFilterNames extracts the server-side rule_name[] filters. A key: or uid:
+// form forces a bulk fetch; otherwise both the whole input and its last
+// /-separated segment are sent (a ds rule's name can itself contain "/", while
+// Group/Title names it by the trailing segment).
+func dsFilterNames(names []string) (filters []string, fetchAll bool) {
+	seen := make(map[string]bool)
+	add := func(s string) {
+		if s != "" && !seen[s] {
+			seen[s] = true
+			filters = append(filters, s)
+		}
+	}
 	for _, raw := range names {
 		n := strings.TrimSpace(raw)
 		if n == "" {
@@ -67,8 +73,10 @@ func dsFilterNames(names []string) (titles []string, fetchAll bool) {
 		if strings.HasPrefix(n, "key:") || strings.HasPrefix(n, "uid:") {
 			return nil, true
 		}
-		parts := strings.Split(n, "/")
-		titles = append(titles, parts[len(parts)-1])
+		add(n)
+		if i := strings.LastIndex(n, "/"); i != -1 {
+			add(n[i+1:])
+		}
 	}
-	return titles, false
+	return filters, false
 }

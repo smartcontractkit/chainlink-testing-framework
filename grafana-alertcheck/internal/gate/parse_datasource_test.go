@@ -8,7 +8,7 @@ import (
 )
 
 func TestParseDatasourceRules_Fixture(t *testing.T) {
-	rules, err := ParseDatasourceRules(readFixture(t, "ds_rules.json"), "ds-uid", "ExampleMetrics")
+	rules, err := ParseDatasourceRules(readFixture(t, "ds_rules.json"), "ds-uid")
 	require.NoError(t, err)
 	require.Len(t, rules, 2, "recording rules are parsed but filtered later")
 
@@ -23,14 +23,14 @@ func TestParseDatasourceRules_Fixture(t *testing.T) {
 	require.Equal(t, "firing", alert.State)
 	require.Equal(t, "ok", alert.Health)
 	require.Empty(t, alert.UID, "a datasource rule has no uid")
-	require.Equal(t, ruleKey("ds-uid", "ExampleMetrics", "ExampleTargetDown", ""), alert.Key)
+	require.Equal(t, ruleKey("ds-uid", "ExampleMetrics", "ExampleTargetDown", "/etc/vm/rules/example.yml", ""), alert.Key)
 	require.Len(t, alert.Instances, 1)
 	require.Equal(t, StateFiring, alert.Instances[0].State)
 	require.Nil(t, alert.Totals)
 }
 
 func TestDefinitionsFromDatasource_FiltersRecording(t *testing.T) {
-	rules, err := ParseDatasourceRules(readFixture(t, "ds_rules.json"), "ds-uid", "ExampleMetrics")
+	rules, err := ParseDatasourceRules(readFixture(t, "ds_rules.json"), "ds-uid")
 	require.NoError(t, err)
 
 	defs := DefinitionsFromDatasource(rules, "ds-uid", "ExampleMetrics")
@@ -44,7 +44,7 @@ func TestDefinitionsFromDatasource_FiltersRecording(t *testing.T) {
 func TestParseDatasourceRules_HealthErrNormalizes(t *testing.T) {
 	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","file":"f","interval":60,"rules":[
 		{"name":"A","type":"alerting","health":"err","lastEvaluation":"2026-08-01T00:00:00Z","state":"firing"}]}]}}`)
-	rules, err := ParseDatasourceRules(body, "d", "n")
+	rules, err := ParseDatasourceRules(body, "d")
 	require.NoError(t, err)
 	require.Equal(t, "error", rules[0].Health)
 }
@@ -52,7 +52,7 @@ func TestParseDatasourceRules_HealthErrNormalizes(t *testing.T) {
 func TestParseDatasourceRules_ZeroLastEvaluationAllowed(t *testing.T) {
 	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
 		{"name":"A","type":"alerting","health":"ok","state":"pending"}]}]}}`)
-	rules, err := ParseDatasourceRules(body, "d", "n")
+	rules, err := ParseDatasourceRules(body, "d")
 	require.NoError(t, err)
 	require.True(t, rules[0].LastEvaluation.IsZero())
 }
@@ -61,7 +61,7 @@ func TestParseDatasourceRules_UnknownInstanceStateIsError(t *testing.T) {
 	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
 		{"name":"A","type":"alerting","health":"ok","state":"firing","alerts":[
 			{"labels":{},"state":"inactive","activeAt":"2026-08-01T00:00:00Z"}]}]}]}}`)
-	_, err := ParseDatasourceRules(body, "d", "n")
+	_, err := ParseDatasourceRules(body, "d")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "unrecognized datasource instance state")
 }
@@ -70,7 +70,7 @@ func TestParseDatasourceRules_PendingInstance(t *testing.T) {
 	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
 		{"name":"A","type":"alerting","health":"ok","state":"pending","alerts":[
 			{"labels":{"x":"y"},"state":"pending","activeAt":"2026-08-01T00:00:00Z","value":"1"}]}]}]}}`)
-	rules, err := ParseDatasourceRules(body, "d", "n")
+	rules, err := ParseDatasourceRules(body, "d")
 	require.NoError(t, err)
 	require.Equal(t, StatePending, rules[0].Instances[0].State)
 }

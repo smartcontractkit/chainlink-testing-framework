@@ -36,7 +36,7 @@ The `Source` interface is the only HTTP boundary and covers both rule kinds: `Gr
 
 ### Key vs uid
 
-A rule's map key is its **key**, not its uid. For a Grafana-managed rule the key *is* the uid; a datasource-managed rule has no uid, so its key is a JSON-encoded `(datasource, group, name)` tuple. The key, not the uid, is what `rt`, the scheduler, the `Reducer`, `pausedAtStart`, exclusions, `Coverage`, `Thresholds` and `Verdicts` are indexed by. The log records both: `key` and, for a Grafana rule, `uid`; the poll reader uses `rule_key` when present and falls back to `rule_uid`, so an old v1 log stays readable. Identity is not weakened — for Grafana-managed rules behavior is byte-for-byte unchanged, because key == uid there.
+A rule's map key is its **key**, not its uid. For a Grafana-managed rule the key *is* the uid; a datasource-managed rule has none, so its key is a JSON `(datasource, group, name, file)` tuple — file included because a Prometheus group name is only unique within a file. Every internal map is indexed by key. The log records `key` and, for a Grafana rule, `uid`; the reader uses `rule_key` when present and falls back to `rule_uid`, so old v1 logs stay readable. Grafana behavior is unchanged because key == uid there.
 
 - `proveCoverage` (the nine coverage checks) and `decide` (the instance timelines and outcomes) are pure; tests drive them with `[]Poll` literals and a fake `Clock`, with no sleeping or fixture server.
 - `Check`/`Watch` are I/O shells: HTTP, signals, the pidfile, file reads, the countdown print. The only test doubles needed are the `Source` and `Clock` interfaces.

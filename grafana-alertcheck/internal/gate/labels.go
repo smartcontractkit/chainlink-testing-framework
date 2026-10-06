@@ -25,7 +25,7 @@ func SelectByLabels(defs []Definition, include, exclude []LabelMatcher) ([]Defin
 			continue
 		}
 		matchedInclude++
-		if d.Kind == KindRecording || (d.Kind == KindDatasourceManaged && d.DatasourceUID == "") {
+		if !isSupported(d) {
 			return nil, fmt.Errorf("label selection matches %q, a %s, which is not supported", d.Title, kindName(d.Kind))
 		}
 		if matchesAny(d.Labels, exclude) {

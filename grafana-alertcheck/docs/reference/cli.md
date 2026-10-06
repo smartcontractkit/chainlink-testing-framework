@@ -98,7 +98,7 @@ By default `check` **exits early** on a failure that cannot become a pass: a pos
 
 ## Naming alerts
 
-Alert names take one of these forms. Grafana-managed rules use folder/group; datasource-managed rules use datasource/group, and are auto-discovered — there is no selection flag.
+Alert names take one of these forms. Grafana-managed rules use folder/group; datasource-managed rules are auto-discovered (no selection flag) and use datasource/group.
 
 | Form | Meaning |
 | ---- | ------- |
@@ -110,9 +110,11 @@ Alert names take one of these forms. Grafana-managed rules use folder/group; dat
 | `uid:abc123` | Exact Grafana uid |
 | `key:ds:[…]` | Exact rule key across both kinds (copyable from `list`) |
 
-`--folder` scopes a bare Grafana title only; it does not apply to datasource-managed rules. A recording rule is refused with a specific error, as is a datasource-managed rule whose datasource could not be identified. A no-match errors with case-insensitive substring suggestions and points at `list`. A name matching multiple rules errors listing every candidate with its copyable full name, its source and its `uid:`/`key:` form. Duplicate names that resolve to the same rule collapse to one (a note, not an error).
+A datasource rule's **name can itself contain `/`** (e.g. `devex-cicd/prod/griddle-github: ContainersNotReady`). The exact name is tried first, so the `TITLE` from `list` always resolves, and `key:` is the unambiguous fallback.
 
-Auto-discovery reads `/api/datasources` and keeps only `type == "prometheus"` with `jsonData.manageAlerts == true`, then probes each. The token needs `datasources:read` plus datasource query permission; a failure names the permission.
+`--folder` scopes a bare Grafana title only. A recording rule, or a datasource rule with no identifiable datasource, is refused with a specific error; a no-match suggests substrings and points at `list`; an ambiguous name lists every candidate with its full name, source and `uid:`/`key:`. Duplicate names collapse to one (a note, not an error).
+
+Auto-discovery keeps `/api/datasources` entries with `type == "prometheus"` and `jsonData.manageAlerts == true`, then probes each. The token needs `datasources:read` plus datasource query permission; a failure names the permission.
 
 ## Selecting alerts by labels
 
@@ -131,7 +133,9 @@ The label flags cannot be combined with `--alerts` or `--folder`, and they are r
 
 ## Output and exit codes
 
-The human table goes to **stderr**: `RESULTS` (one row per rule, with the verdict, time broken, check cadence and whether the window was observed), `VIOLATIONS` (one per distinct rule/verdict/state/health/note signature, with an `INSTANCES` count of the instances it stands for — instance identity is only in the JSON), and `LIMITS USED` (each rule's observation limits in plain words, explained by a legend under the table, plus the extra observation time, the evaluation wait, the largest measured clock difference and the detected Grafana version; the closing violations count is marked ✅/❌). The JSON outcome values are `healthy`, `new_failure`, `still_failing`, `recovered`, `unstable`, `paused`, `not_verified` and the synthetic `not_counted`. `--output json` writes the result to stdout.
+The human table goes to **stderr**: `RESULTS` (one row per rule: verdict, time broken, check cadence, whether the window was observed, and `SOURCE` — `grafana` or `datasource`), `VIOLATIONS` (one per distinct rule/verdict/state/health/note signature, with an `INSTANCES` count — instance identity is only in the JSON), and `LIMITS USED` (each rule's observation limits in plain words, explained by a legend, plus the extra observation time, the evaluation wait, the largest measured clock difference and the Grafana version; the closing violations count is marked ✅/❌).
+
+`DETAILS` carries only rule-specific notes; kind-level caveats (datasource rules have no pause signal and treat a departure as a recovery) are printed once, before the table. The JSON outcome values are `healthy`, `new_failure`, `still_failing`, `recovered`, `unstable`, `paused`, `not_verified` and the synthetic `not_counted`; `--output json` adds each rule's `source_kind` and the run-level `caveats`, and writes the result to stdout.
 
 | Code | Meaning |
 | ---- | ------- |

@@ -2,20 +2,18 @@ package gate
 
 import "encoding/json"
 
-// dsKeyPrefix marks a datasource-managed key. The key, not the prefix, is the
-// identity; the prefix only lets a caller that has lost the Definition (an
-// absent-rule poll, a log read) still tell the two source kinds apart.
+// dsKeyPrefix marks a datasource-managed key, so a caller without the
+// Definition can still tell the two source kinds apart.
 const dsKeyPrefix = "ds:"
 
-// ruleKey is the one map key for a rule across both source kinds. Grafana-managed
-// rules keep their uid. Datasource-managed rules have no uid, so they get a
-// JSON-encoded tuple; JSON keeps group/name separators from colliding. This is a
-// key, not an identity the API gave us — Definition.UID stays empty for ds rules.
-func ruleKey(dsUID, group, name, uid string) string {
+// ruleKey is the one map key across both source kinds: a Grafana rule keeps its
+// uid; a datasource rule has none, so it gets a JSON tuple (file included — a
+// Prometheus group name is only unique within a file).
+func ruleKey(dsUID, group, name, file, uid string) string {
 	if uid != "" {
 		return uid
 	}
-	b, _ := json.Marshal([3]string{dsUID, group, name})
+	b, _ := json.Marshal([4]string{dsUID, group, name, file})
 	return dsKeyPrefix + string(b)
 }
 

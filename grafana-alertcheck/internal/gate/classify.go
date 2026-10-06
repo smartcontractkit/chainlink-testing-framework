@@ -82,10 +82,13 @@ type Violation struct {
 type RuleVerdict struct {
 	Alert, RuleUID string
 	RuleKey        string `json:"rule_key,omitempty"`
-	Outcome        Outcome
-	BadFor         time.Duration // total wall-clock time any instance was bad inside the window, overlaps merged
-	PollEvery      time.Duration
-	Note           string
+	// SourceKind is "grafana" or "datasource" (sourceKind), so a reader can see
+	// which classification semantics apply without prose.
+	SourceKind string `json:"source_kind,omitempty"`
+	Outcome    Outcome
+	BadFor     time.Duration // total wall-clock time any instance was bad inside the window, overlaps merged
+	PollEvery  time.Duration
+	Note       string
 }
 
 // Policy is decide's narrowed, pure-layer view of a Config: the classification
@@ -143,6 +146,10 @@ type Result struct {
 	Global     GlobalThresholds
 	Verdicts   []RuleVerdict
 	Violations []Violation
+	// Caveats are run-level, kind-level policy notes (e.g. datasource-managed
+	// pause is unobservable). They are not per-rule details; the CLI prints them
+	// once so they never bloat the table.
+	Caveats []string `json:"caveats,omitempty"`
 	// TerminatedEarly is set only when fail-fast stopped before the window
 	// closed; the coverage proof is then over [from, At]. To and Global below
 	// still report the requested values. Published JSON output.
@@ -516,6 +523,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			GraceSource:     graceSourceOrNone(gt.graceSource),
 			DrainTimeout:    gt.drainTimeout,
 		},
+		Caveats: datasourceCaveats(defs),
 	}
 	skewSeen := false
 	for _, p := range polls {
@@ -558,7 +566,8 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		if pausedAtStart[key] {
 			pausedRules = append(pausedRules, def)
 			result.Verdicts = append(result.Verdicts, RuleVerdict{
-				Alert: def.Title, RuleKey: key, RuleUID: def.UID, Outcome: OutcomePaused,
+				Alert: def.Title, RuleKey: key, RuleUID: def.UID,
+				SourceKind: sourceKind(def.Kind), Outcome: OutcomePaused,
 				PollEvery: rt[key].pollEvery,
 				Note:      "paused before the window opened",
 			})
@@ -587,7 +596,8 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		}
 		result.Violations = append(result.Violations, viols...)
 		result.Verdicts = append(result.Verdicts, RuleVerdict{
-			Alert: def.Title, RuleKey: key, RuleUID: def.UID, Outcome: outcome, BadFor: badFor,
+			Alert: def.Title, RuleKey: key, RuleUID: def.UID,
+			SourceKind: sourceKind(def.Kind), Outcome: outcome, BadFor: badFor,
 			PollEvery: t.pollEvery, Note: strings.Join(cov.Notes, "; "),
 		})
 	}

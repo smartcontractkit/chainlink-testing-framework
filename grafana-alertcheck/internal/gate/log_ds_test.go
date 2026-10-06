@@ -9,8 +9,8 @@ import (
 
 func dsRule(uid, name string, insts ...Instance) StateRule {
 	return StateRule{
-		Key: ruleKey("vm", "G", name, ""), DatasourceUID: "vm",
-		Title: name, Group: "G", Type: "alerting", Health: "ok",
+		Key: ruleKey("vm", "G", name, "f", ""), DatasourceUID: "vm",
+		Title: name, Group: "G", File: "f", Type: "alerting", Health: "ok",
 		LastEvaluation: testNow, Instances: insts,
 	}
 }
@@ -20,7 +20,7 @@ func dsRule(uid, name string, insts ...Instance) StateRule {
 func TestReduce_DatasourceDepartureIsCleared(t *testing.T) {
 	firing := Instance{Labels: map[string]string{"x": "y"}, State: StateFiring, ActiveAt: testNow}
 	r := NewReducer()
-	key := ruleKey("vm", "G", "A", "")
+	key := ruleKey("vm", "G", "A", "f", "")
 	r.Reduce(key, observation(testNow, dsRule("", "A", firing)))
 	p := r.Reduce(key, observation(testNow.Add(time.Minute), dsRule("", "A")))
 	require.Equal(t, []string{instanceKey(firing.Labels)}, p.Cleared)
@@ -41,7 +41,7 @@ func TestReduce_GrafanaDepartureIsVanished(t *testing.T) {
 // A datasource poll records the key but no uid.
 func TestReduce_DatasourcePollCarriesKeyNotUID(t *testing.T) {
 	r := NewReducer()
-	key := ruleKey("vm", "G", "A", "")
+	key := ruleKey("vm", "G", "A", "f", "")
 	p := r.Reduce(key, observation(testNow, dsRule("", "A")))
 	require.Equal(t, key, p.RuleKey)
 	require.Empty(t, p.RuleUID)

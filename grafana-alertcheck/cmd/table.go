@@ -5,6 +5,7 @@ import (
 	"io"
 	"sort"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -60,11 +61,11 @@ func renderTable(w io.Writer, res gate.Result) error {
 
 	fmt.Fprintln(w, "RESULTS")
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "ALERT\tVERDICT\tBROKEN FOR\tCHECKED EVERY\tWINDOW COVERED\tDETAILS")
+	fmt.Fprintln(tw, "ALERT\tVERDICT\tBROKEN FOR\tCHECKED EVERY\tWINDOW COVERED\tSOURCE\tDETAILS")
 	for _, v := range sortedVerdicts(res.Verdicts) {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			v.Alert, v.Outcome, v.BadFor.Round(time.Second), v.PollEvery.Round(time.Second),
-			provedLabel(res.Coverage[verdictKey(v)]), v.Note)
+			provedLabel(res.Coverage[verdictKey(v)]), v.SourceKind, details(v.Alert, v.Note))
 	}
 	if err := tw.Flush(); err != nil {
 		return fmt.Errorf("render table: %w", err)
@@ -131,6 +132,16 @@ func violationsLabel(n int, enabled bool) string {
 		s = color + s + ansiReset
 	}
 	return mark + " " + s
+}
+
+// details strips the redundant `rule "<title>": ` prefix every coverage note
+// carries for the JSON consumer — the ALERT column already names the rule, and
+// keeping it would repeat a long name in every DETAILS cell.
+func details(title, note string) string {
+	if note == "" {
+		return ""
+	}
+	return strings.ReplaceAll(note, fmt.Sprintf("rule %q: ", title), "")
 }
 
 // provedLabel is the table's WINDOW COVERED column: "yes" for a fully

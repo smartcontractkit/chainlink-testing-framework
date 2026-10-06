@@ -48,7 +48,7 @@ The header must be line 1, appear once, and carry `schema_version` `1` (any othe
       "poll_every_seconds": 30
     },
     {
-      "key": "ds:[\"vm\",\"ExampleMetrics\",\"ExampleTargetDown\"]",
+      "key": "ds:[\"vm\",\"ExampleMetrics\",\"ExampleTargetDown\",\"/etc/vm/rules/example.yml\"]",
       "uid": "",
       "title": "ExampleTargetDown",
       "group": "ExampleMetrics",

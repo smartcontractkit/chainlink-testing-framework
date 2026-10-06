@@ -9,7 +9,7 @@ import (
 
 func dsDef(name string) Definition {
 	return Definition{
-		Key: ruleKey("vm", "G", name, ""), Title: name, Group: "G",
+		Key: ruleKey("vm", "G", name, "f", ""), Title: name, Group: "G", File: "f",
 		Kind: KindDatasourceManaged, DatasourceUID: "vm", DatasourceName: "VM",
 		IntervalSeconds: 60,
 	}
@@ -18,6 +18,19 @@ func dsDef(name string) Definition {
 // dsPoll is a datasource poll with the fields the pure layer reads.
 func dsPoll(key string, at time.Time, health string) Poll {
 	return Poll{RuleKey: key, GrafanaNow: at, Found: true, Health: health, LastEvaluation: at}
+}
+
+func TestDatasourceCaveats(t *testing.T) {
+	require.Empty(t, datasourceCaveats(nil))
+	require.Empty(t, datasourceCaveats([]Definition{{Kind: KindGrafanaManaged}}))
+
+	a, b, c := dsDef("A"), dsDef("B"), dsDef("C")
+	c.DatasourceName = "Mimir"
+	got := datasourceCaveats([]Definition{a, b, c})
+	require.Len(t, got, 2)
+	require.Contains(t, got[0], "pause is not observable")
+	require.Contains(t, got[0], "Mimir, VM")
+	require.Contains(t, got[1], "treated as a recovery")
 }
 
 // A datasource instance that is bad at `from` and then leaves the active set is
@@ -52,7 +65,11 @@ func TestDecide_DatasourceDepartureIsRecovered(t *testing.T) {
 	require.NoError(t, err)
 	require.Empty(t, res.Violations)
 	require.Equal(t, OutcomeRecovered, res.Verdicts[0].Outcome)
-	require.Contains(t, res.Verdicts[0].Note, "treated as a recovery")
+	// The recovery caveat is run-level, not repeated in the per-rule note.
+	require.NotContains(t, res.Verdicts[0].Note, "treated as a recovery")
+	require.Equal(t, "datasource", res.Verdicts[0].SourceKind)
+	require.Len(t, res.Caveats, 2)
+	require.Contains(t, res.Caveats[1], "treated as a recovery")
 }
 
 // The same shape for a Grafana rule, but a VANISH rather than a clear, stays
