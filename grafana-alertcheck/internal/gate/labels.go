@@ -25,7 +25,7 @@ func SelectByLabels(defs []Definition, include, exclude []LabelMatcher) ([]Defin
 			continue
 		}
 		matchedInclude++
-		if d.Kind != KindGrafanaManaged {
+		if !isSupported(d) {
 			return nil, fmt.Errorf("label selection matches %q, a %s, which is not supported", d.Title, kindName(d.Kind))
 		}
 		if matchesAny(d.Labels, exclude) {
@@ -65,6 +65,12 @@ func resolveAlertSet(defs []Definition, names []string, include, exclude []Label
 	if err != nil {
 		return nil, nil, err
 	}
+	// A collision in the inventory is harmless until a selected rule's identity
+	// is shared: the state query cannot tell the siblings apart, so such a rule
+	// is unobservable even when the selection narrows to it.
+	if err := rejectSharedSelectedKeys(defs, selected); err != nil {
+		return nil, nil, err
+	}
 	return selected, notes, nil
 }
 
@@ -81,11 +87,11 @@ func subtractExcluded(all, selected []Definition, excludeAlerts []string, folder
 	}
 	drop := make(map[string]bool, len(excluded))
 	for _, d := range excluded {
-		drop[d.UID] = true
+		drop[defKey(d)] = true
 	}
 	out := make([]Definition, 0, len(selected))
 	for _, d := range selected {
-		if !drop[d.UID] {
+		if !drop[defKey(d)] {
 			out = append(out, d)
 		}
 	}
@@ -111,7 +117,9 @@ func labelSelectionHeader(include, exclude []LabelMatcher, excludeCount int) str
 func printLabelSelection(w io.Writer, resolved []Definition, include, exclude []LabelMatcher, excludeCount int) {
 	fmt.Fprintf(w, "%s:\n", labelSelectionHeader(include, exclude, excludeCount))
 	for _, d := range resolved {
-		fmt.Fprintf(w, "  - %s (%s)\n", d.Title, d.UID)
+		// defKey, not UID: a datasource-managed rule has no uid, and its key is
+		// the copyable identity (`key:<key>`).
+		fmt.Fprintf(w, "  - %s (%s)\n", d.Title, defKey(d))
 	}
 }
 

@@ -43,11 +43,20 @@ func (s *loopSource) Version(context.Context) (string, error) {
 	return "", errors.New("loopSource: the recorder loop must not read the version")
 }
 
-func (s *loopSource) Definitions(context.Context) ([]Definition, error) {
+func (s *loopSource) GrafanaDefinitions(context.Context) ([]Definition, error) {
 	return nil, errors.New("loopSource: the recorder loop must not read the definitions")
 }
 
-func (s *loopSource) RuleState(_ context.Context, title string) (Observation, error) {
+func (s *loopSource) DiscoverRuleSources(context.Context) ([]RuleSource, error) {
+	return nil, errors.New("loopSource: the recorder loop must not discover sources")
+}
+
+func (s *loopSource) DatasourceDefinitions(context.Context, RuleSource, []string) ([]Definition, error) {
+	return nil, errors.New("loopSource: the recorder loop must not read datasource definitions")
+}
+
+func (s *loopSource) RuleState(_ context.Context, ref RuleRef) (Observation, error) {
+	title := ref.Title
 	s.mu.Lock()
 	s.calls[title]++
 	call := s.calls[title]
@@ -110,7 +119,10 @@ func TestWatchLoopPollsEachRuleAtItsOwnCadence(t *testing.T) {
 		Src:     src,
 		Writer:  w,
 		Reducer: NewReducer(),
-		Titles:  map[string]string{tightUID: "Tight Rule", slackUID: "Slack Rule"},
+		Refs: map[string]RuleRef{
+			tightUID: {Key: tightUID, Title: "Tight Rule"},
+			slackUID: {Key: slackUID, Title: "Slack Rule"},
+		},
 		Cadence: map[string]time.Duration{
 			tightUID: 5 * time.Second,
 			slackUID: 150 * time.Second,
@@ -152,7 +164,7 @@ func TestWatchLoopContinuesTheSeededSchedule(t *testing.T) {
 		Src:         src,
 		Writer:      w,
 		Reducer:     NewReducer(),
-		Titles:      map[string]string{"r1": "Example"},
+		Refs:        map[string]RuleRef{"r1": {Key: "r1", Title: "Example"}},
 		Cadence:     map[string]time.Duration{"r1": 30 * time.Second},
 		Seed:        []Poll{{RuleUID: "r1", GrafanaNow: testNow.Add(-90 * time.Second), Found: true}},
 		Until:       testNow.Add(time.Minute),
@@ -178,9 +190,12 @@ func TestObserveAllDispatchesInOrder(t *testing.T) {
 		return observation(testNow, testStateRule(title, title, time.Minute, testNow)), nil
 	})
 	uids := []string{"r1", "r2", "r3", "r4"}
-	titles := map[string]string{"r1": "One", "r2": "Two", "r3": "Three", "r4": "Four"}
+	refs := map[string]RuleRef{
+		"r1": {Key: "r1", Title: "One"}, "r2": {Key: "r2", Title: "Two"},
+		"r3": {Key: "r3", Title: "Three"}, "r4": {Key: "r4", Title: "Four"},
+	}
 
-	out, err := observeAll(context.Background(), src, titles, uids, 1)
+	out, err := observeAll(context.Background(), src, refs, uids, 1)
 	require.NoError(t, err)
 	require.Len(t, out, 4)
 	require.Equal(t, []string{"One", "Two", "Three", "Four"}, order)
@@ -206,7 +221,7 @@ func TestWatchLoopHardErrorLeavesNoSentinel(t *testing.T) {
 		Src:         src,
 		Writer:      w,
 		Reducer:     NewReducer(),
-		Titles:      map[string]string{"r1": "Example"},
+		Refs:        map[string]RuleRef{"r1": {Key: "r1", Title: "Example"}},
 		Cadence:     map[string]time.Duration{"r1": 30 * time.Second},
 		Until:       testNow.Add(time.Hour),
 		Concurrency: 1,
@@ -245,7 +260,7 @@ func TestWatchLoopSignalDuringPollIsACleanStop(t *testing.T) {
 		Src:         src,
 		Writer:      w,
 		Reducer:     NewReducer(),
-		Titles:      map[string]string{"r1": "Example"},
+		Refs:        map[string]RuleRef{"r1": {Key: "r1", Title: "Example"}},
 		Cadence:     map[string]time.Duration{"r1": 30 * time.Second},
 		Concurrency: 1,
 		Clock:       clock,
@@ -272,7 +287,7 @@ func TestWatchLoopWithNothingToPollStillFinishesTheLog(t *testing.T) {
 		Src:         src,
 		Writer:      w,
 		Reducer:     NewReducer(),
-		Titles:      map[string]string{},
+		Refs:        map[string]RuleRef{},
 		Cadence:     map[string]time.Duration{},
 		Until:       testNow.Add(time.Minute),
 		Concurrency: 1,
@@ -306,7 +321,7 @@ func TestWatchLoopPollBatchKeepsTheHeartbeatsItGot(t *testing.T) {
 		Src:         src,
 		Writer:      w,
 		Reducer:     NewReducer(),
-		Titles:      map[string]string{"ok": "Healthy", "bad": "Broken"},
+		Refs:        map[string]RuleRef{"ok": {Key: "ok", Title: "Healthy"}, "bad": {Key: "bad", Title: "Broken"}},
 		Cadence:     map[string]time.Duration{"ok": 30 * time.Second, "bad": 30 * time.Second},
 		Concurrency: 2,
 		Clock:       clock,

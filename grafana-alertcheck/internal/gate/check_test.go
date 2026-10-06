@@ -59,8 +59,12 @@ type checkSource struct {
 	defs       []Definition
 	defsErr    error
 
-	calls   map[string]int
-	respond func(title string, call int) (Observation, error)
+	ruleSources []RuleSource
+	dsDefs      map[string][]Definition
+
+	calls     map[string]int
+	respond   func(title string, call int) (Observation, error)
+	dsRespond func(key string, call int) (Observation, error)
 }
 
 func newCheckSource(respond func(title string, call int) (Observation, error)) *checkSource {
@@ -74,21 +78,51 @@ func newCheckSource(respond func(title string, call int) (Observation, error)) *
 
 func (s *checkSource) Version(context.Context) (string, error) { return s.version, s.versionErr }
 
-func (s *checkSource) Definitions(context.Context) ([]Definition, error) { return s.defs, s.defsErr }
+func (s *checkSource) GrafanaDefinitions(context.Context) ([]Definition, error) {
+	return s.defs, s.defsErr
+}
+
+func (s *checkSource) DiscoverRuleSources(context.Context) ([]RuleSource, error) {
+	return s.ruleSources, nil
+}
+
+func (s *checkSource) DatasourceDefinitions(_ context.Context, src RuleSource, names []string) ([]Definition, error) {
+	defs := s.dsDefs[src.UID]
+	if len(names) == 0 {
+		return defs, nil
+	}
+	want := make(map[string]bool, len(names))
+	for _, n := range names {
+		want[n] = true
+	}
+	var out []Definition
+	for _, d := range defs {
+		if want[d.Title] {
+			out = append(out, d)
+		}
+	}
+	return out, nil
+}
 
 // RuleState answers from the responder. A nil responder means the test
 // expects no state read at all — it fails with a message rather than a nil
 // dereference, because "this path must not poll" is an assertion several tests
 // here make on purpose.
-func (s *checkSource) RuleState(_ context.Context, title string) (Observation, error) {
-	s.mu.Lock()
-	s.calls[title]++
-	call := s.calls[title]
-	s.mu.Unlock()
-	if s.respond == nil {
-		return Observation{}, fmt.Errorf("checkSource: this test expects no state read, but %q was polled", title)
+func (s *checkSource) RuleState(_ context.Context, ref RuleRef) (Observation, error) {
+	key := ref.Title
+	respond := s.respond
+	if ref.Kind == KindDatasourceManaged {
+		key = ref.Key
+		respond = s.dsRespond
 	}
-	return s.respond(title, call)
+	s.mu.Lock()
+	s.calls[key]++
+	call := s.calls[key]
+	s.mu.Unlock()
+	if respond == nil {
+		return Observation{}, fmt.Errorf("checkSource: this test expects no state read, but %q was polled", key)
+	}
+	return respond(key, call)
 }
 
 func (s *checkSource) callCount(title string) int {
@@ -1042,6 +1076,21 @@ func TestCheckFailClosedOnWrongLogIdentity(t *testing.T) {
 		_, err := check(context.Background(), cfg, src)
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "log identity")
+	})
+
+	t.Run("rule is now a recording rule", func(t *testing.T) {
+		dir := t.TempDir()
+		windowEnd := testNow.Add(5*time.Minute + checkGrace)
+		logPath := recordedLog(t, dir, "https://grafana.example.com",
+			testNow.Add(-time.Minute), testNow.Add(-time.Minute), windowEnd, windowEnd.Add(30*time.Second), 0)
+
+		cfg := recorderConfig(t, newVirtualClock(testNow), logPath)
+		src := newCheckSource(nil)
+		src.defs = []Definition{{UID: checkUID, Title: checkTitle, Kind: KindRecording, IntervalSeconds: 60}}
+
+		_, err := check(context.Background(), cfg, src)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "recording rule")
 	})
 }
 
@@ -2145,7 +2194,7 @@ func TestRecoveryWaitExpiresInstancesIndividually(t *testing.T) {
 	rt := map[string]RuleTimings{checkUID: timings}
 
 	calls := 0
-	src := func(context.Context, map[string]string, []string) ([]Poll, bool, error) {
+	src := func(context.Context, map[string]RuleRef, []string) ([]Poll, bool, error) {
 		calls++
 		p := Poll{RuleUID: checkUID, GrafanaNow: clock.Now(), Found: true, Health: "ok", LastEvaluation: clock.Now()}
 		if calls == 1 {

@@ -5,6 +5,7 @@ import (
 	"io"
 	"sort"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -38,7 +39,7 @@ no evaluation for — how long Grafana may go without evaluating the alert befor
 func renderTable(w io.Writer, res gate.Result) error {
 	alertOf := make(map[string]string, len(res.Verdicts))
 	for _, v := range res.Verdicts {
-		alertOf[v.RuleUID] = v.Alert
+		alertOf[verdictKey(v)] = v.Alert
 	}
 
 	enabled := colorEnabled(w)
@@ -60,11 +61,11 @@ func renderTable(w io.Writer, res gate.Result) error {
 
 	fmt.Fprintln(w, "RESULTS")
 	tw := tabwriter.NewWriter(w, 0, 4, 2, ' ', 0)
-	fmt.Fprintln(tw, "ALERT\tVERDICT\tBROKEN FOR\tCHECKED EVERY\tWINDOW COVERED\tDETAILS")
+	fmt.Fprintln(tw, "ALERT\tVERDICT\tBROKEN FOR\tCHECKED EVERY\tWINDOW COVERED\tSOURCE\tDETAILS")
 	for _, v := range sortedVerdicts(res.Verdicts) {
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
+		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n",
 			v.Alert, v.Outcome, v.BadFor.Round(time.Second), v.PollEvery.Round(time.Second),
-			provedLabel(res.Coverage[v.RuleUID]), v.Note)
+			provedLabel(res.Coverage[verdictKey(v)]), v.SourceKind, details(v.Alert, v.Note))
 	}
 	if err := tw.Flush(); err != nil {
 		return fmt.Errorf("render table: %w", err)
@@ -133,6 +134,16 @@ func violationsLabel(n int, enabled bool) string {
 	return mark + " " + s
 }
 
+// details strips the redundant `rule "<title>": ` prefix every coverage note
+// carries for the JSON consumer — the ALERT column already names the rule, and
+// keeping it would repeat a long name in every DETAILS cell.
+func details(title, note string) string {
+	if note == "" {
+		return ""
+	}
+	return strings.ReplaceAll(note, fmt.Sprintf("rule %q: ", title), "")
+}
+
 // provedLabel is the table's WINDOW COVERED column: "yes" for a fully
 // observed window, "no" with the reason and largest gap for a not-verified
 // rule, and "-" for a rule decide never asked proveCoverage about at all
@@ -160,10 +171,27 @@ func alertLabel(v gate.Violation, alertOf map[string]string) string {
 	if v.Alert != "" {
 		return v.Alert
 	}
-	if a, ok := alertOf[v.RuleUID]; ok {
+	if a, ok := alertOf[violationKey(v)]; ok {
 		return a
 	}
 	return "-"
+}
+
+// verdictKey is a RuleVerdict's identity: RuleKey when set, else RuleUID (a
+// Result built directly in a test may carry only RuleUID).
+func verdictKey(v gate.RuleVerdict) string {
+	if v.RuleKey != "" {
+		return v.RuleKey
+	}
+	return v.RuleUID
+}
+
+// violationKey mirrors verdictKey for a Violation.
+func violationKey(v gate.Violation) string {
+	if v.RuleKey != "" {
+		return v.RuleKey
+	}
+	return v.RuleUID
 }
 
 func alertOr(uid string, alertOf map[string]string) string {
@@ -201,7 +229,7 @@ func groupedViolations(in []gate.Violation) []violationGroup {
 }
 
 func violationSignature(v gate.Violation) string {
-	return v.Alert + "\x00" + v.RuleUID + "\x00" + string(v.Outcome) + "\x00" + string(v.State) + "\x00" + v.Health + "\x00" + v.Note
+	return v.Alert + "\x00" + violationKey(v) + "\x00" + string(v.Outcome) + "\x00" + string(v.State) + "\x00" + v.Health + "\x00" + v.Note
 }
 
 func sameRendered(a, b gate.Violation) bool {

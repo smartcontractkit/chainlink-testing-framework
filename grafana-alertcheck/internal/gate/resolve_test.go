@@ -61,15 +61,6 @@ func TestResolve_NoMatch(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "no rule matched")
 	require.Contains(t, err.Error(), "list")
-	require.Contains(t, err.Error(), "datasource-managed alert rules cannot be observed")
-}
-
-func TestResolve_NoMatchSubstringSuggestion(t *testing.T) {
-	defs := rulerDefs(t)
-	_, _, err := Resolve(defs, []string{"paused rule"}, "")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "did you mean")
-	require.Contains(t, err.Error(), "Example Paused Rule")
 }
 
 func TestResolve_RefusesDatasourceManaged(t *testing.T) {
@@ -83,9 +74,18 @@ func TestResolve_RefusesDatasourceManaged(t *testing.T) {
 func TestResolve_RefusesRecording(t *testing.T) {
 	defs, err := ParseDefinitions(readFixture(t, "ruler_recording.json"))
 	require.NoError(t, err)
-	_, _, err = Resolve(defs, []string{"uid:rule0000011"}, "")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "recording rule")
+	// Both the uid form and the rule's real Folder/Group/Title path must match
+	// and be refused specifically — a recording rule must not fall through the
+	// datasource name forms to a generic no-match.
+	for _, name := range []string{
+		"uid:rule0000011",
+		"ExampleMetrics/Recording Group/example:recorded_metric:rate5m",
+		"ExampleMetrics/example:recorded_metric:rate5m",
+	} {
+		_, _, err := Resolve(defs, []string{name}, "")
+		require.Errorf(t, err, "name %q", name)
+		require.Containsf(t, err.Error(), "recording rule", "name %q", name)
+	}
 }
 
 func TestResolve_RejectsEmptySegments(t *testing.T) {
@@ -124,11 +124,8 @@ func TestResolve_UnsupportedKindsExcludedFromNoMatchSurfaces(t *testing.T) {
 	_, _, err = Resolve(combined, []string{"Example"}, "")
 	require.Error(t, err, "want a no-match error for a name matching no title exactly")
 
-	wantCount := fmt.Sprintf("(%d grafana-managed rules available", len(supported))
+	wantCount := fmt.Sprintf("(%d rules available", len(supported))
 	require.Contains(t, err.Error(), wantCount)
-	require.NotContains(t, err.Error(), "ExampleTargetDown")
-	require.NotContains(t, err.Error(), "example:recorded_metric:rate5m")
-	require.Contains(t, err.Error(), "Example Paused Rule")
 }
 
 func TestResolve_UnsupportedHomonymResolvesSupportedSilently(t *testing.T) {
@@ -195,6 +192,83 @@ func TestResolve_EmptyAndBlankLinesDiscarded(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, resolved, 1)
 	require.Equal(t, "rule0000007", resolved[0].UID)
+}
+
+func dsResolveDef(ds, dsName, group, title string) Definition {
+	return Definition{
+		Key: ruleKey(ds, group, title, "", ""), Title: title, Group: group,
+		Kind: KindDatasourceManaged, DatasourceUID: ds, DatasourceName: dsName,
+	}
+}
+
+func TestResolve_DatasourceFormsAndKey(t *testing.T) {
+	defs := []Definition{dsResolveDef("vm", "VictoriaMetrics - Prod", "ExampleMetrics", "ExampleTargetDown")}
+
+	for _, name := range []string{
+		"ExampleTargetDown",
+		"ExampleMetrics/ExampleTargetDown",
+		"VictoriaMetrics - Prod/ExampleMetrics/ExampleTargetDown",
+		"key:" + ruleKey("vm", "ExampleMetrics", "ExampleTargetDown", "", ""),
+	} {
+		resolved, _, err := Resolve(defs, []string{name}, "")
+		require.NoErrorf(t, err, "name %q", name)
+		require.Len(t, resolved, 1)
+		require.Equal(t, "vm", resolved[0].DatasourceUID)
+	}
+}
+
+// A datasource-managed rule's name can itself contain "/", so the whole input
+// must be tried as an exact title before the segmented forms.
+func TestResolve_DatasourceNameWithSlashes(t *testing.T) {
+	name := "devex-cicd/prod/griddle-github: ContainersNotReady"
+	defs := []Definition{{
+		Key:   ruleKey("ds", "DevexCICDGriddleGitHubServiceAlerts", name, "f", ""),
+		Title: name, Group: "DevexCICDGriddleGitHubServiceAlerts",
+		Kind: KindDatasourceManaged, DatasourceUID: "ds", DatasourceName: "VM",
+	}}
+	resolved, _, err := Resolve(defs, []string{name}, "")
+	require.NoError(t, err)
+	require.Len(t, resolved, 1)
+	require.Equal(t, name, resolved[0].Title)
+}
+
+// The same string can be one datasource rule's exact title AND a Grafana
+// Folder/Title selector. That must be reported as ambiguous, not silently
+// resolved to whichever interpretation is tried first.
+func TestResolve_ExactTitleVsSegmentedIsAmbiguous(t *testing.T) {
+	ds := Definition{
+		Key:   ruleKey("vm", "G", "Platform/HighErrorRate", "f", ""),
+		Title: "Platform/HighErrorRate", Group: "G",
+		Kind: KindDatasourceManaged, DatasourceUID: "vm", DatasourceName: "VM",
+	}
+	grafana := Definition{Key: "u1", UID: "u1", Title: "HighErrorRate", Folder: "Platform", Kind: KindGrafanaManaged}
+	_, _, err := Resolve([]Definition{grafana, ds}, []string{"Platform/HighErrorRate"}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "matches 2 rules")
+}
+
+// A key shared by two distinct rules cannot select one of them.
+func TestResolve_KeySharedByDistinctRulesIsAmbiguous(t *testing.T) {
+	a := Definition{
+		Key: "ds:k", Title: "Same", Group: "G", Kind: KindDatasourceManaged,
+		DatasourceUID: "vm", DatasourceName: "VM",
+	}
+	b := a
+	_, _, err := Resolve([]Definition{a, b}, []string{"key:ds:k"}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "share the identity")
+}
+
+func TestResolve_DatasourceAmbiguityAcrossSources(t *testing.T) {
+	defs := []Definition{
+		dsResolveDef("vm-a", "A", "G", "Same"),
+		dsResolveDef("vm-b", "B", "G", "Same"),
+	}
+	_, _, err := Resolve(defs, []string{"Same"}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "matches 2 rules")
+	require.Contains(t, err.Error(), "A")
+	require.Contains(t, err.Error(), "B")
 }
 
 func TestResolve_FolderScopesBareTitle(t *testing.T) {

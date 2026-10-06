@@ -40,8 +40,19 @@ type Instance struct {
 // StateRule is one rule from the state endpoint
 // (/api/prometheus/grafana/api/v1/rules), fully and strictly parsed.
 type StateRule struct {
+	// Key is the map key across both source kinds (identity.go); UID is empty
+	// for datasource-managed rules.
+	Key                       string
 	UID, Title, Folder, Group string
-	Interval                  time.Duration
+	// DatasourceUID and File are set for datasource-managed rules only; Type is
+	// the Prometheus rule type ("alerting"/"recording"); Query and For carry the
+	// Prometheus definition.
+	DatasourceUID string
+	File          string
+	Type, Query   string
+	For           time.Duration
+	Labels        map[string]string
+	Interval      time.Duration
 	// KeepFiringFor is the rule's recovery period in seconds; 0/absent means
 	// no instance can be Recovering. Carried onto the Poll.
 	KeepFiringFor time.Duration
@@ -129,7 +140,7 @@ func parseStateRule(raw json.RawMessage, folder, group string, interval time.Dur
 		return StateRule{}, fmt.Errorf("rule %q: %w", uid, err)
 	}
 
-	r := StateRule{UID: uid, Title: name, Folder: folder, Group: group, Interval: interval}
+	r := StateRule{Key: uid, UID: uid, Title: name, Folder: folder, Group: group, Interval: interval, Type: "alerting"}
 
 	if err := req(m, "state", &r.State); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", uid, err)
@@ -194,6 +205,13 @@ func parseStateRule(raw json.RawMessage, folder, group string, interval time.Dur
 }
 
 func parseInstance(raw json.RawMessage) (Instance, error) {
+	return parseInstanceWith(raw, normalizeInstanceState)
+}
+
+// parseInstanceWith is parseInstance with the state normalizer injected, so the
+// datasource parser reuses the same strict field decoding with its own
+// vocabulary.
+func parseInstanceWith(raw json.RawMessage, normalize func(string) (State, string, error)) (Instance, error) {
 	var m map[string]json.RawMessage
 	if err := json.Unmarshal(raw, &m); err != nil {
 		return Instance{}, fmt.Errorf("%w", err)
@@ -203,7 +221,7 @@ func parseInstance(raw json.RawMessage) (Instance, error) {
 	if err := req(m, "state", &rawState); err != nil {
 		return Instance{}, err
 	}
-	state, reason, err := normalizeInstanceState(rawState)
+	state, reason, err := normalize(rawState)
 	if err != nil {
 		return Instance{}, err
 	}

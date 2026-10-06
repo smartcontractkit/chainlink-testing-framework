@@ -60,6 +60,7 @@ func TestRenderTable(t *testing.T) {
 	require.Contains(t, out, "Zebra Alert")
 	require.Contains(t, out, "healthy")
 	require.Contains(t, out, "WINDOW COVERED")
+	require.Contains(t, out, "SOURCE")
 
 	// The violations section must show up even without --output json, and must
 	// carry the --allow-paused hint text verbatim. INSTANCES is a single word
@@ -90,6 +91,14 @@ func TestRenderTable(t *testing.T) {
 	require.Contains(t, out, "clock difference from Grafana: 1.5s, accurate to ±250ms (checks fail above 1m0s)")
 	require.Contains(t, out, "Grafana version: 13.1.0")
 	require.Contains(t, out, "❌ violations: 2")
+}
+
+// The DETAILS cell drops the `rule "<title>": ` prefix the JSON notes carry, so
+// the ALERT column is not repeated in every cell.
+func TestDetails_StripsRulePrefix(t *testing.T) {
+	require.Equal(t, "", details("A", ""))
+	require.Equal(t, "gap of 5m0s", details("A", `rule "A": gap of 5m0s`))
+	require.Equal(t, "gap; health=error", details("A", `rule "A": gap; rule "A": health=error`))
 }
 
 // The footer verdict line picks its emoji by whether there are violations.

@@ -16,7 +16,7 @@ Connection details are always from the environment: `GRAFANA_URL` and `GRAFANA_T
 
 ## `list`
 
-Lists every rule from the ruler endpoint — kind, folder, group, title, uid. Useful to check auth and to find `uid:` names.
+Lists every rule — kind, datasource, folder, group, title, key, uid. Grafana-managed rules come from the ruler endpoint; datasource-managed rules are auto-discovered per datasource through the Prometheus API. Useful to check auth and to find `uid:`/`key:` names. The bulk datasource fetch can take seconds per source.
 
 ```bash
 grafana-alertcheck list
@@ -97,16 +97,23 @@ By default `check` **exits early** on a failure that cannot become a pass: a pos
 
 ## Naming alerts
 
-Alert names take one of four forms:
+Alert names take one of these forms. Grafana-managed rules use folder/group; datasource-managed rules are auto-discovered (no selection flag) and use datasource/group.
 
 | Form | Meaning |
 | ---- | ------- |
-| `HighErrorRate` | Title only, scoped by `--folder` |
-| `Platform/HighErrorRate` | Folder + title |
-| `Platform/api/HighErrorRate` | Folder + group + title (may still be ambiguous; use `uid:` for guaranteed uniqueness) |
-| `uid:abc123` | Exact uid (present on both endpoints) |
+| `HighErrorRate` | Title only; scoped by `--folder` for Grafana rules |
+| `Platform/HighErrorRate` | Grafana folder + title |
+| `Platform/api/HighErrorRate` | Grafana folder + group + title |
+| `ExampleMetrics/HighErrorRate` | Datasource group + title |
+| `VM Prod/ExampleMetrics/HighErrorRate` | Datasource name + group + title |
+| `uid:abc123` | Exact Grafana uid |
+| `key:ds:[…]` | Exact rule key across both kinds (copyable from `list`) |
 
-Recording rules are refused with a specific error. Datasource-managed rules never reach resolution at all: the Grafana-managed ruler endpoint this tool queries does not return them. A no-match errors with case-insensitive substring suggestions and points at `list`, and states that datasource-managed rules cannot be observed and are not supported. A name matching multiple rules errors listing every candidate with the copyable `Folder/Group/Title` and its `uid:` form. Duplicate names that resolve to the same uid collapse to one (a note, not an error).
+A datasource rule's **name can itself contain `/`** (e.g. `devex-cicd/prod/griddle-github: ContainersNotReady`). The exact name is tried first, so the `TITLE` from `list` always resolves, and `key:` is the unambiguous fallback.
+
+`--folder` scopes a bare Grafana title only. A recording rule, or a datasource rule with no identifiable datasource, is refused with a specific error; a no-match points at `list`; an ambiguous name lists every candidate with its full name, source and `uid:`/`key:`. Duplicate names collapse to one (a note, not an error).
+
+Auto-discovery keeps `/api/datasources` entries with `type == "prometheus"` and `jsonData.manageAlerts == true`, then probes each. The token needs `datasources:read` plus datasource query permission; a failure names the permission.
 
 ## Selecting alerts by labels
 
@@ -125,7 +132,9 @@ The label flags cannot be combined with `--alerts` or `--folder`, and they are r
 
 ## Output and exit codes
 
-The human table goes to **stderr**: `RESULTS` (one row per rule, with the verdict, time broken, check cadence and whether the window was observed), `VIOLATIONS` (one per distinct rule/verdict/state/health/note signature, with an `INSTANCES` count of the instances it stands for — instance identity is only in the JSON), and `LIMITS USED` (each rule's observation limits in plain words, explained by a legend under the table, plus the extra observation time, the evaluation wait, the largest measured clock difference and the detected Grafana version; the closing violations count is marked ✅/❌). The JSON outcome values are `healthy`, `new_failure`, `still_failing`, `recovered`, `unstable`, `paused`, `not_verified` and the synthetic `not_counted`. `--output json` writes the result to stdout.
+The human table goes to **stderr**: `RESULTS` (one row per rule: verdict, time broken, check cadence, whether the window was observed, and `SOURCE` — `grafana` or `datasource`), `VIOLATIONS` (one per distinct rule/verdict/state/health/note signature, with an `INSTANCES` count — instance identity is only in the JSON), and `LIMITS USED` (each rule's observation limits in plain words, explained by a legend, plus the extra observation time, the evaluation wait, the largest measured clock difference and the Grafana version; the closing violations count is marked ✅/❌).
+
+`DETAILS` carries only rule-specific notes; kind-level caveats (datasource rules have no pause signal and treat a departure as a recovery) are printed once, before the table. The JSON outcome values are `healthy`, `new_failure`, `still_failing`, `recovered`, `unstable`, `paused`, `not_verified` and the synthetic `not_counted`; `--output json` adds each rule's `source_kind` and the run-level `caveats`, and writes the result to stdout.
 
 | Code | Meaning |
 | ---- | ------- |

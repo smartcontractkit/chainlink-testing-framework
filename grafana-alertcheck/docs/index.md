@@ -35,7 +35,7 @@ export GRAFANA_TOKEN=…
 
 Requires Grafana >= 13.0.0 and < 14.0.0. Outside that range the gate exits `2`.
 
-Grafana API token needs to have `fixed:alerting:reader` permissions. Ask the o11y team for your token.
+The Grafana API token needs `fixed:alerting:reader`, plus `datasources:read` and datasource query permission so datasource-managed rules can be discovered and read. Ask the o11y team for your token.
 
 ## Quickstart — recorder mode
 

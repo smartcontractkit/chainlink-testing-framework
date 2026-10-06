@@ -2,6 +2,8 @@ package gate
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -53,7 +55,7 @@ type CoverageResult struct {
 
 // proveCoverage applies the nine coverage checks to one rule's polls. PURE: no
 // HTTP, no files, no clock reads — everything arrives as an argument. polls need
-// not be pre-filtered to this rule (selection is by def.UID). Every check runs
+// not be pre-filtered to this rule (selection is by key). Every check runs
 // even after Unobservable is set, so LargestGap and the notes are complete on
 // exit 2; Reason names only the FIRST check that failed.
 func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, def Definition,
@@ -63,7 +65,7 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 
 	// pollsForRule (classify.go) is the single filter+sort implementation; this
 	// and classifyRule must not carry two independent copies.
-	rulePolls := pollsForRule(polls, def.UID)
+	rulePolls := pollsForRule(polls, defKey(def))
 
 	var res CoverageResult
 	fail := func(reason UnobservableReason, note string) {
@@ -173,19 +175,23 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 	// Check 7 — isPaused in-window. The PRIMARY pause detector: liveness
 	// (check 6) is only the backup for what IsPaused cannot show (a deleted
 	// rule, a stopped scheduler, a blocked evaluation). This is what catches
-	// pause-then-unpause, which the drain wait alone passes.
-	var pausedCount int
-	var pausedAt time.Time
-	for _, p := range inWindow {
-		if p.IsPaused {
-			pausedCount++
-			if pausedAt.IsZero() {
-				pausedAt = p.GrafanaNow
+	// pause-then-unpause, which the drain wait alone passes. A
+	// datasource-managed rule has no pause signal at all, so the check is
+	// skipped; the run-level caveat is printed once by datasourceCaveats.
+	if def.Kind != KindDatasourceManaged || def.PauseObservable {
+		var pausedCount int
+		var pausedAt time.Time
+		for _, p := range inWindow {
+			if p.IsPaused {
+				pausedCount++
+				if pausedAt.IsZero() {
+					pausedAt = p.GrafanaNow
+				}
 			}
 		}
-	}
-	if pausedCount > 0 {
-		fail(ReasonPausedInWindow, fmt.Sprintf("observed paused on %d poll(s), first at %s", pausedCount, pausedAt.Format(time.RFC3339)))
+		if pausedCount > 0 {
+			fail(ReasonPausedInWindow, fmt.Sprintf("observed paused on %d poll(s), first at %s", pausedCount, pausedAt.Format(time.RFC3339)))
+		}
 	}
 
 	// Check 8 — rule absent. Found==false is authoritative (the transport
@@ -213,7 +219,7 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 	// comma-joined, so membership via reasonsContain, never a literal index).
 	nds, ees := def.NoDataState, def.ExecErrState
 	for _, lr := range h.Rules {
-		if lr.UID == def.UID {
+		if loggedKey(lr) == defKey(def) {
 			nds, ees = lr.NoDataState, lr.ExecErrState
 			break
 		}
@@ -232,6 +238,37 @@ func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, d
 
 	res.Proved = !res.Unobservable
 	return res
+}
+
+// datasourceCaveats is the one-time, kind-level caveat set for
+// datasource-managed rules. These are policy facts that apply to every such
+// rule — the Prometheus API has no isPaused signal, and returns only active
+// instances — so they are reported once for the run, never per rule.
+func datasourceCaveats(defs []Definition) []string {
+	var names []string
+	seen := make(map[string]bool)
+	for _, d := range defs {
+		if d.Kind != KindDatasourceManaged {
+			continue
+		}
+		name := d.DatasourceName
+		if name == "" {
+			name = d.DatasourceUID
+		}
+		if name != "" && !seen[name] {
+			seen[name] = true
+			names = append(names, name)
+		}
+	}
+	if len(names) == 0 {
+		return nil
+	}
+	sort.Strings(names)
+	scope := "datasource-managed rules (" + strings.Join(names, ", ") + ")"
+	return []string{
+		scope + ": pause is not observable, so check 7 is skipped",
+		scope + ": an instance leaving the active set is treated as a recovery (a vanished series is indistinguishable from a resolution)",
+	}
 }
 
 // inWindowPolls filters to polls inside [from, windowEnd] via the cross-domain

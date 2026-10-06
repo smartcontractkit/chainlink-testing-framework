@@ -1,0 +1,124 @@
+package gate
+
+import (
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/require"
+)
+
+func TestParseDatasourceRules_Fixture(t *testing.T) {
+	rules, err := ParseDatasourceRules(readFixture(t, "ds_rules.json"), "ds-uid")
+	require.NoError(t, err)
+	require.Len(t, rules, 1, "recording rules are dropped at parse time")
+
+	alert := rules[0]
+	require.Equal(t, "ExampleTargetDown", alert.Title)
+	require.Equal(t, "ExampleMetrics", alert.Group)
+	require.Equal(t, "/etc/vm/rules/example.yml", alert.File)
+	require.Equal(t, "ds-uid", alert.DatasourceUID)
+	require.Equal(t, "alerting", alert.Type)
+	require.Equal(t, "up == 0", alert.Query)
+	require.Equal(t, 5*time.Minute, alert.For)
+	require.Equal(t, "firing", alert.State)
+	require.Equal(t, "ok", alert.Health)
+	require.Empty(t, alert.UID, "a datasource rule has no uid")
+	require.Equal(t, ruleKey("ds-uid", "ExampleMetrics", "ExampleTargetDown", "/etc/vm/rules/example.yml", ""), alert.Key)
+	require.Len(t, alert.Instances, 1)
+	require.Equal(t, StateFiring, alert.Instances[0].State)
+	require.Nil(t, alert.Totals)
+}
+
+func TestDefinitionsFromDatasource(t *testing.T) {
+	rules, err := ParseDatasourceRules(readFixture(t, "ds_rules.json"), "ds-uid")
+	require.NoError(t, err)
+
+	defs := DefinitionsFromDatasource(rules, "ds-uid", "ExampleMetrics")
+	require.Len(t, defs, 1)
+	require.Equal(t, KindDatasourceManaged, defs[0].Kind)
+	require.Equal(t, "ExampleMetrics", defs[0].DatasourceName)
+	require.False(t, defs[0].PauseObservable)
+	require.Equal(t, 60, defs[0].IntervalSeconds)
+}
+
+// A recording rule that shares the alerting rule's datasource/group/name/file
+// must never reach state selection, or it could shadow the alert.
+func TestParseDatasourceRules_DropsRecordingShadow(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","file":"f","interval":60,"rules":[
+		{"name":"A","type":"recording","query":"up"},
+		{"name":"A","type":"alerting","health":"ok","state":"firing","lastEvaluation":"2026-08-01T00:00:00Z"}]}]}}`)
+	rules, err := ParseDatasourceRules(body, "d")
+	require.NoError(t, err)
+	require.Len(t, rules, 1)
+	require.Equal(t, "alerting", rules[0].Type)
+}
+
+func TestParseDatasourceRules_HealthErrNormalizes(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","file":"f","interval":60,"rules":[
+		{"name":"A","type":"alerting","health":"err","lastEvaluation":"2026-08-01T00:00:00Z","state":"firing"}]}]}}`)
+	rules, err := ParseDatasourceRules(body, "d")
+	require.NoError(t, err)
+	require.Equal(t, "error", rules[0].Health)
+}
+
+func TestParseDatasourceRules_LastError(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+		{"name":"A","type":"alerting","health":"err","lastError":"query failed: bad","state":"firing"}]}]}}`)
+	rules, err := ParseDatasourceRules(body, "d")
+	require.NoError(t, err)
+	require.Equal(t, "error", rules[0].Health)
+	require.Equal(t, "query failed: bad", rules[0].LastError)
+}
+
+// The keep-firing-for is in seconds and spelled keep_firing_for by vmalert and
+// keepFiringFor by Prometheus/Mimir; the alert stays firing for it, so it is
+// recorded but never a recovering state.
+func TestParseDatasourceRules_KeepFiringFor(t *testing.T) {
+	for name, body := range map[string][]byte{
+		"vmalert": []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+			{"name":"A","type":"alerting","health":"ok","state":"firing","keep_firing_for":300}]}]}}`),
+		"prometheus": []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+			{"name":"A","type":"alerting","health":"ok","state":"firing","keepFiringFor":300}]}]}}`),
+	} {
+		t.Run(name, func(t *testing.T) {
+			rules, err := ParseDatasourceRules(body, "d")
+			require.NoError(t, err)
+			require.Equal(t, 5*time.Minute, rules[0].KeepFiringFor)
+		})
+	}
+}
+
+// An unknown rule type must fail closed, not be dropped from the inventory.
+func TestParseDatasourceRules_UnknownTypeIsError(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+		{"name":"A","type":"future","health":"ok","state":"firing"}]}]}}`)
+	_, err := ParseDatasourceRules(body, "d")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unknown rule type")
+}
+
+func TestParseDatasourceRules_ZeroLastEvaluationAllowed(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+		{"name":"A","type":"alerting","health":"ok","state":"pending"}]}]}}`)
+	rules, err := ParseDatasourceRules(body, "d")
+	require.NoError(t, err)
+	require.True(t, rules[0].LastEvaluation.IsZero())
+}
+
+func TestParseDatasourceRules_UnknownInstanceStateIsError(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+		{"name":"A","type":"alerting","health":"ok","state":"firing","alerts":[
+			{"labels":{},"state":"inactive","activeAt":"2026-08-01T00:00:00Z"}]}]}]}}`)
+	_, err := ParseDatasourceRules(body, "d")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unrecognized datasource instance state")
+}
+
+func TestParseDatasourceRules_PendingInstance(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+		{"name":"A","type":"alerting","health":"ok","state":"pending","alerts":[
+			{"labels":{"x":"y"},"state":"pending","activeAt":"2026-08-01T00:00:00Z","value":"1"}]}]}]}}`)
+	rules, err := ParseDatasourceRules(body, "d")
+	require.NoError(t, err)
+	require.Equal(t, StatePending, rules[0].Instances[0].State)
+}

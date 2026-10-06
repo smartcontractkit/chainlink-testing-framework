@@ -35,6 +35,16 @@ The detached recorder then continues the schedule the first observations were on
 
 Single-step `check` runs the same pass itself. It cannot watch before it started, so a `from` inside the pass is a declared blind interval: the run warns, classifies from the pass completion, and the live poller continues the pass's schedule. It never classifies a window that opens before every rule has been observed.
 
+## Datasource-managed rules: discovery and cost
+
+Datasource-managed rules are auto-discovered — there is no selection flag. The candidate filter is strict: `type == "prometheus"` **and** `jsonData.manageAlerts == true`. The strict `true` matters: the `AlertStateHistoryBackend` datasource points at the same VictoriaMetrics backend but does not set `manageAlerts: true`, so a `!= false` filter would include it and make every rule name ambiguous. Loki is deferred: its ruler API is broken/disabled in our Grafana, so only Prometheus-flavored rules are in scope.
+
+Each candidate is probed with a `rule_name[]=__probe__` request; a `manageAlerts=true` source whose probe fails is a hard error naming the source, never a silently dropped source.
+
+vmalert allows two distinct alerting rules to share a name within one group. They get the same identity, and the state query is by datasource/group/name/file, so the tool cannot tell them apart: loading and `list` still show both, but a selection that includes either one fails closed — narrowing by a distinguishing label does not help, because the poll would still reduce whichever sibling the backend lists first.
+
+Cost differs by mode. `list` and label selection take the **bulk** response — one request per datasource, several MB and several seconds for a large ruler. Name selection takes a **filtered** request, ~1 KB and ~1 s. The filter uses vmalert's `[]`-suffixed parameters (`rule_name[]`, `rule_group[]`, `file[]`): vmalert reads only those and ignores plain `rule_name=`, an upstream quirk pinned by tests. `limit_alerts` is a Grafana parameter that vmalert ignores and is therefore omitted.
+
 ## Why the gate never queries state history
 
 Querying Grafana's alert state history after the fact fails closed *in the wrong direction* — it returns "pass" when the truth is unknown:

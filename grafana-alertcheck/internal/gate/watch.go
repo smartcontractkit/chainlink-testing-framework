@@ -284,7 +284,8 @@ func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWa
 		return nil, err
 	}
 
-	defs, err := src.Definitions(ctx)
+	wantAll := len(cfg.IncludeLabels) > 0 || len(cfg.ExcludeLabels) > 0 || len(cfg.ExcludeAlerts) > 0
+	defs, err := loadDefinitions(ctx, src, cfg.Alerts, wantAll)
 	if err != nil {
 		return nil, fmt.Errorf("read rule definitions: %w", err)
 	}
@@ -304,9 +305,9 @@ func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWa
 		// A cadence of zero would make the child spin: every rule is due the
 		// instant it was marked. It also cannot be written into the header,
 		// where check requires a positive value to derive maxGap from.
-		if rt[d.UID].pollEvery <= 0 {
+		if rt[defKey(d)].pollEvery <= 0 {
 			return nil, fmt.Errorf("rule %q (%s) reports intervalSeconds=%d: there is no poll cadence to record at",
-				d.Title, d.UID, d.IntervalSeconds)
+				d.Title, defKey(d), d.IntervalSeconds)
 		}
 	}
 
@@ -349,12 +350,12 @@ func openRecording(ctx context.Context, cfg WatchConfig, src Source, writer *Wri
 	activeTimings := make(map[string]RuleTimings, len(resolved))
 	for _, d := range resolved {
 		if d.IsPaused {
-			fmt.Fprintf(cfg.Notes, "note: rule %q (%s) is paused: recorded as skipped, not waited for\n", d.Title, d.UID)
+			fmt.Fprintf(cfg.Notes, "note: rule %q (%s) is paused: recorded as skipped, not waited for\n", d.Title, defKey(d))
 			continue
 		}
 		active = append(active, d)
-		activeTimings[d.UID] = rt[d.UID]
-		fmt.Fprintf(cfg.Notes, "recording %q (%s) every %s (maxGap %s)\n", d.Title, d.UID, rt[d.UID].pollEvery, rt[d.UID].maxGap)
+		activeTimings[defKey(d)] = rt[defKey(d)]
+		fmt.Fprintf(cfg.Notes, "recording %q (%s) every %s (maxGap %s)\n", d.Title, defKey(d), rt[defKey(d)].pollEvery, rt[defKey(d)].maxGap)
 	}
 
 	polls, measured, err := firstObservations(ctx, src, active, NewReducer(), cfg.Concurrency, cfg.Notes)
@@ -417,19 +418,32 @@ func loggedRules(defs []Definition, rt map[string]RuleTimings) []LoggedRule {
 	out := make([]LoggedRule, 0, len(defs))
 	for _, d := range defs {
 		out = append(out, LoggedRule{
+			Key:              defKey(d),
 			UID:              d.UID,
 			Title:            d.Title,
 			Folder:           d.Folder,
 			Group:            d.Group,
+			SourceKind:       sourceKind(d.Kind),
+			DatasourceUID:    d.DatasourceUID,
+			DatasourceName:   d.DatasourceName,
+			File:             d.File,
 			ForSeconds:       d.For.Seconds(),
 			IntervalSeconds:  d.IntervalSeconds,
 			IsPaused:         d.IsPaused,
 			NoDataState:      d.NoDataState,
 			ExecErrState:     d.ExecErrState,
-			PollEverySeconds: rt[d.UID].pollEvery.Seconds(),
+			PollEverySeconds: rt[defKey(d)].pollEvery.Seconds(),
 		})
 	}
 	return out
+}
+
+// sourceKind is the header's source_kind value for a rule kind.
+func sourceKind(k RuleKind) string {
+	if k == KindDatasourceManaged {
+		return "datasource"
+	}
+	return "grafana"
 }
 
 // firstObservations takes one observation of every active rule, verifies normal
@@ -440,14 +454,14 @@ func loggedRules(defs []Definition, rt map[string]RuleTimings) []LoggedRule {
 func firstObservations(ctx context.Context, src Source, active []Definition, reducer *Reducer,
 	concurrency int, notes io.Writer) ([]Poll, map[string]time.Duration, error) {
 
-	titles := make(map[string]string, len(active))
-	uids := make([]string, 0, len(active))
+	refs := make(map[string]RuleRef, len(active))
+	keys := make([]string, 0, len(active))
 	for _, d := range active {
-		titles[d.UID] = d.Title
-		uids = append(uids, d.UID)
+		refs[defKey(d)] = ruleRefOf(d)
+		keys = append(keys, defKey(d))
 	}
 
-	observed, err := observeAll(ctx, src, titles, uids, concurrency)
+	observed, err := observeAll(ctx, src, refs, keys, concurrency)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -455,9 +469,14 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 	// Verify this before anything downstream relies on it: if the state
 	// endpoint ever stops returning normal instances, the reduction's "keep
 	// the non-normal ones" silently becomes "keep everything it happened to
-	// send" and the transition markers lose their ground truth.
+	// send" and the transition markers lose their ground truth. A
+	// datasource-managed response has no normal instances by construction, so
+	// the check applies to Grafana-managed rules only.
 	for _, d := range active {
-		if err := VerifyNormalInstancesVisible(observed[d.UID].Rules); err != nil {
+		if d.Kind != KindGrafanaManaged {
+			continue
+		}
+		if err := VerifyNormalInstancesVisible(observed[defKey(d)].Rules); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -465,9 +484,10 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 	polls := make([]Poll, 0, len(active))
 	measured := make(map[string]time.Duration, len(active))
 	for _, d := range active {
-		obs := observed[d.UID]
-		measured[d.UID] = obs.Latency
-		poll := reducer.Reduce(d.UID, obs)
+		key := defKey(d)
+		obs := observed[key]
+		measured[key] = obs.Latency
+		poll := reducer.Reduce(key, obs)
 		if !poll.Found {
 			// Authoritative, not transient (the transport already retried
 			// every transient failure): the rule resolved in the ruler API but
@@ -475,7 +495,7 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 			// which the coverage proof turns into unobservable — a note rather
 			// than an error here, because the state endpoint can lag a freshly
 			// created rule and the coverage proof fails closed either way.
-			fmt.Fprintf(notes, "warning: rule %q (%s) is absent from the state endpoint; recorded as not found\n", d.Title, d.UID)
+			fmt.Fprintf(notes, "warning: rule %q (%s) is absent from the state endpoint; recorded as not found\n", d.Title, key)
 		}
 		polls = append(polls, poll)
 	}
@@ -486,18 +506,18 @@ func firstObservations(ctx context.Context, src Source, active []Definition, red
 // flight, dispatching in uids order (a worker takes the next uid as it frees)
 // so the startup-handoff simulation matches. Polls by TITLE, selects by UID,
 // and returns the first error in UID order alongside the successes.
-func observeAll(ctx context.Context, src Source, titles map[string]string, uids []string, concurrency int) (map[string]Observation, error) {
+func observeAll(ctx context.Context, src Source, refs map[string]RuleRef, keys []string, concurrency int) (map[string]Observation, error) {
 	if concurrency < 1 {
 		concurrency = 1
 	}
-	if concurrency > len(uids) {
-		concurrency = len(uids)
+	if concurrency > len(keys) {
+		concurrency = len(keys)
 	}
 	var (
 		mu          sync.Mutex
-		out         = make(map[string]Observation, len(uids))
+		out         = make(map[string]Observation, len(keys))
 		firstErr    error
-		firstErrUID string
+		firstErrKey string
 		next        int
 	)
 	var wg sync.WaitGroup
@@ -505,23 +525,23 @@ func observeAll(ctx context.Context, src Source, titles map[string]string, uids 
 		wg.Go(func() {
 			for {
 				mu.Lock()
-				if next == len(uids) {
+				if next == len(keys) {
 					mu.Unlock()
 					return
 				}
-				uid := uids[next]
+				key := keys[next]
 				next++
 				mu.Unlock()
 
-				obs, err := src.RuleState(ctx, titles[uid])
+				obs, err := src.RuleState(ctx, refs[key])
 
 				mu.Lock()
 				if err != nil {
-					if firstErr == nil || uid < firstErrUID {
-						firstErr, firstErrUID = err, uid
+					if firstErr == nil || key < firstErrKey {
+						firstErr, firstErrKey = err, key
 					}
 				} else {
-					out[uid] = obs
+					out[key] = obs
 				}
 				mu.Unlock()
 			}
@@ -530,7 +550,7 @@ func observeAll(ctx context.Context, src Source, titles map[string]string, uids 
 	wg.Wait()
 
 	if firstErr != nil {
-		return out, fmt.Errorf("poll rule %q (%s): %w", titles[firstErrUID], firstErrUID, firstErr)
+		return out, fmt.Errorf("poll rule %q (%s): %w", refs[firstErrKey].Title, firstErrKey, firstErr)
 	}
 	return out, nil
 }
@@ -586,7 +606,7 @@ func RunDaemonChild(ctx context.Context, cfg DaemonChildConfig) error {
 		return fmt.Errorf("log %s records url %q but this recorder is configured for %q", cfg.Out, header.URL, cfg.URL)
 	}
 
-	titles, cadence, err := childSchedule(header)
+	refs, cadence, err := childSchedule(header)
 	if err != nil {
 		return err
 	}
@@ -617,7 +637,7 @@ func RunDaemonChild(ctx context.Context, cfg DaemonChildConfig) error {
 		Src:         NewHTTPSource(cfg.URL, cfg.Token, cfg.Clock),
 		Writer:      writer,
 		Reducer:     reducer,
-		Titles:      titles,
+		Refs:        refs,
 		Cadence:     cadence,
 		Seed:        polls,
 		Until:       cfg.Until,
@@ -647,26 +667,45 @@ func reportReady(fd int) error {
 // childSchedule derives what the child polls, and how often, from the header
 // alone. Cadence comes from PollEverySeconds (the cadence actually used), never
 // re-derived from the evaluation interval; paused rules are excluded. It
-// returns cadences only — the recorder must not carry coverage thresholds it
-// has no business applying.
-func childSchedule(h Header) (titles map[string]string, cadence map[string]time.Duration, err error) {
-	titles = make(map[string]string, len(h.Rules))
+// returns refs and cadences only — the recorder must not carry coverage
+// thresholds it has no business applying.
+func childSchedule(h Header) (refs map[string]RuleRef, cadence map[string]time.Duration, err error) {
+	refs = make(map[string]RuleRef, len(h.Rules))
 	cadence = make(map[string]time.Duration, len(h.Rules))
 	for _, lr := range h.Rules {
 		if lr.IsPaused {
 			continue
 		}
+		key := loggedKey(lr)
 		if lr.PollEverySeconds <= 0 {
 			return nil, nil, fmt.Errorf("log header records poll_every_seconds=%v for rule %s (%q): there is no cadence to record at",
-				lr.PollEverySeconds, lr.UID, lr.Title)
+				lr.PollEverySeconds, key, lr.Title)
 		}
-		if _, duplicate := titles[lr.UID]; duplicate {
-			return nil, nil, fmt.Errorf("log header names rule %s (%q) twice; its recorded cadence is ambiguous", lr.UID, lr.Title)
+		if _, duplicate := refs[key]; duplicate {
+			return nil, nil, fmt.Errorf("log header names rule %s (%q) twice; its recorded cadence is ambiguous", key, lr.Title)
 		}
-		titles[lr.UID] = lr.Title
-		cadence[lr.UID] = time.Duration(lr.PollEverySeconds * float64(time.Second))
+		refs[key] = RuleRef{
+			Key:           key,
+			Kind:          kindOfLogged(lr),
+			DatasourceUID: lr.DatasourceUID,
+			UID:           lr.UID,
+			Group:         lr.Group,
+			Name:          lr.Title,
+			File:          lr.File,
+			Title:         lr.Title,
+		}
+		cadence[key] = time.Duration(lr.PollEverySeconds * float64(time.Second))
 	}
-	return titles, cadence, nil
+	return refs, cadence, nil
+}
+
+// kindOfLogged recovers a LoggedRule's source kind. A datasource-managed rule
+// always carries a datasource UID; a Grafana-managed rule never does.
+func kindOfLogged(lr LoggedRule) RuleKind {
+	if lr.DatasourceUID != "" {
+		return KindDatasourceManaged
+	}
+	return KindGrafanaManaged
 }
 
 // watchLoopConfig is the child's working state: what to poll, how often, and
@@ -676,8 +715,8 @@ type watchLoopConfig struct {
 	Src     Source
 	Writer  *Writer
 	Reducer *Reducer
-	Titles  map[string]string        // uid -> title: poll by title, select by UID
-	Cadence map[string]time.Duration // uid -> pollEvery, as recorded in the header
+	Refs    map[string]RuleRef       // key -> ref: how to find the rule again
+	Cadence map[string]time.Duration // key -> pollEvery, as recorded in the header
 	// Seed is the polls already in the log when this loop starts: it continues
 	// their schedule instead of re-staggering. nil means a fresh schedule.
 	Seed        []Poll
@@ -755,14 +794,14 @@ func watchLoop(ctx context.Context, cfg watchLoopConfig) error {
 // successes first is deliberate: a heartbeat that was genuinely observed is
 // evidence, and dropping it because a different rule failed would turn one
 // rule's transport failure into a coverage gap for the others.
-func (cfg watchLoopConfig) pollBatch(ctx context.Context, uids []string) error {
-	observed, obsErr := observeAll(ctx, cfg.Src, cfg.Titles, uids, cfg.Concurrency)
-	for _, uid := range uids {
-		obs, ok := observed[uid]
+func (cfg watchLoopConfig) pollBatch(ctx context.Context, keys []string) error {
+	observed, obsErr := observeAll(ctx, cfg.Src, cfg.Refs, keys, cfg.Concurrency)
+	for _, key := range keys {
+		obs, ok := observed[key]
 		if !ok {
 			continue
 		}
-		if err := cfg.Writer.WritePoll(cfg.Reducer.Reduce(uid, obs)); err != nil {
+		if err := cfg.Writer.WritePoll(cfg.Reducer.Reduce(key, obs)); err != nil {
 			return err
 		}
 	}

@@ -12,8 +12,8 @@ import (
 //
 //  1. Trim each name.
 //  2. Discard empty lines.
-//  3. Resolve each name to a UID (this is what resolveOne does).
-//  4. Collapse the result by UID — two names hitting the same rule is a note,
+//  3. Resolve each name to a rule (this is what resolveOne does).
+//  4. Collapse the result by key — two names hitting the same rule is a note,
 //     never an error (almost always a copy mistake, and a message costs the
 //     user less than a failure).
 //
@@ -22,7 +22,7 @@ import (
 // len(names) — using the input line count would make one rule named twice turn
 // an achievable default into an unsatisfiable one.
 func Resolve(defs []Definition, names []string, folder string) (resolved []Definition, notes []string, err error) {
-	seenUID := map[string]string{} // uid -> the first input name that resolved to it
+	seenKey := map[string]string{} // key -> the first input name that resolved to it
 	for _, raw := range names {
 		name := strings.TrimSpace(raw)
 		if name == "" {
@@ -34,35 +34,46 @@ func Resolve(defs []Definition, names []string, folder string) (resolved []Defin
 			return nil, nil, rerr
 		}
 
-		if firstName, ok := seenUID[def.UID]; ok {
+		key := defKey(def)
+		if firstName, ok := seenKey[key]; ok {
 			notes = append(notes, fmt.Sprintf(
-				"%q and %q both resolve to %s (uid:%s); counted once", firstName, name, def.Title, def.UID))
+				"%q and %q both resolve to %s (%s); counted once", firstName, name, def.Title, ruleRefLabel(def)))
 			continue
 		}
-		seenUID[def.UID] = name
+		seenKey[key] = name
 		resolved = append(resolved, def)
 	}
 	return resolved, notes, nil
 }
 
-// resolveOne resolves a single trimmed, non-empty name against defs: one match
-// wins outright, zero is an error with suggestions, two or more is an error
-// listing every candidate. folder scopes a bare title (no "/" in the name) to
-// one folder; it is ignored for the "Folder/Title" and "Folder/Group/Title"
-// forms, which already name their own folder.
+// resolveOne resolves one trimmed, non-empty name against defs: one match wins,
+// zero is a no-match error, two or more is ambiguous. folder scopes a bare
+// Grafana title; it is ignored for /-separated forms and for datasource rules.
 //
-// Unsupported kinds (datasource-managed, recording) are refused, and how that
-// interacts with the no-match/ambiguous surfaces is decided here: a name can
-// still match an unsupported rule (so
-// naming one by title still gets the specific, named refusal, not a bare "no
-// match"), but only *supported* candidates count for ambiguity — an
-// unsupported rule sharing a title with a supported one is resolved silently
-// in the supported rule's favor rather than reported as ambiguous — and the
-// "%d rules available" count and substring suggestions in a genuine no-match
-// are scoped to supported rules only, so an unsupported rule never inflates
-// or pollutes either. uid: is always exact regardless of kind (typically
-// copy-pasted from `list`, which already shows Kind).
+// Grafana forms: Title | Folder/Title | Folder/Group/Title. Datasource forms:
+// Title | Group/Title | DatasourceName/Group/Title. key: is exact across both.
+// Recording rules and datasource rules with no datasource are refused, and only
+// supported candidates count for ambiguity.
 func resolveOne(defs []Definition, name, folder string) (Definition, error) {
+	if key, ok := strings.CutPrefix(name, "key:"); ok {
+		if key != "" {
+			var matches []Definition
+			for _, d := range defs {
+				if defKey(d) == key {
+					matches = append(matches, d)
+				}
+			}
+			// A key shared by two distinct rules cannot select one of them.
+			if err := rejectDuplicateKeys(matches); err != nil {
+				return Definition{}, err
+			}
+			if len(matches) == 1 {
+				return refuseUnsupportedKind(name, matches[0])
+			}
+		}
+		return Definition{}, fmt.Errorf("no rule matched %q: no rule has this key (run 'grafana-alertcheck list' to see keys)", name)
+	}
+
 	if uid, ok := strings.CutPrefix(name, "uid:"); ok {
 		if uid != "" {
 			for _, d := range defs {
@@ -73,138 +84,181 @@ func resolveOne(defs []Definition, name, folder string) (Definition, error) {
 		}
 		// uid == "" falls through to the same message as "not found": several
 		// Definition kinds legitimately carry UID == "" (datasource-managed
-		// rules have no uid at all), so matching on an empty suffix
-		// would silently hit one of those and report a misleading
-		// kind-specific refusal for what is really an empty/typo'd uid. This
-		// deliberately does not go through noMatchError: that function's
-		// substring suggestion would degenerate to an empty needle, which
-		// strings.Contains matches against every title — printing the whole
-		// fleet instead of a real suggestion.
+		// rules have no uid at all), so matching on an empty suffix would
+		// silently hit one of those and report a misleading kind-specific
+		// refusal for what is really an empty/typo'd uid.
 		return Definition{}, fmt.Errorf("no rule matched %q: no rule has this uid (run 'grafana-alertcheck list' to see uids)", name)
 	}
 
-	wantFolder, wantGroup, wantTitle, err := classifyForm(name, folder)
-	if err != nil {
-		return Definition{}, err
-	}
-
-	var supportedCandidates, unsupportedCandidates []Definition
+	// Two interpretations are possible: the whole input as one rule's exact
+	// title (a datasource rule's name can itself contain "/"), and the
+	// /-separated forms. Collect candidates from BOTH — a selector that is
+	// ambiguous between them must be reported, never silently resolved to one.
+	parts, formErr := parseNameForm(name)
+	var candidates []Definition
+	seen := make(map[string]bool, len(defs))
 	for _, d := range defs {
-		if wantFolder != "" && d.Folder != wantFolder {
+		exact := titleMatches(d, name, folder)
+		segmented := formErr == nil && matchesName(d, parts, folder)
+		if !exact && !segmented {
 			continue
 		}
-		if wantGroup != "" && d.Group != wantGroup {
-			continue
-		}
-		if d.Title != wantTitle {
-			continue
-		}
-		if d.Kind == KindGrafanaManaged {
-			supportedCandidates = append(supportedCandidates, d)
-		} else {
-			unsupportedCandidates = append(unsupportedCandidates, d)
+		if key := defKey(d); !seen[key] {
+			seen[key] = true
+			candidates = append(candidates, d)
 		}
 	}
+	if def, found, err := pickCandidate(candidates, name); found {
+		return def, err
+	}
+	if formErr != nil {
+		return Definition{}, formErr
+	}
+	return Definition{}, noMatchError(supportedDefs(defs), name)
+}
 
+// pickCandidate applies the shared one-match/ambiguous/unsupported policy to the
+// collected candidates. found is false when nothing matched, so the caller can
+// fall through to the no-match surface.
+func pickCandidate(candidates []Definition, name string) (Definition, bool, error) {
+	var supported, unsupported []Definition
+	for _, d := range candidates {
+		if isSupported(d) {
+			supported = append(supported, d)
+		} else {
+			unsupported = append(unsupported, d)
+		}
+	}
 	switch {
-	case len(supportedCandidates) == 1:
-		return supportedCandidates[0], nil
-	case len(supportedCandidates) > 1:
-		return Definition{}, ambiguousError(name, supportedCandidates)
-	case len(unsupportedCandidates) > 0:
-		return refuseUnsupportedKind(name, unsupportedCandidates[0])
+	case len(supported) == 1:
+		return supported[0], true, nil
+	case len(supported) > 1:
+		return Definition{}, true, ambiguousError(name, supported)
+	case len(unsupported) > 0:
+		def, err := refuseUnsupportedKind(name, unsupported[0])
+		return def, true, err
 	default:
-		return Definition{}, noMatchError(supportedDefs(defs), name, wantTitle)
+		return Definition{}, false, nil
 	}
 }
 
-// supportedDefs filters out the two refused kinds. Only these participate in
-// name-based matching, the no-match rule count, and substring suggestions (see
-// the policy note on resolveOne).
+// titleMatches is the exact-title interpretation: a datasource rule matches by
+// its full name, a Grafana rule by its title scoped to --folder.
+func titleMatches(d Definition, name, folder string) bool {
+	if d.Kind == KindDatasourceManaged {
+		return d.Title == name
+	}
+	return (folder == "" || d.Folder == folder) && d.Title == name
+}
+
+// matchesName reports whether d matches the /-separated name form. Only
+// datasource-managed rules use the datasource forms; every other kind —
+// Grafana-managed and recording alike — uses the folder/group forms, so a
+// recording rule named by its real path is still matched and refused
+// specifically rather than falling through to a generic no-match.
+func matchesName(d Definition, parts []string, folder string) bool {
+	switch len(parts) {
+	case 1:
+		if d.Kind == KindDatasourceManaged {
+			return d.Title == parts[0]
+		}
+		return (folder == "" || d.Folder == folder) && d.Title == parts[0]
+	case 2:
+		if d.Kind == KindDatasourceManaged {
+			return d.Group == parts[0] && d.Title == parts[1]
+		}
+		return d.Folder == parts[0] && d.Title == parts[1]
+	case 3:
+		if d.Kind == KindDatasourceManaged {
+			return d.DatasourceName == parts[0] && d.Group == parts[1] && d.Title == parts[2]
+		}
+		return d.Folder == parts[0] && d.Group == parts[1] && d.Title == parts[2]
+	}
+	return false
+}
+
+// isSupported reports whether a definition can be observed: not a recording
+// rule, and not a datasource-managed rule with no datasource. The one predicate
+// for resolve, label selection and the no-match surfaces, so they cannot drift.
+func isSupported(d Definition) bool {
+	switch d.Kind {
+	case KindRecording:
+		return false
+	case KindDatasourceManaged:
+		return d.DatasourceUID != ""
+	default:
+		return true
+	}
+}
+
+// supportedDefs filters out the refused kinds. Only these participate in
+// name-based matching and the no-match rule count.
 func supportedDefs(defs []Definition) []Definition {
 	out := make([]Definition, 0, len(defs))
 	for _, d := range defs {
-		if d.Kind == KindGrafanaManaged {
-			out = append(out, d)
+		if !isSupported(d) {
+			continue
 		}
+		out = append(out, d)
 	}
 	return out
 }
 
-// classifyForm splits name into the Title | Folder/Title | Folder/Group/Title
-// forms. A bare title is scoped by folder when the caller supplied one;
-// the two- and three-segment forms already carry their own folder and ignore
-// it.
-//
-// Every segment must be non-empty. Without this, "/Title" would parse as an
-// empty wantFolder — silently dropping the folder filter and matching
-// unscoped, a fail-open — and "Folder/" would parse as an empty wantTitle,
-// which would then feed noMatchError's substring search an empty needle that
-// matches every title.
-func classifyForm(name, folder string) (wantFolder, wantGroup, wantTitle string, err error) {
+// parseNameForm splits name into 1..3 /-separated segments. Every segment must
+// be non-empty: without this, "/Title" would parse as an empty first segment,
+// silently dropping the filter and matching unscoped — a fail-open.
+func parseNameForm(name string) ([]string, error) {
 	parts := strings.Split(name, "/")
 	if slices.Contains(parts, "") {
-		return "", "", "", fmt.Errorf("no rule matched %q: empty /-separated segment (want Title, Folder/Title, or Folder/Group/Title)", name)
+		return nil, fmt.Errorf("no rule matched %q: empty /-separated segment (want Title, Group/Title, or Datasource/Group/Title)", name)
 	}
-	switch len(parts) {
-	case 1:
-		return folder, "", parts[0], nil
-	case 2:
-		return parts[0], "", parts[1], nil
-	case 3:
-		return parts[0], parts[1], parts[2], nil
-	default:
-		return "", "", "", fmt.Errorf("no rule matched %q: too many /-separated segments (want Title, Folder/Title, or Folder/Group/Title)", name)
+	if len(parts) > 3 {
+		return nil, fmt.Errorf("no rule matched %q: too many /-separated segments (want Title, Group/Title, or Datasource/Group/Title)", name)
 	}
+	return parts, nil
 }
 
-// refuseUnsupportedKind rejects the two unsupported kinds with a clear,
-// specific error — distinct from "no match" and from "ambiguous" — so
-// an operator who names a recording or datasource-managed rule learns why,
-// not just that nothing matched.
+// refuseUnsupportedKind rejects the unsupported kinds with a clear, specific
+// error — distinct from "no match" and from "ambiguous".
 func refuseUnsupportedKind(name string, d Definition) (Definition, error) {
-	switch d.Kind {
-	case KindDatasourceManaged:
-		return Definition{}, fmt.Errorf("%q resolves to %s, a datasource-managed rule, which is not supported", name, d.Title)
-	case KindRecording:
-		return Definition{}, fmt.Errorf("%q resolves to %s, a recording rule, which is not supported", name, d.Title)
-	default:
+	if isSupported(d) {
 		return d, nil
 	}
+	if d.Kind == KindRecording {
+		return Definition{}, fmt.Errorf("%q resolves to %s, a recording rule, which is not supported", name, d.Title)
+	}
+	return Definition{}, fmt.Errorf("%q resolves to %s, a datasource-managed rule whose datasource is unknown, which is not supported", name, d.Title)
 }
 
-// noMatchError reports a no-match with the count of grafana-managed rules and
-// case-insensitive substring suggestions. The trailing disclaimer covers rules
-// the ruler response omits entirely, namely datasource-managed ones.
-func noMatchError(defs []Definition, name, wantTitle string) error {
-	msg := fmt.Sprintf("no rule matched %q (%d grafana-managed rules available; run 'grafana-alertcheck list' to see titles)",
+// ruleRefLabel names a rule for a note: a uid for Grafana, a copyable key for a
+// datasource-managed rule.
+func ruleRefLabel(d Definition) string {
+	if d.UID != "" {
+		return "uid:" + d.UID
+	}
+	return "key:" + defKey(d)
+}
+
+// noMatchError reports a no-match with the count of supported rules.
+func noMatchError(defs []Definition, name string) error {
+	return fmt.Errorf("no rule matched %q (%d rules available; run 'grafana-alertcheck list' to see titles)",
 		name, len(defs))
-
-	needle := strings.ToLower(wantTitle)
-	var subs []string
-	for _, d := range defs {
-		if strings.Contains(strings.ToLower(d.Title), needle) {
-			subs = append(subs, fmt.Sprintf("%s/%s/%s", d.Folder, d.Group, d.Title))
-		}
-	}
-	if len(subs) > 0 {
-		sort.Strings(subs)
-		msg += fmt.Sprintf("; did you mean: %s", strings.Join(subs, ", "))
-	}
-	msg += "; datasource-managed alert rules cannot be observed and are not supported"
-	return fmt.Errorf("%s", msg)
 }
 
-// ambiguousError lists every candidate with its folder, its group, and the
-// full copyable Folder/Group/Title — including the uid: form, which resolves
-// unambiguously on the next attempt.
+// ambiguousError lists every candidate with its source, its group, and the full
+// copyable name — including the key:/uid: form, which resolves unambiguously on
+// the next attempt.
 func ambiguousError(name string, candidates []Definition) error {
 	sorted := append([]Definition(nil), candidates...)
-	sort.Slice(sorted, func(i, j int) bool { return sorted[i].UID < sorted[j].UID })
+	sort.Slice(sorted, func(i, j int) bool { return defKey(sorted[i]) < defKey(sorted[j]) })
 
 	var b strings.Builder
-	fmt.Fprintf(&b, "%q matches %d rules; use uid: or the full Folder/Group/Title:", name, len(sorted))
+	fmt.Fprintf(&b, "%q matches %d rules; use key: or the full name:", name, len(sorted))
 	for _, d := range sorted {
+		if d.Kind == KindDatasourceManaged {
+			fmt.Fprintf(&b, "\n  %s/%s/%s (datasource_uid:%s, key:%s)", d.DatasourceName, d.Group, d.Title, d.DatasourceUID, defKey(d))
+			continue
+		}
 		fmt.Fprintf(&b, "\n  %s/%s/%s (uid:%s)", d.Folder, d.Group, d.Title, d.UID)
 	}
 	return fmt.Errorf("%s", b.String())

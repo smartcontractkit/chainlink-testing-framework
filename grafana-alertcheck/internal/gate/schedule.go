@@ -78,7 +78,7 @@ func DeriveTimings(defs []Definition) (rules map[string]RuleTimings, global Glob
 	for _, d := range defs {
 		rt := newRuleTimings(defaultPollEvery(d.IntervalSeconds), d.IntervalSeconds)
 		rt.title = d.Title
-		rules[d.UID] = rt
+		rules[defKey(d)] = rt
 	}
 	// In this mode defs ARE the start-of-step snapshot, so they answer what was
 	// paused at the window open; only the log-mode counterpart uses the header.
@@ -91,16 +91,17 @@ func DeriveTimings(defs []Definition) (rules map[string]RuleTimings, global Glob
 func pausedSet(defs []Definition) map[string]bool {
 	paused := make(map[string]bool, len(defs))
 	for _, d := range defs {
-		paused[d.UID] = d.IsPaused
+		paused[defKey(d)] = d.IsPaused
 	}
 	return paused
 }
 
 // DeriveTimingsFromLog is DeriveTimings' log-mode counterpart: pollEvery comes
 // from the header (the cadence actually used), not the definitions — re-deriving
-// it here would compare recorded gaps against default-cadence thresholds, an
-// exit 2 on a clean window (slower override) or a silently passing recorder gap
-// (faster override). evalStaleAfter still comes from defs (2 × intervalSeconds).
+// it here would compare recorded gaps against thresholds derived from a
+// different cadence, an exit 2 on a clean window when the recording was slower
+// or a silently passing recorder gap when it was faster. evalStaleAfter still
+// comes from defs (2 × intervalSeconds).
 //
 // Three header shapes are hard errors rather than a best-effort derivation,
 // because each would silently widen a threshold: a rule with no matching
@@ -110,31 +111,32 @@ func pausedSet(defs []Definition) map[string]bool {
 // It checks only the header-to-defs direction. A definition absent from the
 // header is Check's log-identity validation to judge, not this function's.
 func DeriveTimingsFromLog(h Header, defs []Definition) (rules map[string]RuleTimings, global GlobalTimings, err error) {
-	byUID := make(map[string]Definition, len(defs))
+	byKey := make(map[string]Definition, len(defs))
 	for _, d := range defs {
-		byUID[d.UID] = d
+		byKey[defKey(d)] = d
 	}
 
 	rules = make(map[string]RuleTimings, len(h.Rules))
 	for _, lr := range h.Rules {
-		def, ok := byUID[lr.UID]
+		key := loggedKey(lr)
+		def, ok := byKey[key]
 		if !ok {
 			return nil, GlobalTimings{}, fmt.Errorf(
-				"log header names rule %s (%q), which no current definition matches", lr.UID, lr.Title)
+				"log header names rule %s (%q), which no current definition matches", key, lr.Title)
 		}
-		if _, duplicate := rules[lr.UID]; duplicate {
+		if _, duplicate := rules[key]; duplicate {
 			return nil, GlobalTimings{}, fmt.Errorf(
-				"log header names rule %s (%q) twice; its recorded cadence is ambiguous", lr.UID, lr.Title)
+				"log header names rule %s (%q) twice; its recorded cadence is ambiguous", key, lr.Title)
 		}
 		if lr.PollEverySeconds <= 0 {
 			return nil, GlobalTimings{}, fmt.Errorf(
 				"log header records poll_every_seconds=%v for rule %s (%q); the recorded cadence is required to derive maxGap",
-				lr.PollEverySeconds, lr.UID, lr.Title)
+				lr.PollEverySeconds, key, lr.Title)
 		}
 		pollEvery := time.Duration(lr.PollEverySeconds * float64(time.Second))
 		rt := newRuleTimings(pollEvery, def.IntervalSeconds)
 		rt.title = def.Title // the current title: the header's may predate a rename
-		rules[lr.UID] = rt
+		rules[key] = rt
 	}
 	// The header, not defs, decides which rules are excluded from the grace:
 	// defs were resolved after the window closed. See deriveGlobalTimings.
@@ -158,7 +160,7 @@ func deriveGlobalTimings(defs []Definition, pausedAtStart map[string]bool) Globa
 		if interval > maxInterval {
 			maxInterval = interval
 		}
-		if pausedAtStart[d.UID] {
+		if pausedAtStart[defKey(d)] {
 			continue
 		}
 		if candidate := d.For + interval; candidate > g.transitionGrace {
@@ -221,12 +223,13 @@ func NewSchedulerFromPolls(every map[string]time.Duration, polls []Poll, now tim
 	}
 	last := make(map[string]time.Time, len(every))
 	for _, p := range polls {
-		if _, owned := every[p.RuleUID]; !owned || p.GrafanaNow.IsZero() {
+		key := pollKey(p)
+		if _, owned := every[key]; !owned || p.GrafanaNow.IsZero() {
 			continue
 		}
 		at := runnerTime(p, p.GrafanaNow)
-		if cur, ok := last[p.RuleUID]; !ok || at.After(cur) {
-			last[p.RuleUID] = at
+		if cur, ok := last[key]; !ok || at.After(cur) {
+			last[key] = at
 		}
 	}
 	for uid, pollEvery := range every {

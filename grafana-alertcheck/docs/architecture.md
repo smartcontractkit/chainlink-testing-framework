@@ -32,6 +32,12 @@ HTTP ──> Source ──> []StateRule ──> reduce ──> []Poll ──> pr
                        JSONL log ──> ReadLog ──┘
 ```
 
+The `Source` interface is the only HTTP boundary and covers both rule kinds: `GrafanaDefinitions` reads the ruler, `DiscoverRuleSources` + `DatasourceDefinitions` read per-datasource Prometheus rules, and `RuleState` takes a `RuleRef` describing exactly how to find one rule again.
+
+### Key vs uid
+
+A rule's map key is its **key**, not its uid. For a Grafana-managed rule the key *is* the uid; a datasource-managed rule has none, so its key is a JSON `(datasource, group, name, file)` tuple — file included because a Prometheus group name is only unique within a file. Every internal map is indexed by key. The log records `key` and, for a Grafana rule, `uid`; the reader uses `rule_key` when present and falls back to `rule_uid`, so old v1 logs stay readable. Grafana behavior is unchanged because key == uid there.
+
 - `proveCoverage` (the nine coverage checks) and `decide` (the instance timelines and outcomes) are pure; tests drive them with `[]Poll` literals and a fake `Clock`, with no sleeping or fixture server.
 - `Check`/`Watch` are I/O shells: HTTP, signals, the pidfile, file reads, the countdown print. The only test doubles needed are the `Source` and `Clock` interfaces.
 - `Policy` is the narrowed view of `Config` that reaches the pure layer — classification knobs and the window, no URL and no token. The token must never cross that line, which is the cheapest guarantee it never lands in an error string or a result.
@@ -76,4 +82,4 @@ On a clean stop (SIGTERM/SIGINT/`--until`) the child finishes the in-flight writ
 `watch` records raw evidence, so nothing trusts a state that could become unreachable. Two consequences a maintainer must preserve:
 
 - The **header is authoritative for recording facts** (the cadence actually used, the URL, the alert set); the ruler API is authoritative for **rule facts** (`for`, `intervalSeconds`, kind). `check` always re-resolves definitions fresh and never reconstructs them from the header — the header duplicates `for`/`interval` only so the uploaded artifact is self-describing.
-- The **cadence authority** is the header's `poll_every_seconds`, not the definitions. Re-deriving it would compare gaps recorded at an override cadence against default-cadence thresholds — fail-open in the faster-override direction.
+- The **cadence authority** is the header's `poll_every_seconds`, not the definitions. Re-deriving it would compare recorded gaps against thresholds derived from a different cadence — fail-open if the two ever diverge.

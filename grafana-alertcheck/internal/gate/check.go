@@ -204,21 +204,19 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	}
 	cfg.To = roundWindowUp(from, cfg.To)
 
-	// ---- Resolve the definitions from the ruler API. ----------------------
-	// Unconditional, in BOTH modes. A log's header supplies the alert set as
-	// UIDs and the recording facts, never the rule facts: `for`,
-	// intervalSeconds and Kind always come from a fresh ruler read, which is
-	// why LoggedRule.ForSeconds is never converted back into a Definition.
+	// ---- Resolve the definitions. -----------------------------------------
+	// In both modes a fresh read supplies the rule facts: a log's header
+	// supplies the alert set (as keys and datasource UIDs) and the recording
+	// facts, never `for`, intervalSeconds or Kind, which is why
+	// LoggedRule.ForSeconds is never converted back into a Definition. Single-
+	// step reads the ruler plus every discovered datasource; log mode resolves
+	// the header's own datasource UIDs and skips discovery entirely.
 	version, err := src.Version(ctx)
 	if err != nil {
 		return Result{}, fmt.Errorf("read grafana version: %w", err)
 	}
 	if err := CheckGrafanaVersion(version); err != nil {
 		return Result{}, err
-	}
-	allDefs, err := src.Definitions(ctx)
-	if err != nil {
-		return Result{}, fmt.Errorf("read rule definitions: %w", err)
 	}
 
 	// ---- With a log, validate its identity. -------------------------------
@@ -240,7 +238,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			return Result{}, fmt.Errorf("log identity: %w", err)
 		}
 		logHasHdr = true
-		resolved, notes, err = resolveFromLog(allDefs, earlyHdr, cfg)
+		resolved, notes, err = resolveFromLog(ctx, src, earlyHdr, cfg)
 		if err == nil {
 			if from.Truncate(time.Second).Before(earlyHdr.StartedAt.Truncate(time.Second)) {
 				return Result{}, fmt.Errorf("check: `from` %s is before recording started at %s",
@@ -256,6 +254,11 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			}
 		}
 	} else {
+		wantAll := len(cfg.IncludeLabels) > 0 || len(cfg.ExcludeLabels) > 0 || len(cfg.ExcludeAlerts) > 0
+		allDefs, derr := loadDefinitions(ctx, src, cfg.namedAlerts(), wantAll)
+		if derr != nil {
+			return Result{}, fmt.Errorf("read rule definitions: %w", derr)
+		}
 		resolved, notes, err = resolveAlertSet(allDefs, cfg.namedAlerts(), cfg.IncludeLabels, cfg.ExcludeLabels, cfg.ExcludeAlerts, cfg.Folder)
 	}
 	if err != nil {
@@ -269,6 +272,11 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	}
 	for _, n := range notes {
 		fmt.Fprintf(cfg.Notes, "note: %s\n", n)
+	}
+	// Kind-level caveats are printed once, here, rather than repeated in every
+	// datasource rule's per-row details.
+	for _, c := range datasourceCaveats(resolved) {
+		fmt.Fprintf(cfg.Notes, "note: %s\n", c)
 	}
 	if len(cfg.IncludeLabels) > 0 {
 		printLabelSelection(cfg.Notes, resolved, cfg.IncludeLabels, cfg.ExcludeLabels, len(cfg.ExcludeAlerts))
@@ -464,7 +472,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 			return Result{}, err
 		}
 		// The authoritative header wins: the advisory read was only a fail-fast.
-		resolved, _, err = resolveFromLog(allDefs, header, cfg)
+		resolved, _, err = resolveFromLog(ctx, src, header, cfg)
 		if err != nil {
 			return Result{}, err
 		}
@@ -540,20 +548,79 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 //
 // Only the header-to-defs direction can fail: resolved is BUILT from the
 // header, so no resolved definition can be absent from it.
-func resolveFromLog(allDefs []Definition, h Header, cfg Config) ([]Definition, []string, error) {
+func resolveFromLog(ctx context.Context, src Source, h Header, cfg Config) ([]Definition, []string, error) {
 	if h.URL != cfg.URL {
 		return nil, nil, fmt.Errorf("log identity: %s recorded url %q but this run is configured for %q",
 			cfg.Log, h.URL, cfg.URL)
 	}
-	names := make([]string, 0, len(h.Rules))
+
+	// Group the header's rules by source: Grafana-managed rules resolve against
+	// a fresh ruler read, each datasource against one filtered rules request.
+	// The header names its sources, so discovery is skipped entirely.
+	var grafana []LoggedRule
+	dsRules := map[string][]LoggedRule{}
+	dsNames := map[string]string{}
 	for _, lr := range h.Rules {
-		names = append(names, "uid:"+lr.UID)
+		if lr.DatasourceUID == "" {
+			grafana = append(grafana, lr)
+			continue
+		}
+		dsRules[lr.DatasourceUID] = append(dsRules[lr.DatasourceUID], lr)
+		dsNames[lr.DatasourceUID] = lr.DatasourceName
 	}
-	resolved, notes, err := Resolve(allDefs, names, "")
-	if err != nil {
-		return nil, nil, fmt.Errorf("log identity: %s names a rule that no longer resolves: %w", cfg.Log, err)
+
+	var resolved []Definition
+	if len(grafana) > 0 {
+		defs, err := src.GrafanaDefinitions(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("log identity: %w", err)
+		}
+		byKey := make(map[string]Definition, len(defs))
+		for _, d := range defs {
+			byKey[defKey(d)] = d
+		}
+		for _, lr := range grafana {
+			d, ok := byKey[loggedKey(lr)]
+			if !ok {
+				return nil, nil, fmt.Errorf("log identity: %s names rule %s (%q), which no current definition matches",
+					cfg.Log, loggedKey(lr), lr.Title)
+			}
+			if d.Kind != KindGrafanaManaged {
+				return nil, nil, fmt.Errorf("log identity: %s names rule %s (%q), which is now a %s",
+					cfg.Log, loggedKey(lr), lr.Title, kindName(d.Kind))
+			}
+			resolved = append(resolved, d)
+		}
 	}
-	return resolved, notes, nil
+
+	dsUIDs := make([]string, 0, len(dsRules))
+	for uid := range dsRules {
+		dsUIDs = append(dsUIDs, uid)
+	}
+	sort.Strings(dsUIDs)
+	for _, uid := range dsUIDs {
+		names := make([]string, 0, len(dsRules[uid]))
+		for _, lr := range dsRules[uid] {
+			names = append(names, lr.Title)
+		}
+		defs, err := src.DatasourceDefinitions(ctx, RuleSource{UID: uid, Name: dsNames[uid]}, names)
+		if err != nil {
+			return nil, nil, fmt.Errorf("log identity: datasource %q: %w", dsNames[uid], err)
+		}
+		byKey := make(map[string]Definition, len(defs))
+		for _, d := range defs {
+			byKey[defKey(d)] = d
+		}
+		for _, lr := range dsRules[uid] {
+			d, ok := byKey[loggedKey(lr)]
+			if !ok {
+				return nil, nil, fmt.Errorf("log identity: %s names rule %s (%q), which no current definition matches",
+					cfg.Log, loggedKey(lr), lr.Title)
+			}
+			resolved = append(resolved, d)
+		}
+	}
+	return resolved, nil, nil
 }
 
 // activeRules drops the rules whose DEFINITION says paused. They are skipped:
@@ -577,7 +644,7 @@ func activeRules(defs []Definition) []Definition {
 func activeTimingsOf(active []Definition, rt map[string]RuleTimings) map[string]RuleTimings {
 	out := make(map[string]RuleTimings, len(active))
 	for _, d := range active {
-		out[d.UID] = rt[d.UID]
+		out[defKey(d)] = rt[defKey(d)]
 	}
 	return out
 }
@@ -590,7 +657,7 @@ type livePoller struct {
 	src         Source
 	reducer     *Reducer
 	sched       *Scheduler
-	titles      map[string]string // uid -> title: poll by title, select by UID
+	refs        map[string]RuleRef // key -> ref: how to find the rule again
 	concurrency int
 }
 
@@ -600,11 +667,11 @@ type livePoller struct {
 func newLivePoller(src Source, reducer *Reducer, active []Definition, rt map[string]RuleTimings,
 	concurrency int, now time.Time, seed []Poll) *livePoller {
 
-	titles := make(map[string]string, len(active))
+	refs := make(map[string]RuleRef, len(active))
 	cadence := make(map[string]time.Duration, len(active))
 	for _, d := range active {
-		titles[d.UID] = d.Title
-		cadence[d.UID] = rt[d.UID].pollEvery
+		refs[defKey(d)] = ruleRefOf(d)
+		cadence[defKey(d)] = rt[defKey(d)].pollEvery
 	}
 	sched := NewScheduler(cadence, now)
 	if len(seed) > 0 {
@@ -614,7 +681,7 @@ func newLivePoller(src Source, reducer *Reducer, active []Definition, rt map[str
 		src:         src,
 		reducer:     reducer,
 		sched:       sched,
-		titles:      titles,
+		refs:        refs,
 		concurrency: concurrency,
 	}
 }
@@ -629,15 +696,15 @@ func newLivePoller(src Source, reducer *Reducer, active []Definition, rt map[str
 // collection is exit 2 and check discards the whole collection, so these come
 // back only to let the error say how far the run got before it stopped —
 // which is the one part of it an operator can act on.
-func (p *livePoller) poll(ctx context.Context, uids []string) ([]Poll, error) {
-	observed, obsErr := observeAll(ctx, p.src, p.titles, uids, p.concurrency)
-	out := make([]Poll, 0, len(uids))
-	for _, uid := range uids {
-		obs, ok := observed[uid]
+func (p *livePoller) poll(ctx context.Context, keys []string) ([]Poll, error) {
+	observed, obsErr := observeAll(ctx, p.src, p.refs, keys, p.concurrency)
+	out := make([]Poll, 0, len(keys))
+	for _, key := range keys {
+		obs, ok := observed[key]
 		if !ok {
 			continue
 		}
-		out = append(out, p.reducer.Reduce(uid, obs))
+		out = append(out, p.reducer.Reduce(key, obs))
 	}
 	return out, obsErr
 }
@@ -781,12 +848,15 @@ type drainVerdict struct {
 func drainWait(ctx context.Context, cfg Config, src Source, defs []Definition, pausedAtStart map[string]bool,
 	rt map[string]RuleTimings, polls []Poll, windowEnd time.Time, timeout time.Duration) (map[string]drainVerdict, error) {
 
-	pending := make(map[string]string) // uid -> title, the shape observeAll wants
+	pending := make(map[string]string) // key -> title
+	refs := make(map[string]RuleRef, len(defs))
 	for _, d := range defs {
-		if pausedAtStart[d.UID] {
+		key := defKey(d)
+		refs[key] = ruleRefOf(d)
+		if pausedAtStart[key] {
 			continue
 		}
-		rulePolls := pollsForRule(polls, d.UID)
+		rulePolls := pollsForRule(polls, key)
 		if n := len(rulePolls); n > 0 && !rulePolls[n-1].Found {
 			continue
 		}
@@ -794,7 +864,7 @@ func drainWait(ctx context.Context, cfg Config, src Source, defs []Definition, p
 		// recorded evaluations already reach past the end of the window has
 		// answered the question, and polling it again asks nothing new.
 		if !anyPollEvaluatedThrough(rulePolls, windowEnd) {
-			pending[d.UID] = d.Title
+			pending[key] = d.Title
 		}
 	}
 	if len(pending) == 0 {
@@ -813,7 +883,7 @@ func drainWait(ctx context.Context, cfg Config, src Source, defs []Definition, p
 		}
 		sort.Strings(uids) // deterministic request order and message order
 
-		observed, err := observeAll(ctx, src, pending, uids, cfg.Concurrency)
+		observed, err := observeAll(ctx, src, refs, uids, cfg.Concurrency)
 		if err != nil {
 			return nil, fmt.Errorf("drain wait: %w", err)
 		}
@@ -822,7 +892,7 @@ func drainWait(ctx context.Context, cfg Config, src Source, defs []Definition, p
 			if !ok {
 				continue
 			}
-			rule := stateRuleByUID(obs.Rules, uid)
+			rule := stateRuleByKey(obs.Rules, uid)
 			if rule == nil {
 				// A 2xx that parsed and carries no matching rule is an
 				// authoritative "the rule is gone" — the transport retried
@@ -899,7 +969,7 @@ func recoveryDeadline(activeAt time.Time, keepFiringFor time.Duration, t RuleTim
 	return activeAt.Add(keepFiringFor + t.evalStaleAfter + t.pollEvery)
 }
 
-// recoveringAtWindowEnd returns, per rule UID, the keys of instances whose most
+// recoveringAtWindowEnd returns, per rule key, the keys of instances whose most
 // recent in-window observation is Recovering, each mapped to its recovery
 // deadline. A rule with no such instance is absent.
 func recoveringAtWindowEnd(polls []Poll, from, windowEnd time.Time, rt map[string]RuleTimings) map[string]map[string]time.Time {
@@ -913,10 +983,10 @@ func recoveringAtWindowEnd(polls []Poll, from, windowEnd time.Time, rt map[strin
 		if !pollInWindow(p, from, windowEnd) {
 			continue
 		}
-		byKey := latest[p.RuleUID]
+		byKey := latest[pollKey(p)]
 		if byKey == nil {
 			byKey = make(map[string]observed)
-			latest[p.RuleUID] = byKey
+			latest[pollKey(p)] = byKey
 		}
 		for _, inst := range p.Abnormal {
 			byKey[instanceKey(inst.Labels)] = observed{inst.State, runnerTime(p, inst.ActiveAt), p.KeepFiringFor()}
@@ -930,8 +1000,8 @@ func recoveringAtWindowEnd(polls []Poll, from, windowEnd time.Time, rt map[strin
 	}
 
 	out := make(map[string]map[string]time.Time)
-	for uid, byKey := range latest {
-		t, ok := rt[uid]
+	for rk, byKey := range latest {
+		t, ok := rt[rk]
 		if !ok {
 			continue
 		}
@@ -939,10 +1009,10 @@ func recoveringAtWindowEnd(polls []Poll, from, windowEnd time.Time, rt map[strin
 			if o.state != StateRecovering {
 				continue
 			}
-			if out[uid] == nil {
-				out[uid] = make(map[string]time.Time)
+			if out[rk] == nil {
+				out[rk] = make(map[string]time.Time)
 			}
-			out[uid][key] = recoveryDeadline(o.activeAt, o.kff, t)
+			out[rk][key] = recoveryDeadline(o.activeAt, o.kff, t)
 		}
 	}
 	return out
@@ -950,18 +1020,19 @@ func recoveringAtWindowEnd(polls []Poll, from, windowEnd time.Time, rt map[strin
 
 // recoverySource returns the next batch of extension polls; sentinel is true
 // when the recorder has finished (recorder mode only).
-type recoverySource func(ctx context.Context, titles map[string]string, uids []string) (polls []Poll, sentinel bool, err error)
+type recoverySource func(ctx context.Context, refs map[string]RuleRef, keys []string) (polls []Poll, sentinel bool, err error)
 
-// applyRecoveryPoll drops every key of poll.RuleUID that poll no longer reports
+// applyRecoveryPoll drops every key of the poll's rule that it no longer reports
 // Recovering: resolved, re-fired, paused, vanished, or absent all end the wait
 // (an unresolved key then stays open and reads still_failing).
 func applyRecoveryPoll(pending map[string]map[string]time.Time, poll Poll) {
-	keys, ok := pending[poll.RuleUID]
+	rk := pollKey(poll)
+	keys, ok := pending[rk]
 	if !ok {
 		return
 	}
 	if poll.IsPaused || !poll.Found {
-		delete(pending, poll.RuleUID)
+		delete(pending, rk)
 		return
 	}
 	still := make(map[string]struct{})
@@ -976,7 +1047,7 @@ func applyRecoveryPoll(pending map[string]map[string]time.Time, poll Poll) {
 		}
 	}
 	if len(keys) == 0 {
-		delete(pending, poll.RuleUID)
+		delete(pending, rk)
 	}
 }
 
@@ -1013,10 +1084,11 @@ func recoveryWait(ctx context.Context, cfg Config, defs []Definition, rt map[str
 		return out, nil
 	}
 
-	titles := make(map[string]string, len(pending))
+	refs := make(map[string]RuleRef, len(pending))
 	for _, d := range defs {
-		if keys, ok := pending[d.UID]; ok && len(keys) > 0 {
-			titles[d.UID] = d.Title
+		rk := defKey(d)
+		if keys, ok := pending[rk]; ok && len(keys) > 0 {
+			refs[rk] = ruleRefOf(d)
 			fmt.Fprintf(cfg.Notes, "recovery wait: rule %q has %d instance(s) still recovering\n", d.Title, len(keys))
 		}
 	}
@@ -1025,38 +1097,38 @@ func recoveryWait(ctx context.Context, cfg Config, defs []Definition, rt map[str
 		now := cfg.Clock.Now()
 		// Expire keys individually: a key past its own deadline must not be
 		// resolved by a clear another instance kept the wait alive for.
-		for uid, keys := range pending {
+		for rk, keys := range pending {
 			for key, deadline := range keys {
 				if !now.Before(deadline) {
 					fmt.Fprintf(cfg.Notes, "recovery wait: rule %q: an instance did not resolve before %s; its episode stays open\n",
-						titles[uid], deadline.Format(time.RFC3339))
+						refs[rk].Title, deadline.Format(time.RFC3339))
 					delete(keys, key)
 				}
 			}
 			if len(keys) == 0 {
-				delete(pending, uid)
+				delete(pending, rk)
 			}
 		}
 		if len(pending) == 0 {
 			break
 		}
 
-		uids := make([]string, 0, len(pending))
-		for uid := range pending {
-			uids = append(uids, uid)
+		keys := make([]string, 0, len(pending))
+		for rk := range pending {
+			keys = append(keys, rk)
 		}
-		sort.Strings(uids)
+		sort.Strings(keys)
 
-		batch, sentinel, err := src(ctx, titles, uids)
+		batch, sentinel, err := src(ctx, refs, keys)
 		if err != nil {
 			return out, err
 		}
 		relevant := make(map[string]struct{}, len(pending))
-		for uid := range pending {
-			relevant[uid] = struct{}{}
+		for rk := range pending {
+			relevant[rk] = struct{}{}
 		}
 		for _, poll := range batch {
-			if _, ok := relevant[poll.RuleUID]; !ok {
+			if _, ok := relevant[pollKey(poll)]; !ok {
 				continue
 			}
 			out = append(out, poll)
@@ -1070,13 +1142,13 @@ func recoveryWait(ctx context.Context, cfg Config, defs []Definition, rt map[str
 		// past the soonest per-instance recovery deadline.
 		var wait time.Duration
 		soonest := false
-		for uid, keys := range pending {
+		for rk, keys := range pending {
 			for _, deadline := range keys {
 				if d := deadline.Sub(now); !soonest || d < wait {
 					wait, soonest = d, true
 				}
 			}
-			if every := rt[uid].pollEvery; every > 0 && (!soonest || every < wait) {
+			if every := rt[rk].pollEvery; every > 0 && (!soonest || every < wait) {
 				wait, soonest = every, true
 			}
 		}
@@ -1093,18 +1165,18 @@ func recoveryWait(ctx context.Context, cfg Config, defs []Definition, rt map[str
 // The reducer is seeded from the polls already taken so the first extension
 // poll's Cleared marker compares against the last recorded abnormal set.
 func directRecoverySource(src Source, reducer *Reducer, concurrency int) recoverySource {
-	return func(ctx context.Context, titles map[string]string, uids []string) ([]Poll, bool, error) {
-		observed, err := observeAll(ctx, src, titles, uids, concurrency)
+	return func(ctx context.Context, refs map[string]RuleRef, keys []string) ([]Poll, bool, error) {
+		observed, err := observeAll(ctx, src, refs, keys, concurrency)
 		if err != nil {
 			return nil, false, fmt.Errorf("recovery wait: %w", err)
 		}
-		out := make([]Poll, 0, len(uids))
-		for _, uid := range uids {
-			obs, ok := observed[uid]
+		out := make([]Poll, 0, len(keys))
+		for _, key := range keys {
+			obs, ok := observed[key]
 			if !ok {
 				continue
 			}
-			out = append(out, reducer.Reduce(uid, obs))
+			out = append(out, reducer.Reduce(key, obs))
 		}
 		return out, false, nil
 	}
@@ -1114,7 +1186,7 @@ func directRecoverySource(src Source, reducer *Reducer, concurrency int) recover
 // keeps polling, so the extension evidence is written to the log that ReadLog
 // reads next.
 func tailRecoverySource(tail *logTailer) recoverySource {
-	return func(context.Context, map[string]string, []string) ([]Poll, bool, error) {
+	return func(context.Context, map[string]RuleRef, []string) ([]Poll, bool, error) {
 		polls, sentinel, err := tail.read()
 		if err != nil {
 			return nil, false, fmt.Errorf("recovery wait: %w", err)
@@ -1163,7 +1235,7 @@ func mergeDrainTimeouts(res Result, drained map[string]drainVerdict) (Result, er
 
 	var names []string
 	for i := range res.Verdicts {
-		uid := res.Verdicts[i].RuleUID
+		uid := verdictKey(res.Verdicts[i])
 		verdict, ok := drained[uid]
 		if !ok {
 			continue

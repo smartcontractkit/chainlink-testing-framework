@@ -58,10 +58,13 @@ const (
 // after the preexisting policy has been applied (isViolation below).
 type Violation struct {
 	Alert, RuleUID string
-	Outcome        Outcome
-	State          State
-	Health         string // raw, reporting-only, like Poll.Health
-	LastError      string
+	// RuleKey is the identity across both source kinds; RuleUID is empty for a
+	// datasource-managed rule.
+	RuleKey   string `json:"rule_key,omitempty"`
+	Outcome   Outcome
+	State     State
+	Health    string // raw, reporting-only, like Poll.Health
+	LastError string
 	// FirstSeen is the episode's onset in the runner domain (translated by the
 	// poll's own skew), or `from` when preexisting — never a raw Grafana time.
 	FirstSeen time.Time
@@ -78,10 +81,14 @@ type Violation struct {
 // (passes included) so the table shows every alert asked for.
 type RuleVerdict struct {
 	Alert, RuleUID string
-	Outcome        Outcome
-	BadFor         time.Duration // total wall-clock time any instance was bad inside the window, overlaps merged
-	PollEvery      time.Duration
-	Note           string
+	RuleKey        string `json:"rule_key,omitempty"`
+	// SourceKind is "grafana" or "datasource" (sourceKind), so a reader can see
+	// which classification semantics apply without prose.
+	SourceKind string `json:"source_kind,omitempty"`
+	Outcome    Outcome
+	BadFor     time.Duration // total wall-clock time any instance was bad inside the window, overlaps merged
+	PollEvery  time.Duration
+	Note       string
 }
 
 // Policy is decide's narrowed, pure-layer view of a Config: the classification
@@ -139,6 +146,10 @@ type Result struct {
 	Global     GlobalThresholds
 	Verdicts   []RuleVerdict
 	Violations []Violation
+	// Caveats are run-level, kind-level policy notes (e.g. datasource-managed
+	// pause is unobservable). They are not per-rule details; the CLI prints them
+	// once so they never bloat the table.
+	Caveats []string `json:"caveats,omitempty"`
 	// TerminatedEarly is set only when fail-fast stopped before the window
 	// closed; the coverage proof is then over [from, At]. To and Global below
 	// still report the requested values. Published JSON output.
@@ -190,7 +201,7 @@ func runnerTime(p Poll, grafanaDomain time.Time) time.Time {
 // PURE: no I/O, no clock reads; polls need not be pre-filtered to this rule.
 // t bounds a recovering episode, identically to the recovery wait.
 func classifyRule(def Definition, t RuleTimings, polls []Poll, from, windowEnd time.Time, badStates map[State]bool, pol PreexistingPolicy) (Outcome, time.Duration, []Violation) {
-	rulePolls := pollsForRule(polls, def.UID)
+	rulePolls := pollsForRule(polls, defKey(def))
 
 	timelines := make(map[string]*instanceTimeline)
 	order := make([]string, 0)
@@ -404,6 +415,7 @@ func classifyRule(def Definition, t RuleTimings, polls []Poll, from, windowEnd t
 			}
 			viols = append(viols, Violation{
 				Alert:          def.Title,
+				RuleKey:        defKey(def),
 				RuleUID:        def.UID,
 				Outcome:        instOutcome,
 				State:          tl.lastState,
@@ -497,10 +509,10 @@ func mergeDurations(eps []episode) time.Duration {
 // in a pure function. This is the single filter+sort implementation for the
 // package: proveCoverage calls it too, rather than keeping its own copy that
 // could silently drift from this one's membership test.
-func pollsForRule(polls []Poll, uid string) []Poll {
+func pollsForRule(polls []Poll, key string) []Poll {
 	var out []Poll
 	for _, p := range polls {
-		if p.RuleUID == uid {
+		if pollKey(p) == key {
 			out = append(out, p)
 		}
 	}
@@ -534,7 +546,7 @@ func applyNodataPolicy(def Definition, polls []Poll, cov *CoverageResult, t Rule
 	if cov.Unobservable {
 		return
 	}
-	inWindow := inWindowPolls(pollsForRule(polls, def.UID), from, windowEnd)
+	inWindow := inWindowPolls(pollsForRule(polls, defKey(def)), from, windowEnd)
 	runLen, sawAny := longestHealthRun(inWindow, "nodata")
 	if !sawAny || runLen <= t.healthGrace {
 		return
@@ -576,6 +588,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			GraceSource:     graceSourceOrNone(gt.graceSource),
 			DrainTimeout:    gt.drainTimeout,
 		},
+		Caveats: datasourceCaveats(defs),
 	}
 	skewSeen := false
 	for _, p := range polls {
@@ -614,25 +627,27 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 	pausedAtStart := h.pausedAtStart()
 
 	for _, def := range defs {
-		if pausedAtStart[def.UID] {
+		key := defKey(def)
+		if pausedAtStart[key] {
 			pausedRules = append(pausedRules, def)
 			result.Verdicts = append(result.Verdicts, RuleVerdict{
-				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomePaused,
-				PollEvery: rt[def.UID].pollEvery,
+				Alert: def.Title, RuleKey: key, RuleUID: def.UID,
+				SourceKind: sourceKind(def.Kind), Outcome: OutcomePaused,
+				PollEvery: rt[key].pollEvery,
 				Note:      "paused before the window opened",
 			})
 			continue
 		}
 		watchedCount++
 
-		t := rt[def.UID]
+		t := rt[key]
 		cov := proveCoverage(h, polls, sentinel, t, def, pol.From, pol.To, gt.transitionGrace)
 
 		if pol.NodataIsUnobservable {
 			applyNodataPolicy(def, polls, &cov, t, pol.From, windowEnd)
 		}
-		result.Coverage[def.UID] = cov
-		result.Thresholds[def.UID] = RuleThresholds{
+		result.Coverage[key] = cov
+		result.Thresholds[key] = RuleThresholds{
 			MaxGap:         t.maxGap,
 			HealthGrace:    t.healthGrace,
 			EvalStaleAfter: t.evalStaleAfter,
@@ -646,7 +661,8 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 		}
 		result.Violations = append(result.Violations, viols...)
 		result.Verdicts = append(result.Verdicts, RuleVerdict{
-			Alert: def.Title, RuleUID: def.UID, Outcome: outcome, BadFor: badFor,
+			Alert: def.Title, RuleKey: key, RuleUID: def.UID,
+			SourceKind: sourceKind(def.Kind), Outcome: outcome, BadFor: badFor,
 			PollEvery: t.pollEvery, Note: strings.Join(cov.Notes, "; "),
 		})
 	}
@@ -672,7 +688,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			// prints Note verbatim rather than re-deriving the hint, so the
 			// exact wording here is what an operator reads.
 			result.Violations = append(result.Violations, Violation{
-				Alert: def.Title, RuleUID: def.UID, Outcome: OutcomePaused,
+				Alert: def.Title, RuleKey: defKey(def), RuleUID: def.UID, Outcome: OutcomePaused,
 				Note: "paused before the window opened; counts against --min-observed unless --allow-paused is set",
 			})
 			attributed++

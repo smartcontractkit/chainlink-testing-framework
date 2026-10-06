@@ -103,6 +103,42 @@ func TestSelectByLabels_EmptyIncludeIsNotAnError(t *testing.T) {
 	require.Equal(t, []string{"rule0000002"}, selectedUIDs(selected))
 }
 
+// Two distinct datasource rules can share one identity (same datasource,
+// group, name and file, differing only by labels/query). The state query cannot
+// tell them apart, so a selected rule with a shared identity is unobservable
+// even when the selection narrows to it; an unrelated selection is fine.
+func TestResolveAlertSet_SharedIdentityFailsEvenWhenOneSelected(t *testing.T) {
+	a := Definition{
+		Key: "ds:k", Title: "Same", Group: "G", Kind: KindDatasourceManaged,
+		DatasourceUID: "vm", DatasourceName: "VM",
+		Labels: map[string]string{"product": "ccip", "severity": "critical"},
+	}
+	b := a
+	b.Labels = map[string]string{"product": "ccip", "severity": "warning"}
+	other := Definition{
+		Key: "ds:other", Title: "Other", Group: "G", Kind: KindDatasourceManaged,
+		DatasourceUID: "vm", DatasourceName: "VM",
+		Labels: map[string]string{"product": "branch-out"},
+	}
+	defs := []Definition{a, b, other}
+
+	// Both siblings selected.
+	_, _, err := resolveAlertSet(defs, nil, []LabelMatcher{{Key: "product", Value: "ccip"}}, nil, nil, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot be told apart")
+
+	// ONE sibling selected: still unobservable, so still an error.
+	_, _, err = resolveAlertSet(defs, nil, []LabelMatcher{{Key: "severity", Value: "critical"}}, nil, nil, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "cannot be told apart")
+
+	// An unrelated rule is fine even though the inventory has a collision.
+	selected, _, err := resolveAlertSet(defs, nil, []LabelMatcher{{Key: "product", Value: "branch-out"}}, nil, nil, "")
+	require.NoError(t, err)
+	require.Len(t, selected, 1)
+	require.Equal(t, "Other", selected[0].Title)
+}
+
 // --exclude-alerts subtracts from an enumerated set: the names resolve like
 // --alerts, so uid: forms work, and the result keeps the input order.
 func TestResolveAlertSet_SubtractsExcludedNames(t *testing.T) {
@@ -143,6 +179,20 @@ func TestResolveAlertSet_ExcludingEverythingFails(t *testing.T) {
 		[]string{"uid:rule0000009"}, "")
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "drops every selected rule")
+}
+
+// A datasource rule has no uid, so the listing must show its key instead of an
+// empty pair of parentheses.
+func TestPrintLabelSelection_DatasourceShowsKey(t *testing.T) {
+	defs := []Definition{{
+		Key: ruleKey("vm", "G", "A", "f", ""), Title: "A", Group: "G",
+		Kind: KindDatasourceManaged, DatasourceUID: "vm", DatasourceName: "VM",
+	}}
+	var b strings.Builder
+	printLabelSelection(&b, defs, []LabelMatcher{{Key: "k", Value: "v"}}, nil, 0)
+	out := b.String()
+	require.Contains(t, out, "  - A (ds:")
+	require.NotContains(t, out, "()")
 }
 
 func TestPrintLabelSelection(t *testing.T) {
