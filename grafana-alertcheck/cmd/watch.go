@@ -13,7 +13,7 @@ import (
 
 const watchUsage = "usage: grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] " +
 	"(--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) [--exclude-alerts <file|->] " +
-	"[--poll-interval D] [--concurrency N] [--until RFC3339]"
+	"[--concurrency N] [--until RFC3339]"
 
 // runWatch is the record step's entire CLI surface, split in two by one flag
 // set — gate.DaemonChildFlag ("--daemon-child") and gate.ReadyFDFlag
@@ -44,7 +44,6 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	pidfile := fs.String("pidfile", "", "pidfile path (default <out>.pid)")
 	daemonLog := fs.String("daemon-log", "", "stdout/stderr sink for the detached recorder (default <out>.daemon.log)")
 	until := fs.String("until", "", "optional hard stop, RFC3339 (default: run until check stops it)")
-	pollInterval := fs.String("poll-interval", "", "override every rule's poll cadence (default: half its own evaluation interval)")
 
 	// Hidden: never in watchUsage, never typed by an operator (see doc comment).
 	daemonChild := fs.Bool(gate.DaemonChildFlag[2:], false, "")
@@ -123,14 +122,6 @@ func runWatch(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 			return 2
 		}
 		cfg.Until = t
-	}
-	if *pollInterval != "" {
-		d, err := time.ParseDuration(*pollInterval)
-		if err != nil {
-			fmt.Fprintf(stderr, "--poll-interval: %v\n", err)
-			return 2
-		}
-		cfg.PollEvery = d
 	}
 
 	if err := gate.Watch(context.Background(), cfg); err != nil {

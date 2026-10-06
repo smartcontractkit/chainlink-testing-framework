@@ -35,7 +35,17 @@ func quietPoll(uid string, at time.Time) Poll {
 	return Poll{RuleUID: uid, GrafanaNow: at, Found: true, Health: "ok", LastEvaluation: at}
 }
 
-var defaultBad = badStateSet(nil) // {firing}
+var defaultBad = badStateSet(nil) // {firing, recovering}
+
+// classify is classifyRule with default timings (a 60s evaluation interval),
+// for tests that do not exercise the recovery deadline margin directly.
+func classify(def Definition, polls []Poll, from, to time.Time, badStates map[State]bool, pol PreexistingPolicy) (Outcome, time.Duration, []Violation) {
+	interval := def.IntervalSeconds
+	if interval == 0 {
+		interval = 60
+	}
+	return classifyRule(def, newRuleTimings(defaultPollEvery(interval), interval), polls, from, to, badStates, pol)
+}
 
 // pausedHeader builds the header decide reads `skipped` from: the pause state
 // as of record start. Definition.IsPaused is deliberately NOT that authority
@@ -57,7 +67,7 @@ func TestClassifyRule_NoEvidenceIsClean(t *testing.T) {
 	def := Definition{UID: "r1", Title: "R1"}
 
 	polls := []Poll{quietPoll("r1", from), quietPoll("r1", to)}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeHealthy, outcome)
 	require.Zero(t, badFor)
 	require.Empty(t, viols)
@@ -74,7 +84,7 @@ func TestClassifyRule_NewOnsetInsideWindowIsNewlyBad(t *testing.T) {
 		abnormalPoll("r1", onset, StateFiring, lbl("a"), onset),
 		abnormalPoll("r1", to, StateFiring, lbl("a"), onset),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeNewFailure, outcome)
 	require.Equal(t, to.Sub(onset), badFor)
 	require.Len(t, viols, 1)
@@ -96,7 +106,7 @@ func TestClassifyRule_NewOnsetThatClearsStillFails(t *testing.T) {
 		clearedPoll("r1", clearAt, instanceKey(lbl("a"))),
 		quietPoll("r1", to),
 	}
-	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeNewFailure, outcome, "even though it cleared")
 	require.Len(t, viols, 1)
 }
@@ -115,7 +125,7 @@ func TestClassifyRule_PreexistingThatRecoversIsRecoveredAndNotAViolation(t *test
 		clearedPoll("r1", clearAt, key),
 		quietPoll("r1", to),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeRecovered, outcome)
 	require.Equal(t, clearAt.Sub(from), badFor)
 	require.Empty(t, viols, "default policy passes a recovered preexisting instance")
@@ -136,7 +146,7 @@ func TestClassifyRule_LateRecoveryPassesRegardlessOfHowLateItIs(t *testing.T) {
 		clearedPoll("r1", clearAt, key),
 		quietPoll("r1", to),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeRecovered, outcome, "even 58 minutes into a 60-minute window")
 	require.Equal(t, clearAt.Sub(from), badFor, "not a value clamped against a deadline")
 	require.Empty(t, viols, "there is no deadline a preexisting recovery must beat")
@@ -151,7 +161,7 @@ func TestClassifyRule_PreexistingStillBadAtWindowEndIsPersistentlyBad(t *testing
 		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
 		abnormalPoll("r1", to, StateFiring, lbl("a"), from.Add(-time.Hour)),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeStillFailing, outcome)
 	require.Equal(t, to.Sub(from), badFor)
 	require.Len(t, viols, 1)
@@ -172,7 +182,7 @@ func TestClassifyRule_ClearThenBadAgainIsFlapping(t *testing.T) {
 		abnormalPoll("r1", from.Add(5*time.Minute), StateFiring, lbl("a"), from.Add(5*time.Minute)),
 		quietPoll("r1", to),
 	}
-	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeUnstable, outcome)
 	require.Len(t, viols, 1)
 	require.Equal(t, OutcomeUnstable, viols[0].Outcome, "always a fail regardless of policy")
@@ -206,7 +216,7 @@ func TestClassifyRule_FlappingAtEveryTimingOfTheSecondOnset(t *testing.T) {
 				abnormalPoll("r1", tc.secondOnset, StateFiring, lbl("a"), tc.secondOnset),
 				quietPoll("r1", to),
 			}
-			outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+			outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 			require.Equalf(t, OutcomeUnstable, outcome, "second onset at %s", tc.secondOnset)
 			require.Len(t, viols, 1)
 			require.Equal(t, OutcomeUnstable, viols[0].Outcome)
@@ -227,7 +237,7 @@ func TestClassifyRule_VanishedWhileBadStaysPersistentlyBad(t *testing.T) {
 		vanishedPoll("r1", from.Add(5*time.Minute), key),
 		quietPoll("r1", to),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeStillFailing, outcome, "a vanish must never read as a recovery")
 	require.Equal(t, to.Sub(from), badFor, "the freeze must hold the episode open to windowEnd")
 	require.Len(t, viols, 1)
@@ -246,7 +256,7 @@ func TestClassifyRule_VanishedWhileNeverBadIsUninteresting(t *testing.T) {
 		vanishedPoll("r1", from.Add(5*time.Minute), key),
 		quietPoll("r1", to),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeHealthy, outcome)
 	require.Zero(t, badFor)
 	require.Empty(t, viols)
@@ -265,7 +275,7 @@ func TestClassifyRule_PreexistingPolicyFailFailsARecoveredInstance(t *testing.T)
 		clearedPoll("r1", from.Add(2*time.Minute), key),
 		quietPoll("r1", to),
 	}
-	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFail)
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFail)
 	require.Equal(t, OutcomeRecovered, outcome, "the descriptive outcome does not change under policy=fail")
 	require.Len(t, viols, 1)
 	require.Equal(t, OutcomeRecovered, viols[0].Outcome,
@@ -281,7 +291,7 @@ func TestClassifyRule_PreexistingPolicyIgnoreForgivesPersistentlyBad(t *testing.
 		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
 		abnormalPoll("r1", to, StateFiring, lbl("a"), from.Add(-time.Hour)),
 	}
-	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingIgnore)
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingIgnore)
 	require.Equal(t, OutcomeStillFailing, outcome, "the descriptive outcome does not change under policy=ignore")
 	require.Empty(t, viols, "policy=ignore disregards a preexisting instance even if it never recovers")
 }
@@ -297,7 +307,7 @@ func TestClassifyRule_PreexistingPolicyIgnoreStillFailsANewOnset(t *testing.T) {
 		abnormalPoll("r1", onset, StateFiring, lbl("a"), onset),
 		abnormalPoll("r1", to, StateFiring, lbl("a"), onset),
 	}
-	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingIgnore)
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingIgnore)
 	require.Equal(t, OutcomeNewFailure, outcome)
 	require.Len(t, viols, 1, "ignore only forgives PREEXISTING badness")
 }
@@ -323,7 +333,7 @@ func TestClassifyRule_WorstOfMultipleInstancesWins(t *testing.T) {
 			Abnormal: []Instance{{Labels: lbl("b"), State: StateFiring, ActiveAt: from}},
 		},
 	}
-	outcome, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeStillFailing, outcome, "the worse of {recovered, still_failing}")
 	require.Len(t, viols, 1)
 	require.Equal(t, OutcomeStillFailing, viols[0].Outcome)
@@ -758,7 +768,7 @@ func TestClassifyRule_OnsetBetweenFromAndFirstPollIsNewlyBadNotRecovered(t *test
 		clearedPoll("r1", clearAt, key),
 		quietPoll("r1", to),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeNewFailure, outcome,
 		"the onset is after `from`, so it is not preexisting even though the FIRST in-window poll already observes it bad")
 	require.Len(t, viols, 1)
@@ -783,7 +793,7 @@ func TestClassifyRule_OnsetJustBeforeFromIsPreexisting(t *testing.T) {
 		clearedPoll("r1", clearAt, key),
 		quietPoll("r1", to),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeRecovered, outcome, "the onset is at/before `from`, genuinely preexisting")
 	require.Empty(t, viols, "default policy passes a recovered preexisting instance")
 	require.Equal(t, clearAt.Sub(from), badFor,
@@ -814,7 +824,7 @@ func TestClassifyRule_SkewTranslatesActiveAtAcrossTheWindowBoundary(t *testing.T
 	stillBad.GrafanaNow = to.Add(skew)
 	stillBad.LastEvaluation = to.Add(skew)
 
-	outcome, badFor, _ := classifyRule(def, []Poll{poll, stillBad}, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, _ := classify(def, []Poll{poll, stillBad}, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeStillFailing, outcome,
 		"a +90s skew must translate ActiveAt back to exactly `from`")
 	require.Equal(t, to.Sub(from), badFor)
@@ -837,7 +847,7 @@ func TestClassifyRule_LabelsSurviveWhenTimelineStartsFromAClearedMarker(t *testi
 		abnormalPoll("r1", newOnset, StateFiring, lbl("a"), newOnset),
 		quietPoll("r1", to),
 	}
-	_, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	_, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Len(t, viols, 1)
 	require.NotNil(t, viols[0].InstanceLabels)
 	require.Equal(t, "a", viols[0].InstanceLabels["instance"],
@@ -858,7 +868,7 @@ func TestClassifyRule_ViolationFieldsArePrecise(t *testing.T) {
 		clearedPoll("r1", clearAt, instanceKey(lbl("a"))),
 		quietPoll("r1", to),
 	}
-	_, _, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	_, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Len(t, viols, 1)
 	v := viols[0]
 	require.True(t, v.FirstSeen.Equal(onset))
@@ -885,7 +895,7 @@ func TestClassifyRule_ClearedEventPastWindowEndClampsToWindowEnd(t *testing.T) {
 			SkewBoundMS: bound.Milliseconds(), Cleared: []string{key},
 		},
 	}
-	outcome, badFor, _ := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, _ := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeRecovered, outcome)
 	require.Equal(t, to.Sub(from), badFor,
 		"the episode end must clamp to windowEnd, not extend to the late Cleared event's raw time")
@@ -915,7 +925,7 @@ func TestClassifyRule_OnsetJustPastWindowEndIsNewlyBadNotClean(t *testing.T) {
 		Abnormal: []Instance{{Labels: lbl("a"), State: StateFiring, ActiveAt: windowEnd.Add(10 * time.Second)}},
 	}
 
-	outcome, badFor, viols := classifyRule(def, []Poll{poll}, from, windowEnd, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, []Poll{poll}, from, windowEnd, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeNewFailure, outcome,
 		"an onset past windowEnd seen only via the skew bound must fail closed")
 	require.Zero(t, badFor, "the zero-length episode must truncate to the window end")
@@ -937,7 +947,7 @@ func TestClassifyRule_ClearAfterWindowEndIsPersistentlyBad(t *testing.T) {
 		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
 		clearedPoll("r1", to.Add(time.Hour), key), // far past `to`, not a boundary case
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeStillFailing, outcome, "a clear outside the window must not read as a recovery")
 	require.Equal(t, to.Sub(from), badFor)
 	require.Len(t, viols, 1)
@@ -967,11 +977,255 @@ func TestClassifyRule_CloseBeforeOpenClampsToZeroNotNegative(t *testing.T) {
 		},
 		quietPoll("r1", to),
 	}
-	outcome, badFor, viols := classifyRule(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	outcome, badFor, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
 	require.Equal(t, OutcomeNewFailure, outcome)
 	require.GreaterOrEqual(t, badFor, time.Duration(0),
 		"a non-negative duration even though the closing poll's translated time landed before the opening poll's")
 	require.Zero(t, badFor, "the clamp collapses the inverted span to a zero-length episode")
+	require.Len(t, viols, 1)
+}
+
+// --- Recovering (keep firing for) ---
+
+// recoveringPoll is abnormalPoll with the rule's recovery period attached.
+func recoveringPoll(uid string, at time.Time, labels map[string]string, activeAt time.Time, kff time.Duration) Poll {
+	p := abnormalPoll(uid, at, StateRecovering, labels, activeAt)
+	p.KeepFiringForMS = kff.Milliseconds()
+	return p
+}
+
+// A first-seen Recovering instance is never a new failure: Recovering is only
+// reachable from Alerting, so the fire predates the observation and its
+// ActiveAt (the recovery onset) must not start an in-window episode.
+func TestClassifyRule_FirstSeenRecoveringIsPreexistingAndRecovers(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := from.Add(2 * time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := []Poll{
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		clearedPoll("r1", to.Add(2*time.Minute), instanceKey(lbl("a"))), // extension poll
+	}
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeRecovered, outcome)
+	require.Empty(t, viols)
+}
+
+// A Recovering instance first observed after an in-window non-bad observation
+// is an in-window fire whose Alerting poll was missed: it must fail closed as a
+// new failure, never read as preexisting (which would let it pass as recovered).
+func TestClassifyRule_RecoveringAfterInWindowPendingIsNewFailure(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	pendingAt := from.Add(2 * time.Minute)
+	recoveryAt := from.Add(3 * time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := []Poll{
+		abnormalPoll("r1", pendingAt, StatePending, lbl("a"), pendingAt),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		clearedPoll("r1", to.Add(2*time.Minute), instanceKey(lbl("a"))), // extension poll
+	}
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeNewFailure, outcome)
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomeNewFailure, viols[0].Outcome)
+}
+
+// A recovering episode that never resolves inside its KeepFiringFor stays open
+// and fails closed.
+func TestClassifyRule_UnresolvedRecoveringIsStillFailing(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := []Poll{
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+	}
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeStillFailing, outcome)
+	require.Len(t, viols, 1)
+	require.Equal(t, OutcomeStillFailing, viols[0].Outcome)
+}
+
+// An extension poll may only close the recovering episode: a different
+// instance going bad after windowEnd is outside the window and stays healthy.
+func TestClassifyRule_ExtensionPollDoesNotOpenNewOnset(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)), // A preexisting
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		abnormalPoll("r1", to.Add(time.Minute), StateFiring, lbl("b"), to.Add(time.Minute)), // B post-window
+		clearedPoll("r1", to.Add(2*time.Minute), instanceKey(lbl("a"))),
+	}
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeRecovered, outcome, "B's post-window onset must not count")
+	require.Empty(t, viols)
+}
+
+// A re-fire while the linger is still open is the same episode, not a second
+// one: the episode stays open and reads still_failing.
+func TestClassifyRule_RefireDuringRecoveryStaysOneEpisode(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		abnormalPoll("r1", to.Add(time.Minute), StateFiring, lbl("a"), to.Add(time.Minute)),
+	}
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeStillFailing, outcome)
+	require.Len(t, viols, 1)
+}
+
+// A NEW onset that later enters Recovering still fails even though the
+// extension observes its resolution.
+func TestClassifyRule_NewOnsetRecoveringInExtensionStillNewFailure(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	onset := from.Add(2 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := []Poll{
+		abnormalPoll("r1", onset, StateFiring, lbl("a"), onset),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		clearedPoll("r1", to.Add(2*time.Minute), instanceKey(lbl("a"))),
+	}
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeNewFailure, outcome)
+	require.Len(t, viols, 1)
+}
+
+// Excluding recovering from --states opts out: it closes an open episode at
+// the recovery onset, like any other non-bad state.
+func TestClassifyRule_RecoveringExcludedClosesEpisode(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := from.Add(8 * time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+	}
+	outcome, badFor, viols := classify(def, polls, from, to, badStateSet([]State{StateFiring}), PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeRecovered, outcome)
+	require.Equal(t, recoveryAt.Sub(from), badFor)
+	require.Empty(t, viols)
+}
+
+// A paused extension poll must not resolve the episode: a pause is not a
+// recovery, so the episode stays open and fails closed.
+func TestClassifyRule_PausedExtensionPollDoesNotResolveRecovering(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+
+	pausedClear := clearedPoll("r1", to.Add(2*time.Minute), instanceKey(lbl("a")))
+	pausedClear.IsPaused = true
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		pausedClear,
+	}
+	outcome, _, viols := classify(def, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeStillFailing, outcome)
+	require.Len(t, viols, 1)
+}
+
+// A clear observed after the instance's own recovery deadline must not resolve
+// the episode: the deadline is the bound the wait gave up at.
+func TestClassifyRule_ClearPastRecoveryDeadlineStaysStillFailing(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	kff := time.Minute
+	timings := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1", IntervalSeconds: 60}
+	deadline := recoveryAt.Add(kff + timings.evalStaleAfter + timings.pollEvery)
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, kff),
+		clearedPoll("r1", deadline.Add(time.Minute), instanceKey(lbl("a"))),
+	}
+	outcome, _, viols := classifyRule(def, timings, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeStillFailing, outcome)
+	require.Len(t, viols, 1)
+}
+
+// The same clear one minute inside the deadline is a genuine recovery.
+func TestClassifyRule_ClearWithinRecoveryDeadlineIsRecovered(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	kff := time.Minute
+	timings := newRuleTimings(30*time.Second, 60)
+	def := Definition{UID: "r1", Title: "R1", IntervalSeconds: 60}
+	deadline := recoveryAt.Add(kff + timings.evalStaleAfter + timings.pollEvery)
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, kff),
+		clearedPoll("r1", deadline.Add(-time.Minute), instanceKey(lbl("a"))),
+	}
+	outcome, _, viols := classifyRule(def, timings, polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeRecovered, outcome)
+	require.Empty(t, viols)
+}
+
+// A pause during the recovery observation retires eligibility: a later clear,
+// even an unpaused one, must not resolve the episode.
+func TestClassifyRule_PauseDuringRecoveryRetiresEligibility(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+	paused := Poll{
+		RuleUID: "r1", GrafanaNow: to.Add(time.Minute), Found: true, Health: "ok",
+		LastEvaluation: to.Add(time.Minute), IsPaused: true,
+	}
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		paused,
+		clearedPoll("r1", to.Add(2*time.Minute), instanceKey(lbl("a"))),
+	}
+	outcome, _, viols := classifyRule(def, newRuleTimings(30*time.Second, 60), polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeStillFailing, outcome)
+	require.Len(t, viols, 1)
+}
+
+// An absent rule during the recovery observation retires eligibility the same
+// way a pause does.
+func TestClassifyRule_AbsentRuleDuringRecoveryRetiresEligibility(t *testing.T) {
+	from := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	to := from.Add(10 * time.Minute)
+	recoveryAt := to.Add(-time.Minute)
+	def := Definition{UID: "r1", Title: "R1"}
+	absent := Poll{RuleUID: "r1", GrafanaNow: to.Add(time.Minute), Found: false}
+
+	polls := []Poll{
+		abnormalPoll("r1", from, StateFiring, lbl("a"), from.Add(-time.Hour)),
+		recoveringPoll("r1", recoveryAt, lbl("a"), recoveryAt, 10*time.Minute),
+		absent,
+		clearedPoll("r1", to.Add(2*time.Minute), instanceKey(lbl("a"))),
+	}
+	outcome, _, viols := classifyRule(def, newRuleTimings(30*time.Second, 60), polls, from, to, defaultBad, PreexistingFailUnlessRecovered)
+	require.Equal(t, OutcomeStillFailing, outcome)
 	require.Len(t, viols, 1)
 }
 

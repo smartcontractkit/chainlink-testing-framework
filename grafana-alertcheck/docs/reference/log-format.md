@@ -52,7 +52,7 @@ The header must be line 1, appear once, and carry `schema_version` `1` (any othe
 - `url` and `rules` are the log's identity — `check` validates them against the current environment and a fresh ruler read.
 - `started_at` is when the recording opened; `ready_at` is when the first-observation pass completed and every watched, non-paused rule had been observed once. The pass is sequential, so `check` refuses a `from` before `ready_at` (a window opening inside the pass would rest on observations that do not exist). `ready_at` is absent on logs written before the field existed; `check` then falls back to `started_at`.
 - `is_paused` records the pause state at record start (the moment `paused` means).
-- `poll_every_seconds` is the cadence the recording **actually used** (after any `--poll-interval` override). `check` derives `maxGap` from it, never from `interval_seconds`.
+- `poll_every_seconds` is the cadence the recording used: always half the rule's `interval_seconds`. `check` derives `maxGap` from it, never by re-deriving from `interval_seconds`.
 - `for_seconds`, `interval_seconds`, `no_data_state`, `exec_err_state` are forensic only — `check` re-resolves definitions and never reads them back.
 
 ## Poll

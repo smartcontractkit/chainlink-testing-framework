@@ -160,16 +160,21 @@ type episode struct {
 // the translated ActiveAt against `from`, never by which poll happened to
 // report it first — a poll's own cadence is not evidence of when the condition
 // actually began.
+//
+// recoveryOpen marks an episode last seen Recovering: an extension poll may
+// close it only until recoveryDeadline.
 type instanceTimeline struct {
-	labels       map[string]string
-	preexisting  bool
-	seen         bool
-	badOpen      bool
-	episodeStart time.Time
-	lastState    State
-	lastHealth   string
-	lastError    string
-	episodes     []episode
+	labels           map[string]string
+	preexisting      bool
+	seen             bool
+	badOpen          bool
+	recoveryOpen     bool
+	recoveryDeadline time.Time
+	episodeStart     time.Time
+	lastState        State
+	lastHealth       string
+	lastError        string
+	episodes         []episode
 }
 
 // runnerTime translates a Grafana-domain timestamp into the runner domain by
@@ -183,9 +188,9 @@ func runnerTime(p Poll, grafanaDomain time.Time) time.Time {
 // [from, windowEnd] and reduces them to the rule's worst outcome, merged
 // BadFor, and the Violations the preexisting policy charges against the run.
 // PURE: no I/O, no clock reads; polls need not be pre-filtered to this rule.
-func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badStates map[State]bool, pol PreexistingPolicy) (Outcome, time.Duration, []Violation) {
+// t bounds a recovering episode, identically to the recovery wait.
+func classifyRule(def Definition, t RuleTimings, polls []Poll, from, windowEnd time.Time, badStates map[State]bool, pol PreexistingPolicy) (Outcome, time.Duration, []Violation) {
 	rulePolls := pollsForRule(polls, def.UID)
-	inWindow := inWindowPolls(rulePolls, from, windowEnd)
 
 	timelines := make(map[string]*instanceTimeline)
 	order := make([]string, 0)
@@ -223,6 +228,8 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		}
 		tl.episodes = append(tl.episodes, episode{start: tl.episodeStart, end: end, closedByRealClear: isReal})
 		tl.badOpen = false
+		tl.recoveryOpen = false // resolved; a later re-fire is out of scope
+		tl.recoveryDeadline = time.Time{}
 	}
 	// onsetOf resolves a fresh episode's start: the instance's own ActiveAt,
 	// translated to the runner domain by this poll's skew, clamped to
@@ -237,41 +244,89 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		}
 		return start
 	}
+	// openRecovering: Recovering is only reachable from Alerting, so the fire
+	// predates this observation; ActiveAt is the recovery onset, not the fire.
+	openRecovering := func(tl *instanceTimeline) {
+		tl.preexisting = true
+		openEpisode(tl, from)
+	}
 
-	for _, p := range inWindow {
+	// recoveryExpired: an extension clear past the deadline does not resolve.
+	recoveryExpired := func(tl *instanceTimeline, p Poll) bool {
+		return tl.recoveryDeadline.IsZero() || runnerTime(p, p.GrafanaNow).After(tl.recoveryDeadline)
+	}
+
+	for _, p := range rulePolls {
+		if pollBeforeWindow(p, from) {
+			continue
+		}
+		extension := pollAfterWindow(p, windowEnd)
+		if extension && (p.IsPaused || !p.Found) {
+			// Not a resolution: retire eligibility, leave the episode open.
+			for _, tl := range timelines {
+				tl.recoveryOpen = false
+			}
+			continue
+		}
+
 		byKey := make(map[string]Instance, len(p.Abnormal))
 		for _, inst := range p.Abnormal {
 			byKey[instanceKey(inst.Labels)] = inst
 		}
 
 		for key, inst := range byKey {
-			tl := get(key, inst.Labels)
+			tl, known := timelines[key]
+			if extension && (!known || !tl.recoveryOpen) {
+				continue // post-window onset: not ours to classify
+			}
+			tl = get(key, inst.Labels) // backfills labels on an existing bare timeline
 			bad := badStates[inst.State]
 			switch {
 			case !tl.seen:
 				tl.seen = true
 				if bad {
-					// Fail-closed: "preexisting" only when even the worst-case
-					// skew error places the onset at or before `from`; an onset
-					// that might be in-window must classify as a new episode.
-					activeAtRunner := runnerTime(p, inst.ActiveAt)
-					tl.preexisting = !activeAtRunner.Add(p.SkewBound()).After(from)
-					if tl.preexisting {
-						openEpisode(tl, from)
+					if inst.State == StateRecovering {
+						openRecovering(tl)
 					} else {
-						openEpisode(tl, onsetOf(p, inst))
+						// Fail-closed: "preexisting" only when even the
+						// worst-case skew error places the onset at or before
+						// `from`; an onset that might be in-window must
+						// classify as a new episode.
+						activeAtRunner := runnerTime(p, inst.ActiveAt)
+						tl.preexisting = !activeAtRunner.Add(p.SkewBound()).After(from)
+						if tl.preexisting {
+							openEpisode(tl, from)
+						} else {
+							openEpisode(tl, onsetOf(p, inst))
+						}
 					}
 				}
 			case bad && !tl.badOpen:
+				// Already observed in-window and not bad: a Recovering here
+				// means the fire happened in-window (a missed Alerting poll
+				// hides it), so it must never be preexisting.
 				openEpisode(tl, onsetOf(p, inst))
 			case !bad && tl.badOpen:
+				if extension && recoveryExpired(tl, p) {
+					continue // a clear past the deadline does not resolve
+				}
 				closeEpisode(tl, runnerTime(p, p.GrafanaNow), true)
+			}
+			if bad && inst.State == StateRecovering {
+				tl.recoveryOpen = true
+				tl.recoveryDeadline = runnerTime(p, inst.ActiveAt).Add(p.KeepFiringFor() + t.evalStaleAfter + t.pollEvery)
 			}
 			tl.lastState, tl.lastHealth, tl.lastError = inst.State, p.Health, p.LastError
 		}
 
 		for _, key := range p.Cleared {
-			tl := get(key, nil)
+			tl, known := timelines[key]
+			if extension && (!known || !tl.recoveryOpen) {
+				continue
+			}
+			if !known {
+				tl = get(key, nil)
+			}
 			if !tl.seen {
 				// Cleared on first mention: the transition happened pre-window,
 				// with no in-window evidence it was ever bad.
@@ -279,7 +334,9 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 				continue
 			}
 			if tl.badOpen {
-				closeEpisode(tl, runnerTime(p, p.GrafanaNow), true)
+				if !extension || !recoveryExpired(tl, p) {
+					closeEpisode(tl, runnerTime(p, p.GrafanaNow), true)
+				}
 			}
 			tl.lastHealth, tl.lastError = p.Health, p.LastError
 		}
@@ -287,7 +344,13 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		// Vanished is a deliberate no-op: freeze badOpen/preexisting as-is, so a
 		// vanish while bad stays bad (never reading as a recovery).
 		for _, key := range p.Vanished {
-			tl := get(key, nil)
+			tl, known := timelines[key]
+			if extension && (!known || !tl.recoveryOpen) {
+				continue
+			}
+			if !known {
+				tl = get(key, nil)
+			}
 			tl.seen = true
 			tl.lastHealth = p.Health
 		}
@@ -445,13 +508,15 @@ func pollsForRule(polls []Poll, uid string) []Poll {
 	return out
 }
 
-// badStateSet turns Policy.States into a lookup set, defaulting to {firing}
-// when the caller leaves States empty — decide applies the default itself so a
-// test can pass a zero-value Policy and get the real default, rather than
-// depending on the CLI to have filled it in.
+// badStateSet turns Policy.States into a lookup set, defaulting to
+// {firing, recovering} when the caller leaves States empty — decide applies
+// the default itself so a test can pass a zero-value Policy and get the real
+// default, rather than depending on the CLI to have filled it in. Recovering
+// is bad by default because the instance is still firing until its
+// KeepFiringFor elapses; an explicit --states firing opts out.
 func badStateSet(states []State) map[State]bool {
 	if len(states) == 0 {
-		states = []State{StateFiring}
+		states = []State{StateFiring, StateRecovering}
 	}
 	set := make(map[State]bool, len(states))
 	for _, s := range states {
@@ -573,7 +638,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			EvalStaleAfter: t.evalStaleAfter,
 		}
 
-		outcome, badFor, viols := classifyRule(def, polls, pol.From, windowEnd, badStates, pol.Preexisting)
+		outcome, badFor, viols := classifyRule(def, t, polls, pol.From, windowEnd, badStates, pol.Preexisting)
 		if cov.Unobservable {
 			outcome = OutcomeNotVerified
 			anyUnobservable = true

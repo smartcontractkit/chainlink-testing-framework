@@ -70,13 +70,6 @@ type WatchConfig struct {
 	// collection loop ends.
 	Until time.Time
 
-	// PollEvery is the --poll-interval override, used verbatim for every rule
-	// and never clamped. Zero means each rule polls at half its own evaluation
-	// interval. Whatever this resolves to is written into the header as the
-	// cadence actually used, and that header value — never a re-derivation from
-	// the definitions — is what check derives maxGap from.
-	PollEvery time.Duration
-
 	Concurrency int
 	Clock       Clock
 
@@ -306,10 +299,7 @@ func prepareWatch(ctx context.Context, cfg WatchConfig, src Source) (*preparedWa
 		printLabelSelection(cfg.Notes, resolved, cfg.IncludeLabels, cfg.ExcludeLabels, len(cfg.ExcludeAlerts))
 	}
 
-	rt, _, timingNotes := DeriveTimings(resolved, cfg.PollEvery)
-	for _, n := range timingNotes {
-		fmt.Fprintf(cfg.Notes, "note: %s\n", n)
-	}
+	rt, _ := DeriveTimings(resolved)
 	for _, d := range resolved {
 		// A cadence of zero would make the child spin: every rule is due the
 		// instant it was marked. It also cannot be written into the header,
