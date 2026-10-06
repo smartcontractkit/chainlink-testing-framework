@@ -243,6 +243,21 @@ func TestResolve_DatasourceNameWithSlashes(t *testing.T) {
 	require.Equal(t, name, resolved[0].Title)
 }
 
+// The same string can be one datasource rule's exact title AND a Grafana
+// Folder/Title selector. That must be reported as ambiguous, not silently
+// resolved to whichever interpretation is tried first.
+func TestResolve_ExactTitleVsSegmentedIsAmbiguous(t *testing.T) {
+	ds := Definition{
+		Key:   ruleKey("vm", "G", "Platform/HighErrorRate", "f", ""),
+		Title: "Platform/HighErrorRate", Group: "G",
+		Kind: KindDatasourceManaged, DatasourceUID: "vm", DatasourceName: "VM",
+	}
+	grafana := Definition{Key: "u1", UID: "u1", Title: "HighErrorRate", Folder: "Platform", Kind: KindGrafanaManaged}
+	_, _, err := Resolve([]Definition{grafana, ds}, []string{"Platform/HighErrorRate"}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "matches 2 rules")
+}
+
 // A key shared by two distinct rules cannot select one of them.
 func TestResolve_KeySharedByDistinctRulesIsAmbiguous(t *testing.T) {
 	a := Definition{

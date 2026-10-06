@@ -95,35 +95,39 @@ func resolveOne(defs []Definition, name, folder string) (Definition, error) {
 		return Definition{}, fmt.Errorf("no rule matched %q: no rule has this uid (run 'grafana-alertcheck list' to see uids)", name)
 	}
 
-	// A datasource rule's name can contain "/", so the full input may be a title,
-	// not a segmented form: try an exact title match before splitting.
-	if def, found, err := pickCandidate(defs, name, func(d Definition) bool {
-		return titleMatches(d, name, folder)
-	}); found {
+	// Two interpretations are possible: the whole input as one rule's exact
+	// title (a datasource rule's name can itself contain "/"), and the
+	// /-separated forms. Collect candidates from BOTH — a selector that is
+	// ambiguous between them must be reported, never silently resolved to one.
+	parts, formErr := parseNameForm(name)
+	var candidates []Definition
+	seen := make(map[string]bool, len(defs))
+	for _, d := range defs {
+		exact := titleMatches(d, name, folder)
+		segmented := formErr == nil && matchesName(d, parts, folder)
+		if !exact && !segmented {
+			continue
+		}
+		if key := defKey(d); !seen[key] {
+			seen[key] = true
+			candidates = append(candidates, d)
+		}
+	}
+	if def, found, err := pickCandidate(candidates, name); found {
 		return def, err
 	}
-
-	parts, err := parseNameForm(name)
-	if err != nil {
-		return Definition{}, err
-	}
-	if def, found, err := pickCandidate(defs, name, func(d Definition) bool {
-		return matchesName(d, parts, folder)
-	}); found {
-		return def, err
+	if formErr != nil {
+		return Definition{}, formErr
 	}
 	return Definition{}, noMatchError(supportedDefs(defs), name, parts[len(parts)-1])
 }
 
-// pickCandidate applies the shared one-match/ambiguous/unsupported/no-match
-// policy to a candidate predicate. found is false when nothing matched, so the
-// caller can try the next interpretation.
-func pickCandidate(defs []Definition, name string, match func(Definition) bool) (Definition, bool, error) {
+// pickCandidate applies the shared one-match/ambiguous/unsupported policy to the
+// collected candidates. found is false when nothing matched, so the caller can
+// fall through to the no-match surface.
+func pickCandidate(candidates []Definition, name string) (Definition, bool, error) {
 	var supported, unsupported []Definition
-	for _, d := range defs {
-		if !match(d) {
-			continue
-		}
+	for _, d := range candidates {
 		if isSupported(d) {
 			supported = append(supported, d)
 		} else {
