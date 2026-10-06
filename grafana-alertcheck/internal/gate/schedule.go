@@ -98,9 +98,10 @@ func pausedSet(defs []Definition) map[string]bool {
 
 // DeriveTimingsFromLog is DeriveTimings' log-mode counterpart: pollEvery comes
 // from the header (the cadence actually used), not the definitions — re-deriving
-// it here would compare recorded gaps against default-cadence thresholds, an
-// exit 2 on a clean window (slower override) or a silently passing recorder gap
-// (faster override). evalStaleAfter still comes from defs (2 × intervalSeconds).
+// it here would compare recorded gaps against thresholds derived from a
+// different cadence, an exit 2 on a clean window when the recording was slower
+// or a silently passing recorder gap when it was faster. evalStaleAfter still
+// comes from defs (2 × intervalSeconds).
 //
 // Three header shapes are hard errors rather than a best-effort derivation,
 // because each would silently widen a threshold: a rule with no matching

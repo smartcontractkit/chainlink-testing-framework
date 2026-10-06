@@ -38,10 +38,10 @@ func CheckStartupHandoff(t map[string]RuleTimings, measured map[string]time.Dura
 		fmt.Fprintf(&b, "  - %s\n", p)
 	}
 	if minC := minHandoffConcurrency(t, measured, first, readyAt, windowOpen, concurrency, len(t)); minC > concurrency {
-		fmt.Fprintf(&b, "fix by: raising --concurrency to at least %d (currently %d), raising poll-interval, or watching fewer alerts",
+		fmt.Fprintf(&b, "fix by: raising --concurrency to at least %d (currently %d), or watching fewer alerts",
 			minC, concurrency)
 	} else {
-		b.WriteString("fix by: raising poll-interval or watching fewer alerts")
+		b.WriteString("fix by: watching fewer alerts")
 	}
 	return fmt.Errorf("%s", b.String())
 }

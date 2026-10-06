@@ -71,6 +71,8 @@ Two coverage checks differ for these rules:
 - **Pause is not observable** — the datasource API has no `isPaused` signal, so check 7 is skipped with an explicit note. A pause is not treated as a pass; it simply cannot be seen.
 - **Health** — the datasource vocabulary reports `err`, which is normalized to `error`, so a sustained failing evaluation still triggers check 4. There are no `totals`, reasons or normal instances, so checks 5 and 9 never fire.
 
+There is also no `recovering` state: the datasource API keeps an alert `firing` through its *keep firing for* and then drops it, so the recovery observation below does not apply — an instance that clears simply leaves the active set, which is the `cleared` recovery described above.
+
 ## Coverage proof
 
 Before classifying, `check` must **prove** continuous coverage of `[from, to]` for each alert. Nine checks run; any failure makes the rule `not_verified`:

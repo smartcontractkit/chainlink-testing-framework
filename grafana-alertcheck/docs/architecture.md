@@ -82,4 +82,4 @@ On a clean stop (SIGTERM/SIGINT/`--until`) the child finishes the in-flight writ
 `watch` records raw evidence, so nothing trusts a state that could become unreachable. Two consequences a maintainer must preserve:
 
 - The **header is authoritative for recording facts** (the cadence actually used, the URL, the alert set); the ruler API is authoritative for **rule facts** (`for`, `intervalSeconds`, kind). `check` always re-resolves definitions fresh and never reconstructs them from the header — the header duplicates `for`/`interval` only so the uploaded artifact is self-describing.
-- The **cadence authority** is the header's `poll_every_seconds`, not the definitions. Re-deriving it would compare gaps recorded at an override cadence against default-cadence thresholds — fail-open in the faster-override direction.
+- The **cadence authority** is the header's `poll_every_seconds`, not the definitions. Re-deriving it would compare recorded gaps against thresholds derived from a different cadence — fail-open if the two ever diverge.

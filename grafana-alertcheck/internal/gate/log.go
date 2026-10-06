@@ -63,8 +63,8 @@ type LoggedRule struct {
 	NoDataState  string `json:"no_data_state"`
 	ExecErrState string `json:"exec_err_state"`
 	// PollEverySeconds is the cadence this recording ACTUALLY used. Load-bearing:
-	// check derives maxGap from it, never from the definitions — getting that
-	// wrong is fail-open in the faster-override direction.
+	// check derives maxGap from it, never from the definitions — the two must
+	// not be allowed to diverge.
 	PollEverySeconds float64 `json:"poll_every_seconds"`
 }
 

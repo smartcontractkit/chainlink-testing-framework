@@ -58,6 +58,16 @@ func TestParseDatasourceRules_LastError(t *testing.T) {
 	require.Equal(t, "query failed: bad", rules[0].LastError)
 }
 
+// vmalert's keep-firing-for is snake_case and in seconds; the alert stays
+// firing for it, so it is recorded but never a recovering state.
+func TestParseDatasourceRules_KeepFiringFor(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+		{"name":"A","type":"alerting","health":"ok","state":"firing","keep_firing_for":300}]}]}}`)
+	rules, err := ParseDatasourceRules(body, "d")
+	require.NoError(t, err)
+	require.Equal(t, 5*time.Minute, rules[0].KeepFiringFor)
+}
+
 func TestParseDatasourceRules_ZeroLastEvaluationAllowed(t *testing.T) {
 	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
 		{"name":"A","type":"alerting","health":"ok","state":"pending"}]}]}}`)

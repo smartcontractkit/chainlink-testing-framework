@@ -128,6 +128,14 @@ func parseDatasourceRule(raw json.RawMessage, dsUID, group, file string, interva
 	if err := opt(m, "lastError", &r.LastError); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
 	}
+	// vmalert reports the alerting rule's keep-firing-for in seconds under the
+	// snake_case key. Unlike Grafana it has no recovering state: the alert stays
+	// firing for this long and is then dropped, so this is informational.
+	var keepFiringForSeconds float64
+	if err := opt(m, "keep_firing_for", &keepFiringForSeconds); err != nil {
+		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
+	}
+	r.KeepFiringFor = time.Duration(keepFiringForSeconds * float64(time.Second))
 
 	if err := opt(m, "state", &r.State); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
@@ -150,7 +158,8 @@ func parseDatasourceRule(raw json.RawMessage, dsUID, group, file string, interva
 
 // datasourceInstanceStates is the strict datasource instance-state vocabulary.
 // Only the two active states exist — a resolved instance is absent from the
-// response, not reported as normal.
+// response, not reported as normal, and there is no recovering state (the
+// backend keeps an alert firing through its keep-firing-for, then drops it).
 var datasourceInstanceStates = map[string]State{
 	"firing":  StateFiring,
 	"pending": StatePending,

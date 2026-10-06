@@ -138,6 +138,6 @@ func TestCheckStartupHandoff_NoConcurrencyCanFixIt(t *testing.T) {
 
 	err := CheckStartupHandoff(timings, measured, first, base, base.Add(-time.Second), 1)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "fix by: raising poll-interval")
-	require.NotContains(t, err.Error(), "raising concurrency")
+	require.Contains(t, err.Error(), "fix by: watching fewer alerts")
+	require.NotContains(t, err.Error(), "raising --concurrency")
 }
