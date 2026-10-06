@@ -798,7 +798,7 @@ func TestCheckSingleStepRefusesAScheduleThatDoesNotFit(t *testing.T) {
 
 	_, err := check(context.Background(), cfg, src)
 	require.Error(t, err, "the budget check to refuse the schedule")
-	for _, want := range []string{"raising --concurrency to at least 2", "raising poll-interval", "watching fewer alerts"} {
+	for _, want := range []string{"raising --concurrency to at least 2", "watching fewer alerts"} {
 		require.Contains(t, err.Error(), want)
 	}
 }
@@ -1982,12 +1982,117 @@ func TestRecoveryWaitTailSourceReadsTheRunningRecordersLog(t *testing.T) {
 	defs := []Definition{recoveringScenarioDef(checkUID, checkTitle)}
 	rt := map[string]RuleTimings{checkUID: newRuleTimings(checkPollEvery, 60)}
 
-	out, err := recoveryWait(context.Background(), cfg, defs, rt, base, from, windowEnd, tailRecoverySource(tail))
+	out, err := recoveryWait(context.Background(), cfg, defs, rt, base, from, windowEnd, tailRecoverySource(tail), true)
 	require.NoError(t, err)
 	require.Len(t, out, 1)
 	require.Equal(t, resolveAt, out[0].GrafanaNow)
 	require.Contains(t, out[0].Cleared, key)
 	require.NoError(t, w.Stop())
+}
+
+// The prime read must see a Recovering poll written after collection's last
+// read: without it the wait is skipped and the episode fails closed for a
+// reason the recorder did observe.
+func TestRecoveryWaitPrimeSeesAPollWrittenAfterCollection(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "log.jsonl")
+	from := testNow
+	to := from.Add(5 * time.Minute)
+	windowEnd := to.Add(checkGrace)
+	recoveryAt := windowEnd // in-window, written after collection's last read
+	resolveAt := windowEnd.Add(checkPollEvery)
+	key := instanceKey(lbl("a"))
+
+	w, err := NewWriter(path, newFakeClock(resolveAt))
+	require.NoError(t, err)
+	require.NoError(t, w.WriteHeader(Header{
+		URL: "https://grafana.example.com", GrafanaVersion: "13.1.0", StartedAt: from.Add(-time.Minute),
+		Rules: []LoggedRule{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60, PollEverySeconds: checkPollEvery.Seconds()}},
+	}))
+	// Collection's evidence: Alerting only, ending one cadence short of windowEnd.
+	for at := from; at.Before(windowEnd); at = at.Add(checkPollEvery) {
+		require.NoError(t, w.WritePoll(Poll{
+			RuleUID: checkUID, GrafanaNow: at, Found: true, Health: "ok", LastEvaluation: at,
+			Abnormal: []Instance{{Labels: lbl("a"), State: StateFiring, ActiveAt: from.Add(-time.Hour)}},
+		}))
+	}
+
+	tail, err := newLogTailer(path)
+	require.NoError(t, err)
+	defer tail.Close()
+	base, sentinel, err := tail.read()
+	require.NoError(t, err)
+	require.Nil(t, sentinel)
+
+	// The Recovering transition lands after collection's last read.
+	require.NoError(t, w.WritePoll(Poll{
+		RuleUID: checkUID, GrafanaNow: recoveryAt, Found: true, Health: "ok", LastEvaluation: recoveryAt,
+		KeepFiringForMS: (10 * time.Minute).Milliseconds(),
+		Abnormal:        []Instance{{Labels: lbl("a"), State: StateRecovering, ActiveAt: recoveryAt}},
+	}))
+
+	clock := &afterHookClock{virtualClock: newVirtualClock(windowEnd)}
+	clock.hook = func() {
+		require.NoError(t, w.WritePoll(Poll{
+			RuleUID: checkUID, GrafanaNow: resolveAt, Found: true, Health: "ok",
+			LastEvaluation: resolveAt, Cleared: []string{key},
+		}))
+	}
+	cfg := Config{URL: "https://grafana.example.com", Clock: clock, Notes: &strings.Builder{}}.withDefaults()
+	defs := []Definition{recoveringScenarioDef(checkUID, checkTitle)}
+	rt := map[string]RuleTimings{checkUID: newRuleTimings(checkPollEvery, 60)}
+
+	out, err := recoveryWait(context.Background(), cfg, defs, rt, base, from, windowEnd, tailRecoverySource(tail), true)
+	require.NoError(t, err)
+	require.Contains(t, notesOf(cfg), "still recovering", "the primed Recovering poll must select the instance")
+	require.Len(t, out, 2, "the primed Recovering poll and the resolution")
+	require.Contains(t, out[1].Cleared, key)
+	require.NoError(t, w.Stop())
+}
+
+// Per-instance deadlines: an overdue instance is expired on its own deadline
+// while another instance keeps the wait running for its own.
+func TestRecoveryWaitExpiresInstancesIndividually(t *testing.T) {
+	from := testNow
+	to := from.Add(10 * time.Minute)
+	windowEnd := to
+	timings := newRuleTimings(30*time.Second, 60)
+	kff := time.Minute
+	aActive := to.Add(-5 * time.Minute) // deadline = to-1m30s: already past
+	bActive := to.Add(-time.Minute)     // deadline = to+2m30s
+	keyA, keyB := instanceKey(lbl("a")), instanceKey(lbl("b"))
+
+	base := []Poll{{
+		RuleUID: checkUID, GrafanaNow: to, Found: true, Health: "ok", LastEvaluation: to,
+		KeepFiringForMS: kff.Milliseconds(),
+		Abnormal: []Instance{
+			{Labels: lbl("a"), State: StateRecovering, ActiveAt: aActive},
+			{Labels: lbl("b"), State: StateRecovering, ActiveAt: bActive},
+		},
+	}}
+	clock := newVirtualClock(to)
+	cfg := Config{URL: "https://grafana.example.com", Clock: clock, Notes: &strings.Builder{}}.withDefaults()
+	defs := []Definition{{UID: checkUID, Title: checkTitle, IntervalSeconds: 60}}
+	rt := map[string]RuleTimings{checkUID: timings}
+
+	calls := 0
+	src := func(context.Context, map[string]string, []string) ([]Poll, bool, error) {
+		calls++
+		p := Poll{RuleUID: checkUID, GrafanaNow: clock.Now(), Found: true, Health: "ok", LastEvaluation: clock.Now()}
+		if calls == 1 {
+			// A's late clear arrives while B is still recovering.
+			p.Cleared = []string{keyA}
+			p.Abnormal = []Instance{{Labels: lbl("b"), State: StateRecovering, ActiveAt: bActive}}
+		} else {
+			p.Cleared = []string{keyA, keyB}
+		}
+		return []Poll{p}, false, nil
+	}
+
+	out, err := recoveryWait(context.Background(), cfg, defs, rt, base, from, windowEnd, src, false)
+	require.NoError(t, err)
+	require.Contains(t, notesOf(cfg), "an instance did not resolve before", "A's own deadline must expire it")
+	require.GreaterOrEqual(t, calls, 2, "B must keep the wait running after A expires")
+	require.Len(t, out, 2)
 }
 
 // A recording that already contains the recovery resolution classifies from

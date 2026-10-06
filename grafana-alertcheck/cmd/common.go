@@ -12,11 +12,9 @@ import (
 )
 
 // commonFlags is registerCommon's result: the flags watch and check share.
-// Connection details are never flags, and states / poll-interval are
-// deliberately NOT here — states is check-only because recording is
-// unfiltered, and poll-interval is watch-only because check reads the cadence
-// from the log header. Putting either here would give both commands an opinion
-// about a value only one of them may set.
+// Connection details are never flags, and states is deliberately NOT here:
+// states is check-only because recording is unfiltered, and putting it here
+// would give both commands an opinion about a value only one of them may set.
 type commonFlags struct {
 	folder        *string
 	concurrency   *int

@@ -162,18 +162,20 @@ type episode struct {
 // actually began.
 //
 // recoveryOpen marks an episode last seen Recovering: unresolved, so an
-// extension poll after windowEnd may still close it.
+// extension poll after windowEnd may still close it — but only until
+// recoveryDeadline, past which a late clear must not read as a recovery.
 type instanceTimeline struct {
-	labels       map[string]string
-	preexisting  bool
-	seen         bool
-	badOpen      bool
-	recoveryOpen bool
-	episodeStart time.Time
-	lastState    State
-	lastHealth   string
-	lastError    string
-	episodes     []episode
+	labels           map[string]string
+	preexisting      bool
+	seen             bool
+	badOpen          bool
+	recoveryOpen     bool
+	recoveryDeadline time.Time
+	episodeStart     time.Time
+	lastState        State
+	lastHealth       string
+	lastError        string
+	episodes         []episode
 }
 
 // runnerTime translates a Grafana-domain timestamp into the runner domain by
@@ -187,10 +189,12 @@ func runnerTime(p Poll, grafanaDomain time.Time) time.Time {
 // [from, windowEnd] and reduces them to the rule's worst outcome, merged
 // BadFor, and the Violations the preexisting policy charges against the run.
 // PURE: no I/O, no clock reads; polls need not be pre-filtered to this rule.
+// t supplies the recovery deadline margin, so the wait and the classifier
+// bound a recovering episode identically.
 //
 // Polls after windowEnd are extension polls: only an instance still Recovering
 // may consume them, so post-`to` badness elsewhere is never classified.
-func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badStates map[State]bool, pol PreexistingPolicy) (Outcome, time.Duration, []Violation) {
+func classifyRule(def Definition, t RuleTimings, polls []Poll, from, windowEnd time.Time, badStates map[State]bool, pol PreexistingPolicy) (Outcome, time.Duration, []Violation) {
 	rulePolls := pollsForRule(polls, def.UID)
 
 	timelines := make(map[string]*instanceTimeline)
@@ -230,6 +234,7 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		tl.episodes = append(tl.episodes, episode{start: tl.episodeStart, end: end, closedByRealClear: isReal})
 		tl.badOpen = false
 		tl.recoveryOpen = false // resolved; a later re-fire is out of scope
+		tl.recoveryDeadline = time.Time{}
 	}
 	// onsetOf resolves a fresh episode's start: the instance's own ActiveAt,
 	// translated to the runner domain by this poll's skew, clamped to
@@ -252,13 +257,24 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 		openEpisode(tl, from)
 	}
 
+	// recoveryExpired reports an extension poll past the episode's recovery
+	// deadline: its clear must not resolve the episode.
+	recoveryExpired := func(tl *instanceTimeline, p Poll) bool {
+		return tl.recoveryDeadline.IsZero() || runnerTime(p, p.GrafanaNow).After(tl.recoveryDeadline)
+	}
+
 	for _, p := range rulePolls {
 		if pollBeforeWindow(p, from) {
 			continue
 		}
 		extension := pollAfterWindow(p, windowEnd)
-		if extension && p.IsPaused {
-			continue // a pause is not a resolution; the episode stays open
+		if extension && (p.IsPaused || !p.Found) {
+			// A pause or an absent rule is not a resolution: retire
+			// eligibility so no later clear can close the episode.
+			for _, tl := range timelines {
+				tl.recoveryOpen = false
+			}
+			continue
 		}
 
 		byKey := make(map[string]Instance, len(p.Abnormal))
@@ -299,10 +315,14 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 				// hides it), so it must never be preexisting.
 				openEpisode(tl, onsetOf(p, inst))
 			case !bad && tl.badOpen:
+				if extension && recoveryExpired(tl, p) {
+					continue // a clear past the deadline does not resolve
+				}
 				closeEpisode(tl, runnerTime(p, p.GrafanaNow), true)
 			}
 			if bad && inst.State == StateRecovering {
 				tl.recoveryOpen = true
+				tl.recoveryDeadline = runnerTime(p, inst.ActiveAt).Add(p.KeepFiringFor() + t.evalStaleAfter + t.pollEvery)
 			}
 			tl.lastState, tl.lastHealth, tl.lastError = inst.State, p.Health, p.LastError
 		}
@@ -322,7 +342,9 @@ func classifyRule(def Definition, polls []Poll, from, windowEnd time.Time, badSt
 				continue
 			}
 			if tl.badOpen {
-				closeEpisode(tl, runnerTime(p, p.GrafanaNow), true)
+				if !extension || !recoveryExpired(tl, p) {
+					closeEpisode(tl, runnerTime(p, p.GrafanaNow), true)
+				}
 			}
 			tl.lastHealth, tl.lastError = p.Health, p.LastError
 		}
@@ -624,7 +646,7 @@ func decide(h Header, polls []Poll, sentinel *time.Time, defs []Definition,
 			EvalStaleAfter: t.evalStaleAfter,
 		}
 
-		outcome, badFor, viols := classifyRule(def, polls, pol.From, windowEnd, badStates, pol.Preexisting)
+		outcome, badFor, viols := classifyRule(def, t, polls, pol.From, windowEnd, badStates, pol.Preexisting)
 		if cov.Unobservable {
 			outcome = OutcomeNotVerified
 			anyUnobservable = true

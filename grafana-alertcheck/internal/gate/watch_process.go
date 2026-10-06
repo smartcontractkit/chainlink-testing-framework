@@ -90,8 +90,8 @@ func spawnChild(cfg WatchConfig) (detachedChild, error) {
 // optional hard stop and the concurrency limit.
 //
 // Notably absent: --pidfile (the parent writes it, so check can find the pid
-// the instant Watch returns), --alerts, --folder, --poll-interval, and
-// anything derived from them. The CLI's `watch` FlagSet needs one flag of its
+// the instant Watch returns), --alerts, --folder, and anything derived from
+// them. The CLI's `watch` FlagSet needs one flag of its
 // own for this path — ReadyFDFlag — and dispatches to RunDaemonChild when it
 // sees DaemonChildFlag.
 func childArgs(cfg WatchConfig) []string {

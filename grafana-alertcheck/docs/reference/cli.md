@@ -27,7 +27,7 @@ grafana-alertcheck list
 ```bash
 grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
   (--alerts <file|-> [--folder F] | --include-labels k=v,... [--exclude-labels k=v,...]) \
-  [--exclude-alerts <file|->] [--poll-interval D] [--concurrency N] [--until RFC3339]
+  [--exclude-alerts <file|->] [--concurrency N] [--until RFC3339]
 ```
 
 | Flag | Default | Meaning |
@@ -40,7 +40,6 @@ grafana-alertcheck watch --out <file> [--pidfile F] [--daemon-log F] \
 | `--include-labels` | — | Comma-separated exact-match `key=value` pairs selecting rules by label (cannot be combined with `--alerts`) |
 | `--exclude-labels` | — | Comma-separated exact-match `key=value` pairs; a rule carrying any of them is dropped (requires `--include-labels`) |
 | `--exclude-alerts` | — | File of alert names, one per line, or `-` for stdin; subtracted from the selected set (works with `--alerts` and with labels) |
-| `--poll-interval` | half the rule's interval | Override every rule's cadence (never clamped) |
 | `--concurrency` | `1` | Max concurrent requests to Grafana |
 | `--until` | run until signalled | Optional hard stop |
 

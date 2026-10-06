@@ -11,8 +11,7 @@ func TestDeriveTimings_Default(t *testing.T) {
 	defs := []Definition{
 		{UID: "r1", Title: "R1", IntervalSeconds: 60},
 	}
-	rules, _, notes := DeriveTimings(defs, 0)
-	require.Empty(t, notes)
+	rules, _ := DeriveTimings(defs)
 	rt := rules["r1"]
 	require.Equal(t, 30*time.Second, rt.pollEvery)
 	require.Equal(t, 60*time.Second, rt.maxGap)
@@ -20,30 +19,12 @@ func TestDeriveTimings_Default(t *testing.T) {
 	require.Equal(t, 120*time.Second, rt.evalStaleAfter)
 }
 
-func TestDeriveTimings_OverrideVerbatimNoClamp(t *testing.T) {
-	defs := []Definition{
-		{UID: "r1", Title: "R1", IntervalSeconds: 10}, // default pollEvery = 5s
-	}
-	rules, _, notes := DeriveTimings(defs, 20*time.Second)
-	rt := rules["r1"]
-	require.Equal(t, 20*time.Second, rt.pollEvery, "the override verbatim (20s), never clamped down to the 5s default")
-	require.Equal(t, 40*time.Second, rt.maxGap)
-	require.Len(t, notes, 1)
-	require.Contains(t, notes[0], "R1")
-}
-
-func TestDeriveTimings_OverrideBelowDefaultNoNote(t *testing.T) {
-	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 60}} // default pollEvery = 30s
-	_, _, notes := DeriveTimings(defs, 5*time.Second)
-	require.Empty(t, notes)
-}
-
 func TestDeriveTimings_TransitionGraceExcludesSkippedRule(t *testing.T) {
 	defs := []Definition{
 		{UID: "r1", Title: "Tight", IntervalSeconds: 60, For: time.Minute},
 		{UID: "r2", Title: "PausedLongFor", IntervalSeconds: 60, For: time.Hour, IsPaused: true},
 	}
-	_, global, _ := DeriveTimings(defs, 0)
+	_, global := DeriveTimings(defs)
 	want := time.Minute + 60*time.Second // r1's for+interval; r2 (skipped) must not win despite its huge `for`
 	require.Equal(t, want, global.transitionGrace)
 	require.Contains(t, global.graceSource, "Tight")
@@ -58,8 +39,7 @@ func TestDeriveTimings_TransitionGraceExcludesSkippedRule(t *testing.T) {
 // w unit — testdata/README.md) through ParseDefinitions and DeriveTimings.
 func TestDeriveTimings_RealForOneWeekRuleSetsTransitionGrace(t *testing.T) {
 	defs := rulerDefs(t)
-	_, global, notes := DeriveTimings(defs, 0)
-	require.Empty(t, notes, "no --poll-interval override is given, so no override note should fire")
+	_, global := DeriveTimings(defs)
 
 	want := 7*24*time.Hour + 60*time.Second // rule0000010: for=1w, intervalSeconds=60
 	require.Equal(t, want, global.transitionGrace)
@@ -68,7 +48,7 @@ func TestDeriveTimings_RealForOneWeekRuleSetsTransitionGrace(t *testing.T) {
 
 func TestDeriveTimings_TransitionGraceZeroWhenAllSkipped(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 60, For: time.Hour, IsPaused: true}}
-	_, global, _ := DeriveTimings(defs, 0)
+	_, global := DeriveTimings(defs)
 	require.Zero(t, global.transitionGrace)
 }
 
@@ -123,7 +103,7 @@ func TestDeriveTimingsFromLog_TransitionGraceFollowsTheHeaderNotTheDefinition(t 
 
 func TestDeriveTimings_DrainTimeoutIncludesPaused(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 10}}
-	_, global, _ := DeriveTimings(defs, 0)
+	_, global := DeriveTimings(defs)
 	require.Equal(t, minDrainTimeout, global.drainTimeout)
 }
 
@@ -132,14 +112,14 @@ func TestDeriveTimings_DrainTimeoutFloor(t *testing.T) {
 		{UID: "r1", Title: "Tight", IntervalSeconds: 60, For: time.Minute},
 		{UID: "r2", Title: "PausedLongFor", IntervalSeconds: 180, For: time.Hour, IsPaused: true},
 	}
-	_, global, _ := DeriveTimings(defs, 0)
+	_, global := DeriveTimings(defs)
 	// double the longest interval (2 * 180s) should be the drain timeout
 	require.Equal(t, 2*180*time.Second, global.drainTimeout)
 }
 
 func TestDeriveTimings_DrainTimeoutAboveFloor(t *testing.T) {
 	defs := []Definition{{UID: "r1", Title: "R1", IntervalSeconds: 300}} // 2x300s = 600s > 2m floor
-	_, global, _ := DeriveTimings(defs, 0)
+	_, global := DeriveTimings(defs)
 	require.Equal(t, 600*time.Second, global.drainTimeout)
 }
 
@@ -418,11 +398,10 @@ func TestCheckBudget_NonPositivePollIntervalIsAnError(t *testing.T) {
 }
 
 // assertBudgetMessage checks the message contents: a measured duration is
-// present, and all three controls are named — never a single suggested
-// interval.
+// present, and the remaining levers are named.
 func assertBudgetMessage(t *testing.T, msg string) {
 	t.Helper()
-	for _, want := range []string{"measured", "concurrency", "poll-interval", "fewer"} {
+	for _, want := range []string{"measured", "concurrency", "fewer"} {
 		require.Contains(t, msg, want)
 	}
 }

@@ -67,12 +67,10 @@ type Config struct {
 	Log     string
 	PidFile string
 
-	// There is deliberately NO PollEvery here, and `check` has no
-	// --poll-interval flag. In log mode the cadence comes from the header —
-	// the cadence the recording actually used — and a second authority would
-	// let an operator silently widen maxGap over evidence that was recorded at
-	// a different rate; in single-step mode the same process records and
-	// classifies, so the default cadence is the only cadence there is.
+	// There is deliberately NO cadence override anywhere. In log mode the
+	// cadence comes from the header — the cadence the recording actually used
+	// — and in single-step mode the same process records and classifies, so
+	// half the evaluation interval is the only cadence there is.
 	Concurrency int
 	Clock       Clock
 
@@ -229,13 +227,12 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	// advisory: the authoritative header is re-read once collection ends and
 	// the writer has exited.
 	var (
-		resolved   []Definition
-		notes      []string
-		earlyHdr   Header
-		logHasHdr  bool
-		rt         map[string]RuleTimings
-		gt         GlobalTimings
-		timingNote []string
+		resolved  []Definition
+		notes     []string
+		earlyHdr  Header
+		logHasHdr bool
+		rt        map[string]RuleTimings
+		gt        GlobalTimings
 	)
 	if cfg.Log != "" {
 		earlyHdr, err = ReadLogHeader(cfg.Log)
@@ -280,18 +277,14 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	// ---- Derive the timings, print them, fit the request budget. ----------
 	if logHasHdr {
 		// The header is the authority for the cadence actually recorded at;
-		// re-deriving it from defs would compare gaps recorded at an override
-		// cadence against thresholds computed from the default — fail-open in
-		// the faster-override direction.
+		// re-deriving it from defs would compare gaps against thresholds
+		// computed from a different cadence.
 		rt, gt, err = DeriveTimingsFromLog(earlyHdr, resolved)
 		if err != nil {
 			return Result{}, fmt.Errorf("log identity: %w", err)
 		}
 	} else {
-		rt, gt, timingNote = DeriveTimings(resolved, 0)
-		for _, n := range timingNote {
-			fmt.Fprintf(cfg.Notes, "note: %s\n", n)
-		}
+		rt, gt = DeriveTimings(resolved)
 	}
 	fmt.Fprintln(cfg.Notes, StartupSummary(from, cfg.To, gt))
 	// MinObserved is printed with the plan, beside "planned run time", rather
@@ -431,33 +424,22 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 	// ---- Recovery observation, recorder mode. -----------------------------
 	// The recorder keeps polling, so the extension evidence lands in the log
 	// ReadLog reads next and a re-classification sees the same evidence. The
-	// wait itself selects the affected rules.
+	// wait primes itself by reading the log before selecting the affected
+	// rules, so a Recovering poll written after collection's last read is not
+	// missed.
 	if logHasHdr && collected.term == nil && collected.sentinel == nil &&
 		badStateSet(pol.States)[StateRecovering] {
 
-		base := collected.polls
-		if len(base) == 0 {
-			// --fail-fast=false never tailed the log; take the recorded polls now.
-			if tail == nil {
-				tail, err = newLogTailer(cfg.Log)
-				if err != nil {
-					return Result{}, reapRecorder(ctx, cfg, true, err)
-				}
-				defer tail.Close()
-			}
-			var early *time.Time
-			base, early, err = tail.read()
+		// --fail-fast=false never tailed the log, so create the tailer now.
+		if tail == nil {
+			tail, err = newLogTailer(cfg.Log)
 			if err != nil {
 				return Result{}, reapRecorder(ctx, cfg, true, err)
 			}
-			if early != nil {
-				base = nil // the recording already finished; coverage will fail
-			}
+			defer tail.Close()
 		}
-		if len(recoveringAtWindowEnd(base, from, windowEnd, rt)) > 0 {
-			if _, err := recoveryWait(ctx, cfg, resolved, rt, base, from, windowEnd, tailRecoverySource(tail)); err != nil {
-				return Result{}, reapRecorder(ctx, cfg, true, err)
-			}
+		if _, err := recoveryWait(ctx, cfg, resolved, rt, collected.polls, from, windowEnd, tailRecoverySource(tail), true); err != nil {
+			return Result{}, reapRecorder(ctx, cfg, true, err)
 		}
 	}
 
@@ -533,7 +515,7 @@ func check(ctx context.Context, cfg Config, src Source) (Result, error) {
 		reducer := NewReducer()
 		reducer.seedFrom(polls)
 		recoveryPolls, err := recoveryWait(ctx, cfg, resolved, rt, polls, from, windowEnd,
-			directRecoverySource(src, reducer, cfg.Concurrency))
+			directRecoverySource(src, reducer, cfg.Concurrency), false)
 		if err != nil {
 			return Result{}, err
 		}
@@ -1000,52 +982,67 @@ func applyRecoveryPoll(pending map[string]map[string]time.Time, poll Poll) {
 }
 
 // recoveryWait observes instances still Recovering at windowEnd until they
-// resolve or their recovery deadline passes. The source decides how: direct
-// polling in single-step mode, the recorder's log in recorder mode — where the
-// extension evidence must land so a later re-classification sees it. It returns
-// the extension polls it saw; recorder mode discards them because ReadLog
-// re-reads the same records authoritatively. A rule that pauses or disappears
-// stops the wait; its episode then stays open and reads still_failing.
+// resolve or their own recovery deadline passes. The source decides how:
+// direct polling in single-step mode, the recorder's log in recorder mode —
+// where the extension evidence must land so a later re-classification sees it.
+// It returns the extension polls it saw; recorder mode discards them because
+// ReadLog re-reads the same records authoritatively. A rule that pauses or
+// disappears stops the wait; its episode then stays open and reads
+// still_failing.
+//
+// prime is true in recorder mode: the source is read once BEFORE the pending
+// set is selected, so a Recovering poll written after collection stopped but
+// before this wait is not missed.
 func recoveryWait(ctx context.Context, cfg Config, defs []Definition, rt map[string]RuleTimings,
-	polls []Poll, from, windowEnd time.Time, src recoverySource) ([]Poll, error) {
+	polls []Poll, from, windowEnd time.Time, src recoverySource, prime bool) ([]Poll, error) {
+
+	var out []Poll
+	if prime {
+		batch, sentinel, err := src(ctx, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, batch...)
+		polls = append(polls, batch...)
+		if sentinel {
+			return nil, nil // the recording finished; nothing left to observe
+		}
+	}
 
 	pending := recoveringAtWindowEnd(polls, from, windowEnd, rt)
-	// A recorder can write a poll just past windowEnd before collection stops;
-	// those extension polls are already in hand and may resolve an episode
-	// before the source's first read.
+	// Extension polls already in hand may resolve an episode before the first
+	// source read.
 	for _, p := range polls {
 		if pollAfterWindow(p, windowEnd) {
 			applyRecoveryPoll(pending, p)
 		}
 	}
 	if len(pending) == 0 {
-		return nil, nil
+		return out, nil
 	}
 
 	titles := make(map[string]string, len(pending))
-	deadline := make(map[string]time.Time, len(pending))
 	for _, d := range defs {
-		keys, ok := pending[d.UID]
-		if !ok {
-			continue
+		if keys, ok := pending[d.UID]; ok && len(keys) > 0 {
+			titles[d.UID] = d.Title
+			fmt.Fprintf(cfg.Notes, "recovery wait: rule %q has %d instance(s) still recovering\n", d.Title, len(keys))
 		}
-		titles[d.UID] = d.Title
-		for _, at := range keys {
-			if at.After(deadline[d.UID]) {
-				deadline[d.UID] = at
-			}
-		}
-		fmt.Fprintf(cfg.Notes, "recovery wait: rule %q has %d instance(s) still recovering; observing until %s\n",
-			d.Title, len(keys), deadline[d.UID].Format(time.RFC3339))
 	}
 
-	var out []Poll
 	for len(pending) > 0 {
 		now := cfg.Clock.Now()
-		for uid := range pending {
-			if !now.Before(deadline[uid]) {
-				fmt.Fprintf(cfg.Notes, "recovery wait: rule %q did not resolve before %s; its episode stays open\n",
-					titles[uid], deadline[uid].Format(time.RFC3339))
+		// Expire instances individually: a key past its own deadline must not
+		// be resolved by a later clear that another instance kept the wait
+		// alive for.
+		for uid, keys := range pending {
+			for key, deadline := range keys {
+				if !now.Before(deadline) {
+					fmt.Fprintf(cfg.Notes, "recovery wait: rule %q: an instance did not resolve before %s; its episode stays open\n",
+						titles[uid], deadline.Format(time.RFC3339))
+					delete(keys, key)
+				}
+			}
+			if len(keys) == 0 {
 				delete(pending, uid)
 			}
 		}
@@ -1079,14 +1076,17 @@ func recoveryWait(ctx context.Context, cfg Config, defs []Definition, rt map[str
 		}
 
 		// Re-ask no faster than the tightest affected cadence, and never sleep
-		// past the soonest recovery deadline.
-		wait := deadline[uids[0]].Sub(now)
-		for _, uid := range uids {
-			if d := deadline[uid].Sub(now); d < wait {
-				wait = d
+		// past the soonest per-instance recovery deadline.
+		var wait time.Duration
+		soonest := false
+		for uid, keys := range pending {
+			for _, deadline := range keys {
+				if d := deadline.Sub(now); !soonest || d < wait {
+					wait, soonest = d, true
+				}
 			}
-			if every := rt[uid].pollEvery; every > 0 && every < wait {
-				wait = every
+			if every := rt[uid].pollEvery; every > 0 && (!soonest || every < wait) {
+				wait, soonest = every, true
 			}
 		}
 		select {

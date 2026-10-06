@@ -32,9 +32,6 @@ func TestRunWatch_FlagValidation(t *testing.T) {
 		{"until in the past", true, func(t *testing.T) []string {
 			return []string{"--out", t.TempDir() + "/log.jsonl", "--alerts", writeTempAlerts(t), "--until", "2000-01-01T00:00:00Z"}
 		}, "not in the future"},
-		{"bad poll-interval", true, func(t *testing.T) []string {
-			return []string{"--out", t.TempDir() + "/log.jsonl", "--alerts", writeTempAlerts(t), "--poll-interval", "not-a-duration"}
-		}, "--poll-interval"},
 		{"alerts and labels", true, func(t *testing.T) []string {
 			return []string{"--out", t.TempDir() + "/log.jsonl", "--alerts", writeTempAlerts(t), "--include-labels", "team=bcm"}
 		}, "cannot be combined with label selection"},
