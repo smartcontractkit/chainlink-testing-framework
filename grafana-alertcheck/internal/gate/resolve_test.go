@@ -243,6 +243,18 @@ func TestResolve_DatasourceNameWithSlashes(t *testing.T) {
 	require.Equal(t, name, resolved[0].Title)
 }
 
+// A key shared by two distinct rules cannot select one of them.
+func TestResolve_KeySharedByDistinctRulesIsAmbiguous(t *testing.T) {
+	a := Definition{
+		Key: "ds:k", Title: "Same", Group: "G", Kind: KindDatasourceManaged,
+		DatasourceUID: "vm", DatasourceName: "VM",
+	}
+	b := a
+	_, _, err := Resolve([]Definition{a, b}, []string{"key:ds:k"}, "")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "share the identity")
+}
+
 func TestResolve_DatasourceAmbiguityAcrossSources(t *testing.T) {
 	defs := []Definition{
 		dsResolveDef("vm-a", "A", "G", "Same"),

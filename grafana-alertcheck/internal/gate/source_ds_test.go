@@ -21,7 +21,7 @@ func TestDatasourceQuery_BracketedKeys(t *testing.T) {
 func TestDiscoverRuleSources_StrictFilterAndProbe(t *testing.T) {
 	datasources := `[
 		{"uid":"vm","name":"VictoriaMetrics - Prod","type":"prometheus","jsonData":{"manageAlerts":true}},
-		{"uid":"ash","name":"AlertStateHistoryBackend","type":"prometheus","jsonData":{"manageAlerts":false}},
+		{"uid":"ash","name":"AlertStateHistoryBackend","type":"prometheus","jsonData":{}},
 		{"uid":"loki","name":"Loki","type":"loki","jsonData":{"manageAlerts":true}}
 	]`
 	var probed []string
@@ -85,16 +85,26 @@ func TestDatasourceDefinitions_FilteredQuery(t *testing.T) {
 	require.Equal(t, "VM", defs[0].DatasourceName)
 }
 
-func TestDSFilterNames(t *testing.T) {
-	filters, fetchAll := dsFilterNames([]string{"devex-cicd/prod/griddle-github: ContainersNotReady"})
-	require.False(t, fetchAll)
+func TestPlanDatasourceFetch(t *testing.T) {
+	p := planDatasourceFetch([]string{"devex-cicd/prod/griddle-github: ContainersNotReady"}, false)
+	require.False(t, p.Skip)
+	require.False(t, p.All)
 	require.ElementsMatch(t, []string{
 		"devex-cicd/prod/griddle-github: ContainersNotReady",
 		"griddle-github: ContainersNotReady",
-	}, filters)
+	}, p.Names)
 
-	_, fetchAll = dsFilterNames([]string{"key:ds:[\"a\"]"})
-	require.True(t, fetchAll)
+	// A uid can only name a Grafana rule: no datasource read at all.
+	require.True(t, planDatasourceFetch([]string{"uid:abc"}, false).Skip)
+	// A key can name a datasource rule, and there is no key filter.
+	require.True(t, planDatasourceFetch([]string{"key:ds:[\"a\"]"}, false).All)
+	// Mixed: still filtered, by the name selector only.
+	m := planDatasourceFetch([]string{"uid:abc", "Foo"}, false)
+	require.False(t, m.Skip)
+	require.False(t, m.All)
+	require.Equal(t, []string{"Foo"}, m.Names)
+	// wantAll (list, labels) always bulk-reads.
+	require.True(t, planDatasourceFetch(nil, true).All)
 }
 
 // A datasource rule whose name contains "/" is fetched by its full name, so
@@ -111,6 +121,22 @@ func TestLoadDefinitions_SlashyDatasourceName(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, defs, 1)
 	require.Equal(t, name, defs[0].Title)
+}
+
+// Loading is an inventory: a duplicate identity must not break `list`, because
+// only a selection that matches both rules is a problem.
+func TestLoadDefinitions_AllowsDuplicateKeys(t *testing.T) {
+	name := "A"
+	f := newFakeSource()
+	f.ruleSources = []RuleSource{{UID: "vm", Name: "VM"}}
+	dup := Definition{
+		Key: ruleKey("vm", "G", name, "f", ""), Title: name, Group: "G", File: "f",
+		Kind: KindDatasourceManaged, DatasourceUID: "vm", DatasourceName: "VM",
+	}
+	f.dsDefs = map[string][]Definition{"vm": {dup, dup}}
+	defs, err := loadDefinitions(context.Background(), f, []string{name}, false)
+	require.NoError(t, err)
+	require.Len(t, defs, 2)
 }
 
 func TestFakeSource_DatasourceScriptedByKey(t *testing.T) {

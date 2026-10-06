@@ -65,6 +65,11 @@ func resolveAlertSet(defs []Definition, names []string, include, exclude []Label
 	if err != nil {
 		return nil, nil, err
 	}
+	// Only the rules actually being watched must be distinct: a collision in
+	// the loaded inventory is harmless unless the selection matches both.
+	if err := rejectDuplicateKeys(selected); err != nil {
+		return nil, nil, err
+	}
 	return selected, notes, nil
 }
 
@@ -111,7 +116,9 @@ func labelSelectionHeader(include, exclude []LabelMatcher, excludeCount int) str
 func printLabelSelection(w io.Writer, resolved []Definition, include, exclude []LabelMatcher, excludeCount int) {
 	fmt.Fprintf(w, "%s:\n", labelSelectionHeader(include, exclude, excludeCount))
 	for _, d := range resolved {
-		fmt.Fprintf(w, "  - %s (%s)\n", d.Title, d.UID)
+		// defKey, not UID: a datasource-managed rule has no uid, and its key is
+		// the copyable identity (`key:<key>`).
+		fmt.Fprintf(w, "  - %s (%s)\n", d.Title, defKey(d))
 	}
 }
 

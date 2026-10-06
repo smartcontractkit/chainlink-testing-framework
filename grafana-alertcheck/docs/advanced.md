@@ -37,9 +37,11 @@ Single-step `check` runs the same pass itself. It cannot watch before it started
 
 ## Datasource-managed rules: discovery and cost
 
-Datasource-managed rules are auto-discovered — there is no selection flag. The candidate filter is strict: `type == "prometheus"` **and** `jsonData.manageAlerts == true`. The strict `true` matters: the `AlertStateHistoryBackend` datasource shares VictoriaMetrics' backend and also reports `manageAlerts` truthy, so a `!= false` filter would make every rule name ambiguous. Loki is deferred: its ruler API is broken/disabled in our Grafana, so only Prometheus-flavored rules are in scope.
+Datasource-managed rules are auto-discovered — there is no selection flag. The candidate filter is strict: `type == "prometheus"` **and** `jsonData.manageAlerts == true`. The strict `true` matters: the `AlertStateHistoryBackend` datasource points at the same VictoriaMetrics backend but does not set `manageAlerts: true`, so a `!= false` filter would include it and make every rule name ambiguous. Loki is deferred: its ruler API is broken/disabled in our Grafana, so only Prometheus-flavored rules are in scope.
 
 Each candidate is probed with a `rule_name[]=__probe__` request; a `manageAlerts=true` source whose probe fails is a hard error naming the source, never a silently dropped source.
+
+vmalert allows two distinct alerting rules to share a name within one group. Such rules get the same identity, so a selection that matches both cannot observe them separately and fails closed with a message asking you to narrow the selection (a distinguishing label selects one); loading and `list` still show both.
 
 Cost differs by mode. `list` and label selection take the **bulk** response — one request per datasource, several MB and several seconds for a large ruler. Name selection takes a **filtered** request, ~1 KB and ~1 s. The filter uses vmalert's `[]`-suffixed parameters (`rule_name[]`, `rule_group[]`, `file[]`): vmalert reads only those and ignores plain `rule_name=`, an upstream quirk pinned by tests. `limit_alerts` is a Grafana parameter that vmalert ignores and is therefore omitted.
 

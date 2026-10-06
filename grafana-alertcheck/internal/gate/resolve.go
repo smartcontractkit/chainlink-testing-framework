@@ -58,10 +58,18 @@ func Resolve(defs []Definition, names []string, folder string) (resolved []Defin
 func resolveOne(defs []Definition, name, folder string) (Definition, error) {
 	if key, ok := strings.CutPrefix(name, "key:"); ok {
 		if key != "" {
+			var matches []Definition
 			for _, d := range defs {
 				if defKey(d) == key {
-					return refuseUnsupportedKind(name, d)
+					matches = append(matches, d)
 				}
+			}
+			// A key shared by two distinct rules cannot select one of them.
+			if err := rejectDuplicateKeys(matches); err != nil {
+				return Definition{}, err
+			}
+			if len(matches) == 1 {
+				return refuseUnsupportedKind(name, matches[0])
 			}
 		}
 		return Definition{}, fmt.Errorf("no rule matched %q: no rule has this key (run 'grafana-alertcheck list' to see keys)", name)

@@ -49,6 +49,15 @@ func TestParseDatasourceRules_HealthErrNormalizes(t *testing.T) {
 	require.Equal(t, "error", rules[0].Health)
 }
 
+func TestParseDatasourceRules_LastError(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
+		{"name":"A","type":"alerting","health":"err","lastError":"query failed: bad","state":"firing"}]}]}}`)
+	rules, err := ParseDatasourceRules(body, "d")
+	require.NoError(t, err)
+	require.Equal(t, "error", rules[0].Health)
+	require.Equal(t, "query failed: bad", rules[0].LastError)
+}
+
 func TestParseDatasourceRules_ZeroLastEvaluationAllowed(t *testing.T) {
 	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","rules":[
 		{"name":"A","type":"alerting","health":"ok","state":"pending"}]}]}}`)

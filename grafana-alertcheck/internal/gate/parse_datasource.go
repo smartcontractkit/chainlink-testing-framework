@@ -123,6 +123,11 @@ func parseDatasourceRule(raw json.RawMessage, dsUID, group, file string, interva
 		}
 		r.LastEvaluation = lastEval
 	}
+	// The backend diagnostic for health=err; reporting-only, like the Grafana
+	// parser's lastError.
+	if err := opt(m, "lastError", &r.LastError); err != nil {
+		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
+	}
 
 	if err := opt(m, "state", &r.State); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", name, err)
