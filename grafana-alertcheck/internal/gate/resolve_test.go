@@ -63,14 +63,6 @@ func TestResolve_NoMatch(t *testing.T) {
 	require.Contains(t, err.Error(), "list")
 }
 
-func TestResolve_NoMatchSubstringSuggestion(t *testing.T) {
-	defs := rulerDefs(t)
-	_, _, err := Resolve(defs, []string{"paused rule"}, "")
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "did you mean")
-	require.Contains(t, err.Error(), "Example Paused Rule")
-}
-
 func TestResolve_RefusesDatasourceManaged(t *testing.T) {
 	defs, err := ParseDefinitions(readFixture(t, "ruler_datasource_managed.json"))
 	require.NoError(t, err)
@@ -134,9 +126,6 @@ func TestResolve_UnsupportedKindsExcludedFromNoMatchSurfaces(t *testing.T) {
 
 	wantCount := fmt.Sprintf("(%d rules available", len(supported))
 	require.Contains(t, err.Error(), wantCount)
-	require.NotContains(t, err.Error(), "ExampleTargetDown")
-	require.NotContains(t, err.Error(), "example:recorded_metric:rate5m")
-	require.Contains(t, err.Error(), "Example Paused Rule")
 }
 
 func TestResolve_UnsupportedHomonymResolvesSupportedSilently(t *testing.T) {

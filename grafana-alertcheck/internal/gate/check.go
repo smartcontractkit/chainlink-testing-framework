@@ -585,6 +585,10 @@ func resolveFromLog(ctx context.Context, src Source, h Header, cfg Config) ([]De
 				return nil, nil, fmt.Errorf("log identity: %s names rule %s (%q), which no current definition matches",
 					cfg.Log, loggedKey(lr), lr.Title)
 			}
+			if d.Kind != KindGrafanaManaged {
+				return nil, nil, fmt.Errorf("log identity: %s names rule %s (%q), which is now a %s",
+					cfg.Log, loggedKey(lr), lr.Title, kindName(d.Kind))
+			}
 			resolved = append(resolved, d)
 		}
 	}

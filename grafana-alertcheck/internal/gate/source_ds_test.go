@@ -188,6 +188,6 @@ func TestRuleState_DatasourceAssertsAllFilters(t *testing.T) {
 	require.Equal(t,
 		"file%5B%5D=%2Fetc%2Fvm%2Frules%2Fexample.yml&rule_group%5B%5D=ExampleMetrics&rule_name%5B%5D=ExampleTargetDown",
 		gotQuery)
-	require.Len(t, obs.Rules, 2)
+	require.Len(t, obs.Rules, 1, "the recording rule is dropped at parse time")
 	require.Equal(t, ref.Key, obs.Rules[0].Key)
 }

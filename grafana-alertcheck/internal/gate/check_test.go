@@ -1077,6 +1077,21 @@ func TestCheckFailClosedOnWrongLogIdentity(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "log identity")
 	})
+
+	t.Run("rule is now a recording rule", func(t *testing.T) {
+		dir := t.TempDir()
+		windowEnd := testNow.Add(5*time.Minute + checkGrace)
+		logPath := recordedLog(t, dir, "https://grafana.example.com",
+			testNow.Add(-time.Minute), testNow.Add(-time.Minute), windowEnd, windowEnd.Add(30*time.Second), 0)
+
+		cfg := recorderConfig(t, newVirtualClock(testNow), logPath)
+		src := newCheckSource(nil)
+		src.defs = []Definition{{UID: checkUID, Title: checkTitle, Kind: KindRecording, IntervalSeconds: 60}}
+
+		_, err := check(context.Background(), cfg, src)
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "recording rule")
+	})
 }
 
 // `from` before the recording's StartedAt is statically knowable from the

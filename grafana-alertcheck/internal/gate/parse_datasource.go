@@ -13,6 +13,11 @@ import (
 // states, health "err" (not "error"), and a zero lastEvaluation is allowed
 // (liveness treats zero as maximally stale). A missing or unparseable required
 // field is an error, never a zero value.
+//
+// Recording rules are dropped here, at the one place a response is parsed:
+// they have no instances or state to observe, and keeping them would let a
+// recording rule that shares a datasource/group/name/file shadow the alerting
+// rule in state selection.
 func ParseDatasourceRules(body []byte, dsUID string) ([]StateRule, error) {
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal(body, &top); err != nil {
@@ -59,6 +64,9 @@ func ParseDatasourceRules(body []byte, dsUID string) ([]StateRule, error) {
 			if err != nil {
 				return nil, fmt.Errorf("datasource rules response: group %q: rule %d: %w", groupName, ri, err)
 			}
+			if rule.Type != "alerting" {
+				continue
+			}
 			rules = append(rules, rule)
 		}
 	}
@@ -99,9 +107,9 @@ func parseDatasourceRule(raw json.RawMessage, dsUID, group, file string, interva
 	}
 	r.For = time.Duration(durationSeconds * float64(time.Second))
 
-	// Recording rules carry no state, health or alerts; DefinitionsFromDatasource
-	// drops them, so parsing only the shared fields keeps a recording rule from
-	// failing on fields it was never going to have.
+	// Recording rules carry no state, health or alerts, and ParseDatasourceRules
+	// drops them; parsing only the shared fields keeps one from failing on
+	// fields it was never going to have before the caller discards it.
 	if ruleType == "recording" {
 		return r, nil
 	}
@@ -177,15 +185,13 @@ func normalizeDatasourceInstanceState(s string) (State, string, error) {
 	return state, reason, nil
 }
 
-// DefinitionsFromDatasource converts datasource rule states into Definitions,
-// keeping only alerting rules. A datasource-managed rule has no pause signal and
-// no uid, so PauseObservable is false and UID stays empty.
+// DefinitionsFromDatasource converts datasource rule states into Definitions.
+// Its input is already alerting-only (ParseDatasourceRules drops recording
+// rules). A datasource-managed rule has no pause signal and no uid, so
+// PauseObservable is false and UID stays empty.
 func DefinitionsFromDatasource(rules []StateRule, dsUID, dsName string) []Definition {
-	var defs []Definition
+	defs := make([]Definition, 0, len(rules))
 	for _, r := range rules {
-		if r.Type != "alerting" {
-			continue
-		}
 		defs = append(defs, Definition{
 			Key:             r.Key,
 			Title:           r.Title,

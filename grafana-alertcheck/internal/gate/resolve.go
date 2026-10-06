@@ -47,9 +47,8 @@ func Resolve(defs []Definition, names []string, folder string) (resolved []Defin
 }
 
 // resolveOne resolves one trimmed, non-empty name against defs: one match wins,
-// zero is an error with suggestions, two or more is ambiguous. folder scopes a
-// bare Grafana title; it is ignored for /-separated forms and for datasource
-// rules.
+// zero is a no-match error, two or more is ambiguous. folder scopes a bare
+// Grafana title; it is ignored for /-separated forms and for datasource rules.
 //
 // Grafana forms: Title | Folder/Title | Folder/Group/Title. Datasource forms:
 // Title | Group/Title | DatasourceName/Group/Title. key: is exact across both.
@@ -85,13 +84,9 @@ func resolveOne(defs []Definition, name, folder string) (Definition, error) {
 		}
 		// uid == "" falls through to the same message as "not found": several
 		// Definition kinds legitimately carry UID == "" (datasource-managed
-		// rules have no uid at all), so matching on an empty suffix
-		// would silently hit one of those and report a misleading
-		// kind-specific refusal for what is really an empty/typo'd uid. This
-		// deliberately does not go through noMatchError: that function's
-		// substring suggestion would degenerate to an empty needle, which
-		// strings.Contains matches against every title — printing the whole
-		// fleet instead of a real suggestion.
+		// rules have no uid at all), so matching on an empty suffix would
+		// silently hit one of those and report a misleading kind-specific
+		// refusal for what is really an empty/typo'd uid.
 		return Definition{}, fmt.Errorf("no rule matched %q: no rule has this uid (run 'grafana-alertcheck list' to see uids)", name)
 	}
 
@@ -119,7 +114,7 @@ func resolveOne(defs []Definition, name, folder string) (Definition, error) {
 	if formErr != nil {
 		return Definition{}, formErr
 	}
-	return Definition{}, noMatchError(supportedDefs(defs), name, parts[len(parts)-1])
+	return Definition{}, noMatchError(supportedDefs(defs), name)
 }
 
 // pickCandidate applies the shared one-match/ambiguous/unsupported policy to the
@@ -197,7 +192,7 @@ func isSupported(d Definition) bool {
 }
 
 // supportedDefs filters out the refused kinds. Only these participate in
-// name-based matching, the no-match rule count, and substring suggestions.
+// name-based matching and the no-match rule count.
 func supportedDefs(defs []Definition) []Definition {
 	out := make([]Definition, 0, len(defs))
 	for _, d := range defs {
@@ -210,10 +205,8 @@ func supportedDefs(defs []Definition) []Definition {
 }
 
 // parseNameForm splits name into 1..3 /-separated segments. Every segment must
-// be non-empty: without this, "/Title" would parse as an empty first segment —
-// silently dropping the filter and matching unscoped, a fail-open — and
-// "Folder/" would parse as an empty title, feeding noMatchError's substring
-// search an empty needle that matches every title.
+// be non-empty: without this, "/Title" would parse as an empty first segment,
+// silently dropping the filter and matching unscoped — a fail-open.
 func parseNameForm(name string) ([]string, error) {
 	parts := strings.Split(name, "/")
 	if slices.Contains(parts, "") {
@@ -246,32 +239,10 @@ func ruleRefLabel(d Definition) string {
 	return "key:" + defKey(d)
 }
 
-// noMatchError reports a no-match with the count of supported rules and
-// case-insensitive substring suggestions.
-func noMatchError(defs []Definition, name, wantTitle string) error {
-	msg := fmt.Sprintf("no rule matched %q (%d rules available; run 'grafana-alertcheck list' to see titles)",
+// noMatchError reports a no-match with the count of supported rules.
+func noMatchError(defs []Definition, name string) error {
+	return fmt.Errorf("no rule matched %q (%d rules available; run 'grafana-alertcheck list' to see titles)",
 		name, len(defs))
-
-	needle := strings.ToLower(wantTitle)
-	var subs []string
-	for _, d := range defs {
-		if strings.Contains(strings.ToLower(d.Title), needle) {
-			subs = append(subs, suggestionLabel(d))
-		}
-	}
-	if len(subs) > 0 {
-		sort.Strings(subs)
-		msg += fmt.Sprintf("; did you mean: %s", strings.Join(subs, ", "))
-	}
-	return fmt.Errorf("%s", msg)
-}
-
-// suggestionLabel is the copyable name form for a supported rule.
-func suggestionLabel(d Definition) string {
-	if d.Kind == KindDatasourceManaged {
-		return fmt.Sprintf("%s/%s/%s", d.DatasourceName, d.Group, d.Title)
-	}
-	return fmt.Sprintf("%s/%s/%s", d.Folder, d.Group, d.Title)
 }
 
 // ambiguousError lists every candidate with its source, its group, and the full

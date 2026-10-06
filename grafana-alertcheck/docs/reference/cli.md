@@ -111,7 +111,7 @@ Alert names take one of these forms. Grafana-managed rules use folder/group; dat
 
 A datasource rule's **name can itself contain `/`** (e.g. `devex-cicd/prod/griddle-github: ContainersNotReady`). The exact name is tried first, so the `TITLE` from `list` always resolves, and `key:` is the unambiguous fallback.
 
-`--folder` scopes a bare Grafana title only. A recording rule, or a datasource rule with no identifiable datasource, is refused with a specific error; a no-match suggests substrings and points at `list`; an ambiguous name lists every candidate with its full name, source and `uid:`/`key:`. Duplicate names collapse to one (a note, not an error).
+`--folder` scopes a bare Grafana title only. A recording rule, or a datasource rule with no identifiable datasource, is refused with a specific error; a no-match points at `list`; an ambiguous name lists every candidate with its full name, source and `uid:`/`key:`. Duplicate names collapse to one (a note, not an error).
 
 Auto-discovery keeps `/api/datasources` entries with `type == "prometheus"` and `jsonData.manageAlerts == true`, then probes each. The token needs `datasources:read` plus datasource query permission; a failure names the permission.
 

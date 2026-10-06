@@ -10,7 +10,7 @@ import (
 func TestParseDatasourceRules_Fixture(t *testing.T) {
 	rules, err := ParseDatasourceRules(readFixture(t, "ds_rules.json"), "ds-uid")
 	require.NoError(t, err)
-	require.Len(t, rules, 2, "recording rules are parsed but filtered later")
+	require.Len(t, rules, 1, "recording rules are dropped at parse time")
 
 	alert := rules[0]
 	require.Equal(t, "ExampleTargetDown", alert.Title)
@@ -29,16 +29,28 @@ func TestParseDatasourceRules_Fixture(t *testing.T) {
 	require.Nil(t, alert.Totals)
 }
 
-func TestDefinitionsFromDatasource_FiltersRecording(t *testing.T) {
+func TestDefinitionsFromDatasource(t *testing.T) {
 	rules, err := ParseDatasourceRules(readFixture(t, "ds_rules.json"), "ds-uid")
 	require.NoError(t, err)
 
 	defs := DefinitionsFromDatasource(rules, "ds-uid", "ExampleMetrics")
-	require.Len(t, defs, 1, "only the alerting rule becomes a Definition")
+	require.Len(t, defs, 1)
 	require.Equal(t, KindDatasourceManaged, defs[0].Kind)
 	require.Equal(t, "ExampleMetrics", defs[0].DatasourceName)
 	require.False(t, defs[0].PauseObservable)
 	require.Equal(t, 60, defs[0].IntervalSeconds)
+}
+
+// A recording rule that shares the alerting rule's datasource/group/name/file
+// must never reach state selection, or it could shadow the alert.
+func TestParseDatasourceRules_DropsRecordingShadow(t *testing.T) {
+	body := []byte(`{"status":"success","data":{"groups":[{"name":"g","file":"f","interval":60,"rules":[
+		{"name":"A","type":"recording","query":"up"},
+		{"name":"A","type":"alerting","health":"ok","state":"firing","lastEvaluation":"2026-08-01T00:00:00Z"}]}]}}`)
+	rules, err := ParseDatasourceRules(body, "d")
+	require.NoError(t, err)
+	require.Len(t, rules, 1)
+	require.Equal(t, "alerting", rules[0].Type)
 }
 
 func TestParseDatasourceRules_HealthErrNormalizes(t *testing.T) {
