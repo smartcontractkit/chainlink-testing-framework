@@ -55,7 +55,7 @@ type CoverageResult struct {
 
 // proveCoverage applies the nine coverage checks to one rule's polls. PURE: no
 // HTTP, no files, no clock reads — everything arrives as an argument. polls need
-// not be pre-filtered to this rule (selection is by def.UID). Every check runs
+// not be pre-filtered to this rule (selection is by key). Every check runs
 // even after Unobservable is set, so LargestGap and the notes are complete on
 // exit 2; Reason names only the FIRST check that failed.
 func proveCoverage(h Header, polls []Poll, sentinel *time.Time, t RuleTimings, def Definition,
@@ -279,14 +279,29 @@ func datasourceCaveats(defs []Definition) []string {
 func inWindowPolls(polls []Poll, from, windowEnd time.Time) []Poll {
 	var out []Poll
 	for _, p := range polls {
-		bound := p.SkewBound()
-		runner := runnerTime(p, p.GrafanaNow)
-		if runner.Before(from.Add(-bound)) || runner.After(windowEnd.Add(bound)) {
-			continue
+		if pollInWindow(p, from, windowEnd) {
+			out = append(out, p)
 		}
-		out = append(out, p)
 	}
 	return out
+}
+
+// pollInWindow is the one membership test for [from, windowEnd], with the
+// boundary widened by the poll's own skew bound.
+func pollInWindow(p Poll, from, windowEnd time.Time) bool {
+	return !pollBeforeWindow(p, from) && !pollAfterWindow(p, windowEnd)
+}
+
+// pollBeforeWindow reports a poll whose translated time is before `from`
+// (widened by its bound): never classified.
+func pollBeforeWindow(p Poll, from time.Time) bool {
+	return runnerTime(p, p.GrafanaNow).Before(from.Add(-p.SkewBound()))
+}
+
+// pollAfterWindow reports a poll whose translated time is after windowEnd
+// (widened by its bound): an extension poll.
+func pollAfterWindow(p Poll, windowEnd time.Time) bool {
+	return runnerTime(p, p.GrafanaNow).After(windowEnd.Add(p.SkewBound()))
 }
 
 // ruleHeartbeatGap finds the largest unobserved span inside [from, windowEnd],

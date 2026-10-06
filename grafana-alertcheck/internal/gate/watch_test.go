@@ -441,25 +441,6 @@ func TestPrepareWatchDoesNotWaitForPausedRules(t *testing.T) {
 	require.Contains(t, notes.String(), "paused")
 }
 
-// One authority for the cadence, from the writing side: whatever
-// --poll-interval resolves to is what the header records, because that is the
-// only value check may derive maxGap from.
-func TestPrepareWatchHeaderRecordsTheOverriddenCadence(t *testing.T) {
-	var notes strings.Builder
-	cfg := watchTestConfig(t, &notes, "uid:"+watchActiveUID)
-	cfg.PollEvery = 120 * time.Second // the rule evaluates every 60s
-	src := watchTestSource(t, liveObservation(testNow))
-
-	prep, err := prepareWatch(context.Background(), cfg, src)
-	require.NoError(t, err)
-	defer prep.writer.Close()
-
-	require.Equal(t, float64(120), prep.header.Rules[0].PollEverySeconds,
-		"the override, used verbatim and never clamped")
-	require.Equal(t, 240*time.Second, prep.timings[watchActiveUID].maxGap)
-	require.Contains(t, notes.String(), "--poll-interval")
-}
-
 // ReadyAt must be stamped after the first-observation pass, never before it:
 // that is what lets check refuse a `from` inside the pass. StartedAt stays the
 // record start, captured before the pass.
@@ -737,7 +718,6 @@ func TestChildArgsCarryNoSecretsAndNoRuleSet(t *testing.T) {
 		Out:         "/tmp/log.jsonl",
 		PidFile:     "/tmp/log.jsonl.pid",
 		Until:       testNow.Add(time.Hour),
-		PollEvery:   17 * time.Second,
 		Concurrency: 3,
 	}
 	args := childArgs(cfg)

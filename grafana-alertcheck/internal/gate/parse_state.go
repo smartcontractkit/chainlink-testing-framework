@@ -13,11 +13,12 @@ import (
 type State string
 
 const (
-	StateNormal  State = "normal"
-	StateFiring  State = "firing"
-	StatePending State = "pending"
-	StateNodata  State = "nodata"
-	StateError   State = "error"
+	StateNormal     State = "normal"
+	StateFiring     State = "firing"
+	StatePending    State = "pending"
+	StateNodata     State = "nodata"
+	StateError      State = "error"
+	StateRecovering State = "recovering"
 )
 
 // Instance is one entry of a rule's alerts[]. State is always canonical; Reason
@@ -52,6 +53,9 @@ type StateRule struct {
 	For           time.Duration
 	Labels        map[string]string
 	Interval      time.Duration
+	// KeepFiringFor is the rule's recovery period in seconds; 0/absent means
+	// no instance can be Recovering. Carried onto the Poll.
+	KeepFiringFor time.Duration
 	// State and Health are raw, lowercase, and reporting-only — never
 	// classified. State in particular is never normalized.
 	State, Health  string
@@ -170,6 +174,13 @@ func parseStateRule(raw json.RawMessage, folder, group string, interval time.Dur
 		return StateRule{}, fmt.Errorf("rule %q: %w", uid, err)
 	}
 
+	// Optional; absent means 0 (no recovery linger).
+	var keepFiringForSeconds float64
+	if err := opt(m, "keepFiringFor", &keepFiringForSeconds); err != nil {
+		return StateRule{}, fmt.Errorf("rule %q: %w", uid, err)
+	}
+	r.KeepFiringFor = time.Duration(keepFiringForSeconds * float64(time.Second))
+
 	if err := opt(m, "totals", &r.Totals); err != nil {
 		return StateRule{}, fmt.Errorf("rule %q: %w", uid, err)
 	}
@@ -240,15 +251,17 @@ func parseInstanceWith(raw json.RawMessage, normalize func(string) (State, strin
 	return inst, nil
 }
 
-// baseInstanceStates is the strict 5-value allowlist for the base of an
-// instance state. Anything else — including an unrecognized base inside a
-// "Base (Reason)" composite — is a parse error.
+// baseInstanceStates is the strict allowlist for the base of an instance
+// state; anything else is a parse error. Recovering is Grafana's "keep firing
+// for" state — condition cleared, linger not elapsed, only reachable from
+// Alerting.
 var baseInstanceStates = map[string]State{
-	"Normal":   StateNormal,
-	"Alerting": StateFiring,
-	"Pending":  StatePending,
-	"NoData":   StateNodata,
-	"Error":    StateError,
+	"Normal":     StateNormal,
+	"Alerting":   StateFiring,
+	"Pending":    StatePending,
+	"NoData":     StateNodata,
+	"Error":      StateError,
+	"Recovering": StateRecovering,
 }
 
 // normalizeInstanceState normalizes an instance-level state string into its

@@ -69,29 +69,20 @@ func defaultPollEvery(intervalSeconds int) time.Duration {
 }
 
 // DeriveTimings computes every resolved rule's ruleTimings (keyed by UID) plus
-// the shared globalTimings. A non-zero override is used verbatim for every rule
-// and never clamped to the default — an override above intervalSeconds/2 widens
-// maxGap and is reported as a note, not corrected.
-func DeriveTimings(defs []Definition, override time.Duration) (rules map[string]RuleTimings, global GlobalTimings, notes []string) {
+// the shared globalTimings. Every rule polls at half its own evaluation
+// interval: the cadence is fixed so no state that lasts a full evaluation
+// interval can fall between polls, and there is deliberately no override that
+// could widen maxGap and hide one.
+func DeriveTimings(defs []Definition) (rules map[string]RuleTimings, global GlobalTimings) {
 	rules = make(map[string]RuleTimings, len(defs))
 	for _, d := range defs {
-		def := defaultPollEvery(d.IntervalSeconds)
-		pollEvery := def
-		if override > 0 {
-			pollEvery = override
-			if override > def {
-				notes = append(notes, fmt.Sprintf(
-					"rule %s: --poll-interval %s exceeds half its %ds evaluation interval (%s); maxGap widens accordingly",
-					d.Title, override, d.IntervalSeconds, def))
-			}
-		}
-		rt := newRuleTimings(pollEvery, d.IntervalSeconds)
+		rt := newRuleTimings(defaultPollEvery(d.IntervalSeconds), d.IntervalSeconds)
 		rt.title = d.Title
 		rules[defKey(d)] = rt
 	}
 	// In this mode defs ARE the start-of-step snapshot, so they answer what was
 	// paused at the window open; only the log-mode counterpart uses the header.
-	return rules, deriveGlobalTimings(defs, pausedSet(defs)), notes
+	return rules, deriveGlobalTimings(defs, pausedSet(defs))
 }
 
 // pausedSet is Header.pausedAtStart's counterpart for a set of definitions
@@ -318,8 +309,8 @@ func (s *Scheduler) earliestDue() (time.Time, bool) {
 //   - the burst bound — the slowest measured request is slower than the fleet's
 //     tightest cadence, which can open a mid-run gap beyond that rule's maxGap.
 //
-// The message names only the three operator controls: concurrency,
-// poll-interval, and the alert list.
+// The message names only the two operator controls: concurrency and the alert
+// list.
 func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, concurrency int) error {
 	if len(t) == 0 {
 		return nil
@@ -391,10 +382,10 @@ func CheckBudget(t map[string]RuleTimings, measured map[string]time.Duration, co
 	// Utilization is the one condition concurrency fixes, so name the exact
 	// value; the other two are single-request shapes no concurrency shortens.
 	if utilization > float64(concurrency) {
-		fmt.Fprintf(&b, "fix by: raising --concurrency to at least %d (currently %d), raising poll-interval, or watching fewer alerts",
+		fmt.Fprintf(&b, "fix by: raising --concurrency to at least %d (currently %d), or watching fewer alerts",
 			int(math.Ceil(utilization)), concurrency)
 	} else {
-		b.WriteString("fix by: raising poll-interval or watching fewer alerts")
+		b.WriteString("fix by: watching fewer alerts")
 	}
 	return fmt.Errorf("%s", b.String())
 }

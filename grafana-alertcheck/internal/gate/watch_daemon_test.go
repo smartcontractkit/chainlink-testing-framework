@@ -131,7 +131,7 @@ const testBearerToken = "test-token"
 // the reducer's select-by-UID finds it.
 func grafanaTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	ruler := readFixture(t, "ruler_rules.json")
+	ruler := patchedRulerBody(t)
 	state := patchedStateBody(t)
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -162,6 +162,35 @@ func grafanaTestServer(t *testing.T) *httptest.Server {
 	}))
 	t.Cleanup(srv.Close)
 	return srv
+}
+
+// patchedRulerBody serves the ruler fixture with the watched rule's evaluation
+// interval shortened to 2s, so the detached recorder appends polls fast enough
+// for a real-process test. The cadence is half that interval — the recorder has
+// no override any more.
+func patchedRulerBody(t *testing.T) []byte {
+	t.Helper()
+	var body map[string][]map[string]any
+	require.NoError(t, json.Unmarshal(readFixture(t, "ruler_rules.json"), &body))
+	found := false
+	for _, groups := range body {
+		for _, group := range groups {
+			rules, _ := group["rules"].([]any)
+			for _, r := range rules {
+				rule, _ := r.(map[string]any)
+				ga, _ := rule["grafana_alert"].(map[string]any)
+				if ga["uid"] != watchActiveUID {
+					continue
+				}
+				ga["intervalSeconds"] = 2
+				found = true
+			}
+		}
+	}
+	require.True(t, found, "ruler fixture has no rule %s", watchActiveUID)
+	b, err := json.Marshal(body)
+	require.NoError(t, err)
+	return b
 }
 
 func patchedStateBody(t *testing.T) []byte {
@@ -210,8 +239,8 @@ func waitFor(t *testing.T, what string, timeout time.Duration, cond func() bool)
 // It asserts the four things only a real spawn can show — the pidfile points
 // at a live process, that process is in its own session (setsid, not a bare
 // `&`), it keeps appending after Watch returned, and SIGTERM makes it finish
-// the log in the stop order — with a 2s --poll-interval, which also exercises
-// the unclamped-override path.
+// the log in the stop order. The served rule evaluates every 2s, so its 1s
+// cadence appends polls fast enough for a real-time test.
 func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 	srv := grafanaTestServer(t)
 	t.Setenv("GRAFANA_URL", srv.URL)
@@ -224,7 +253,6 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 		Token:       testBearerToken,
 		Alerts:      []string{"uid:" + watchActiveUID},
 		Out:         out,
-		PollEvery:   2 * time.Second,
 		Concurrency: 2,
 		Notes:       &notes,
 	}
@@ -266,7 +294,7 @@ func TestWatchSpawnsADetachedRecorder(t *testing.T) {
 	require.Equal(t, srv.URL, header.URL)
 	require.Equal(t, "13.1.0", header.GrafanaVersion)
 	require.Len(t, header.Rules, 1)
-	require.Equal(t, float64(2), header.Rules[0].PollEverySeconds)
+	require.Equal(t, float64(1), header.Rules[0].PollEverySeconds, "half the served 2s evaluation interval")
 	for i, p := range polls {
 		require.Equalf(t, watchActiveUID, p.RuleUID, "poll %d", i)
 		require.Truef(t, p.Found, "poll %d", i)

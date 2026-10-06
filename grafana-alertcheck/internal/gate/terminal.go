@@ -67,7 +67,7 @@ func terminalVerdict(h Header, polls []Poll, defs []Definition, rt map[string]Ru
 			}, true
 		}
 
-		outcome, _, _ := classifyRule(def, polls, from, at, badStates, pol.Preexisting)
+		outcome, _, _ := classifyRule(def, rt[key], polls, from, at, badStates, pol.Preexisting)
 		if outcome == OutcomeNewFailure || outcome == OutcomeUnstable {
 			if violation == nil {
 				v := Termination{

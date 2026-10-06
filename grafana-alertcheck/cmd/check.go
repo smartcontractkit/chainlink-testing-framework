@@ -34,7 +34,7 @@ func runCheck(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
 	pidfile := fs.String("pidfile", "", "pidfile of the recorder to stop before reading --in (default <in>.pid)")
 	from := fs.String("from", "", "the moment the deploy finished, RFC3339 (required with --in)")
 	to := fs.String("to", "", "the end of the window to classify, RFC3339 (required)")
-	states := fs.String("states", "", "comma-separated bad states to classify against (default: firing)")
+	states := fs.String("states", "", "comma-separated bad states to classify against (default: firing,recovering)")
 	preexisting := fs.String("preexisting", "", "how to judge an instance already bad at `from` (default: fail-unless-recovered)")
 	minObserved := fs.Int("min-observed", 0, "minimum rules that must be observed (default: every resolved rule)")
 	allowPaused := fs.Bool("allow-paused", false, "do not count a rule paused before the window against --min-observed")

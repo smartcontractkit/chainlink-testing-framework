@@ -186,6 +186,8 @@ func TestParseNormalizeInstanceState(t *testing.T) {
 		{"Pending", StatePending, "", false},
 		{"NoData", StateNodata, "", false},
 		{"Error", StateError, "", false},
+		{"Recovering", StateRecovering, "", false},
+		{"Recovering (NoData)", StateRecovering, "NoData", false},
 		{"Normal (NoData)", StateNormal, "NoData", false},
 		{"Normal (Error)", StateNormal, "Error", false},
 		{"Normal (MissingSeries)", StateNormal, "MissingSeries", false},
@@ -242,15 +244,17 @@ func TestParseState_KeepFiringForIsOptional(t *testing.T) {
 	tests := []struct {
 		name  string
 		extra string
+		want  time.Duration
 	}{
-		{"present", `,"keepFiringFor":300`},
-		{"absent", ""},
+		{"present", `,"keepFiringFor":300`, 300 * time.Second},
+		{"absent", "", 0},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			rules, err := ParseState(minimalStateBody(tc.extra))
 			require.NoError(t, err)
 			require.Len(t, rules, 1)
+			require.Equal(t, tc.want, rules[0].KeepFiringFor)
 		})
 	}
 }

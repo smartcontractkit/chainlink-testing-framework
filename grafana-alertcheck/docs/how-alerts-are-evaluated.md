@@ -19,12 +19,13 @@ Grafana reports instance states in two vocabularies (`Alerting`/`Normal` at inst
 | `normal`  | Healthy |
 | `firing`  | The condition is true and `for` has elapsed |
 | `pending` | The condition is true, `for` has not elapsed |
+| `recovering` | The condition has cleared but the rule's *keep firing for* has not elapsed |
 | `nodata`  | The query returned no series (synthetic instance) |
 | `error`   | The query failed (synthetic instance) |
 
 A rule's **rule-level** `state` and `health` are kept verbatim and only reported — they are never classified. The **instance** state is what the classifier reasons about.
 
-A "bad" instance is one whose canonical state is in `--states` (default `firing`). `pending` and `nodata` are excluded by default.
+A "bad" instance is one whose canonical state is in `--states` (default `firing,recovering`). `pending` and `nodata` are excluded by default. `recovering` is bad because the instance is still firing (Alertmanager keeps notifying) until its recovery period ends; `--states firing` opts out of tracking it.
 
 ## Verdict model
 
@@ -35,7 +36,7 @@ For each instance the gate builds a timeline of bad spans over `[from, to]`, the
 | `healthy` | Good throughout, observed throughout | → 0 |
 | `new_failure` | Entered a bad state **inside** the window | → 1 |
 | `still_failing` | Bad at `from`, still bad at `to` | → 1 |
-| `recovered` | Bad at `from`, cleared before `to`, stayed clear | → 0 |
+| `recovered` | Bad at `from`, cleared and stayed clear (possibly during the recovery observation) | → 0 |
 | `unstable` | Cleared, then became bad again | → 1 |
 | `paused` | Paused **before** the window opened | counts against `--min-observed` unless `--allow-paused` |
 | `not_verified` | The window could not be observed: a gap, sustained `health=error`, a stale evaluation, or an absent rule | → 2 |
@@ -100,8 +101,10 @@ A preexisting bad instance is deliberately **not** terminal: if it clears before
 
 Fail-fast is on by default and always preserves the failure: an early run can exit `1` or `2`, never `0`. The one difference from a full run is that an early exit may report `1` before an inability surfaces that would have made it `2`. `--fail-fast=false` disables the guard and always waits for the full window and its coverage proof.
 
-## The drain wait and `transitionGrace`
+## The drain wait, `transitionGrace`, and recovery observation
 
 A condition that arises just before `to` becomes `firing` only at the first evaluation after its `for` elapses. `transitionGrace` (derived from the watched rules' `for` values) extends the classification bound past `to` so such a surfacing condition is caught. After collection, a **drain wait** polls until each rule has evaluated through `to + transitionGrace` (bounded by `drainTimeout`); a rule that never does is `not_verified`.
 
-Run time = `(to − from) + transitionGrace + drainTimeout`. This is printed at start. A requested window with a subsecond part is rounded up to the next whole second by extending `to`, so the plan never reads a window like `9m59.99445781s`.
+The mirror case is recovery: an instance whose condition cleared just before `to` enters `recovering` and only resolves after its **keep firing for** elapses, which can be long after `to`. A first-seen `recovering` instance is always treated as preexisting — recovering is only reachable from `firing`, and every rule is sampled twice per evaluation interval, so an in-window fire cannot be missed between polls; its `activeAt` is the recovery onset, never the fire onset. The episode stays open until the instance reports `normal`. To decide that, `check` keeps observing the affected rules past `to + transitionGrace`, up to `activeAt + keep firing for` plus an evaluation/cadence margin. In recorder mode the recorder keeps polling so the extension evidence lands in the log; in single-step mode `check` polls the affected rules directly. Either way the extension is scoped to the recovering instances: a different instance going bad during the observation is outside the window and stays `healthy`. Each instance expires on its **own** deadline, and a clear past it — or one arriving after the rule paused or disappeared — does not resolve the episode: it stays `still_failing` (fail-closed).
+
+Run time = `(to − from) + transitionGrace + drainTimeout`, plus the recovery observation when one triggers; the extra deadline is printed when it starts. A requested window with a subsecond part is rounded up to the next whole second by extending `to`, so the plan never reads a window like `9m59.99445781s`.
