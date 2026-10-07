@@ -11,6 +11,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -19,7 +20,9 @@ import (
 	chippb "github.com/smartcontractkit/chainlink-common/pkg/chipingress/pb"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
@@ -164,9 +167,12 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch) (*chippb.PublishResponse, error) {
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
-		return &chippb.PublishResponse{}, nil
+		// Nothing will carry these events. Reporting an empty success here
+		// would let the caller's durable store delete them undelivered.
+		return nil, status.Error(codes.Unavailable, "no subscribers registered")
 	}
 
+	var forwarded atomic.Bool
 	var group errgroup.Group
 	group.SetLimit(forwardParallel)
 	for _, sub := range snapshot {
@@ -177,13 +183,33 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 			_, err := sub.client.PublishBatch(forwardCtx, batch)
 			if err != nil {
 				framework.L.Error().Msgf("chip router failed to forward batch to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
+			} else {
+				forwarded.Store(true)
 			}
 			framework.L.Debug().Msgf("chip router forwarded batch to subscriber id=%s", sub.id)
 			return nil
 		})
 	}
 	_ = group.Wait()
-	return &chippb.PublishResponse{}, nil
+
+	// PublishBatch callers (the node-side batch client driving the durable
+	// emitter) require one result per event to resolve delivery: an empty
+	// results array reads as RESULTS_MISMATCH and retransmits the whole
+	// stream forever. A batch the router handed to at least one subscriber
+	// counts as accepted for every event; a batch no subscriber accepted is
+	// reported failed per event so the caller retains and retries.
+	results := make([]*chippb.PublishResult, 0, len(batch.GetEvents()))
+	for _, ev := range batch.GetEvents() {
+		result := &chippb.PublishResult{EventId: ev.GetId()}
+		if !forwarded.Load() {
+			result.Error = &chippb.PublishError{
+				ErrorCode: chippb.PublishErrorCode_PUBLISH_ERROR_CODE_UNKNOWN,
+				Reason:    "chip router could not forward the batch to any subscriber",
+			}
+		}
+		results = append(results, result)
+	}
+	return &chippb.PublishResponse{Results: results}, nil
 }
 
 func (r *router) handleHealth(w http.ResponseWriter, req *http.Request) {
