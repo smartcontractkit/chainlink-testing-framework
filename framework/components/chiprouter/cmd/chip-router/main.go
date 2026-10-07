@@ -19,7 +19,9 @@ import (
 	chippb "github.com/smartcontractkit/chainlink-common/pkg/chipingress/pb"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
 )
@@ -164,8 +166,17 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch) (*chippb.PublishResponse, error) {
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
-		return &chippb.PublishResponse{}, nil
+		// Acking events nothing carried would let a durable store delete them undelivered.
+		return nil, status.Error(codes.Unavailable, "no subscribers registered")
 	}
+
+	// anyForwarded: at least one subscriber's RPC succeeded. detail: merged
+	// per-event results — an event is rejected only if every detail-providing
+	// subscriber rejected it; a subscriber accepting without per-event detail
+	// counts as accepting the whole batch.
+	var mu sync.Mutex
+	anyForwarded := false
+	var detail []*chippb.PublishResult
 
 	var group errgroup.Group
 	group.SetLimit(forwardParallel)
@@ -174,16 +185,60 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 			framework.L.Debug().Msgf("chip router forwarding batch to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
 			forwardCtx, cancel := context.WithTimeout(ctx, forwardTimeout)
 			defer cancel()
-			_, err := sub.client.PublishBatch(forwardCtx, batch)
+			resp, err := sub.client.PublishBatch(forwardCtx, batch)
 			if err != nil {
 				framework.L.Error().Msgf("chip router failed to forward batch to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
+				return nil
 			}
 			framework.L.Debug().Msgf("chip router forwarded batch to subscriber id=%s", sub.id)
+			mu.Lock()
+			defer mu.Unlock()
+			anyForwarded = true
+			if results := resp.GetResults(); len(results) > 0 {
+				if detail == nil {
+					detail = results
+					return nil
+				}
+				// An accepting result overrides a rejection for the same event.
+				for i := range detail {
+					if i >= len(results) {
+						break
+					}
+					if detail[i].GetError() != nil && results[i].GetError() == nil {
+						detail[i] = results[i]
+					}
+				}
+			}
 			return nil
 		})
 	}
 	_ = group.Wait()
-	return &chippb.PublishResponse{}, nil
+
+	// No subscriber accepted the batch: fail the RPC so every caller mode
+	// retains and retries.
+	if !anyForwarded {
+		return nil, status.Error(codes.Unavailable, fmt.Sprintf("all %d subscribers failed to accept the batch", len(snapshot)))
+	}
+
+	results := make([]*chippb.PublishResult, 0, len(batch.GetEvents()))
+	for i, ev := range batch.GetEvents() {
+		result := &chippb.PublishResult{EventId: ev.GetId()}
+		if i < len(detail) && detail[i].GetError() != nil {
+			result.Error = detail[i].GetError()
+		}
+		results = append(results, result)
+	}
+
+	// Transactional callers resolve the whole batch from the RPC outcome
+	// alone, so any unaccepted event must fail the RPC (all-or-nothing).
+	if batch.GetOptions().GetTransactionEnabled() {
+		for _, result := range results {
+			if result.Error != nil {
+				return nil, status.Error(codes.Unavailable, "not all events were accepted by a subscriber")
+			}
+		}
+	}
+	return &chippb.PublishResponse{Results: results}, nil
 }
 
 func (r *router) handleHealth(w http.ResponseWriter, req *http.Request) {
