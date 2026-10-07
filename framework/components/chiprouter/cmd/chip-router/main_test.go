@@ -13,9 +13,10 @@ import (
 )
 
 type stubPublishClient struct {
-	mu      sync.Mutex
-	batches int
-	err     error
+	mu       sync.Mutex
+	batches  int
+	err      error
+	response *chippb.PublishResponse
 }
 
 func (s *stubPublishClient) Publish(context.Context, *cepb.CloudEvent, ...grpc.CallOption) (*chippb.PublishResponse, error) {
@@ -26,7 +27,13 @@ func (s *stubPublishClient) PublishBatch(context.Context, *chippb.CloudEventBatc
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.batches++
-	return &chippb.PublishResponse{}, s.err
+	if s.err != nil {
+		return nil, s.err
+	}
+	if s.response != nil {
+		return s.response, nil
+	}
+	return &chippb.PublishResponse{}, nil
 }
 
 func (s *stubPublishClient) batchCount() int {
@@ -77,9 +84,36 @@ func TestPublishBatchNoSubscribersIsUnavailable(t *testing.T) {
 	}
 }
 
-func TestPublishBatchAllForwardsFailedReportsPerEventErrors(t *testing.T) {
+func TestPublishBatchAllForwardsFailedIsUnavailable(t *testing.T) {
 	r := &router{subscribers: map[string]*subscriber{
 		"sink": {id: "sink", client: &stubPublishClient{err: context.DeadlineExceeded}},
+	}}
+
+	// A nil RPC error with per-event errors would still acknowledge the whole
+	// batch for transactional callers (they resolve delivery from the RPC
+	// outcome alone), so the router must fail the RPC instead.
+	_, err := r.PublishBatch(t.Context(), batchOf("e1", "e2"))
+	if err == nil {
+		t.Fatal("want error when every forward fails, got nil")
+	}
+	if status.Code(err) != codes.Unavailable {
+		t.Errorf("want Unavailable, got %v", status.Code(err))
+	}
+}
+
+func TestPublishBatchAggregatesDownstreamRejections(t *testing.T) {
+	// One subscriber rejects e2 per-event (nil RPC error); the router must
+	// pass that rejection through rather than acknowledging the whole batch.
+	r := &router{subscribers: map[string]*subscriber{
+		"sink": {id: "sink", client: &stubPublishClient{response: &chippb.PublishResponse{
+			Results: []*chippb.PublishResult{
+				{EventId: "e1"},
+				{EventId: "e2", Error: &chippb.PublishError{
+					ErrorCode: chippb.PublishErrorCode_PUBLISH_ERROR_CODE_VALIDATION_FAILED,
+					Reason:    "invalid event",
+				}},
+			},
+		}}},
 	}}
 
 	resp, err := r.PublishBatch(t.Context(), batchOf("e1", "e2"))
@@ -89,9 +123,35 @@ func TestPublishBatchAllForwardsFailedReportsPerEventErrors(t *testing.T) {
 	if len(resp.Results) != 2 {
 		t.Fatalf("want 2 results, got %d", len(resp.Results))
 	}
-	for i, res := range resp.Results {
-		if res.Error == nil {
-			t.Errorf("results[%d].Error = nil, want a forward-failure error", i)
-		}
+	if resp.Results[0].Error != nil {
+		t.Errorf("results[0].Error = %v, want nil (accepted)", resp.Results[0].Error)
+	}
+	if resp.Results[1].Error == nil {
+		t.Error("results[1].Error = nil, want the downstream rejection passed through")
+	}
+}
+
+func TestPublishBatchAnAcceptingSubscriberOverridesADetaillessRejection(t *testing.T) {
+	// Two detail-providing subscribers disagree: the event is rejected by one
+	// and accepted by the other — acceptance wins.
+	r := &router{subscribers: map[string]*subscriber{
+		"a": {id: "a", client: &stubPublishClient{response: &chippb.PublishResponse{
+			Results: []*chippb.PublishResult{
+				{EventId: "e1", Error: &chippb.PublishError{Reason: "rejected by a"}},
+			},
+		}}},
+		"b": {id: "b", client: &stubPublishClient{response: &chippb.PublishResponse{
+			Results: []*chippb.PublishResult{
+				{EventId: "e1"},
+			},
+		}}},
+	}}
+
+	resp, err := r.PublishBatch(t.Context(), batchOf("e1"))
+	if err != nil {
+		t.Fatalf("PublishBatch: %v", err)
+	}
+	if len(resp.Results) != 1 || resp.Results[0].Error != nil {
+		t.Errorf("want e1 accepted, got results=%+v", resp.Results)
 	}
 }

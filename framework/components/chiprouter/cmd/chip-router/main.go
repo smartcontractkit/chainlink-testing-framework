@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -172,7 +171,19 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 		return nil, status.Error(codes.Unavailable, "no subscribers registered")
 	}
 
-	var forwarded atomic.Bool
+	// Aggregate the downstream outcomes so the per-event results reflect what
+	// actually happened to each event:
+	//   - anyAccepted: at least one subscriber's PublishBatch RPC succeeded.
+	//   - detail: merged per-event results from the subscribers that provide
+	//     them. An event is reported rejected only if every detail-providing
+	//     subscriber rejected it; subscribers that accept without per-event
+	//     detail (a nil-error response with an empty results array) count as
+	//     accepting the whole batch — the router trusts a subscriber's RPC
+	//     success at the forwarding boundary, the same as Publish does.
+	var mu sync.Mutex
+	anyAccepted := false
+	var detail []*chippb.PublishResult
+
 	var group errgroup.Group
 	group.SetLimit(forwardParallel)
 	for _, sub := range snapshot {
@@ -180,32 +191,50 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 			framework.L.Debug().Msgf("chip router forwarding batch to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
 			forwardCtx, cancel := context.WithTimeout(ctx, forwardTimeout)
 			defer cancel()
-			_, err := sub.client.PublishBatch(forwardCtx, batch)
+			resp, err := sub.client.PublishBatch(forwardCtx, batch)
 			if err != nil {
 				framework.L.Error().Msgf("chip router failed to forward batch to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
-			} else {
-				forwarded.Store(true)
+				return nil
 			}
 			framework.L.Debug().Msgf("chip router forwarded batch to subscriber id=%s", sub.id)
+			mu.Lock()
+			defer mu.Unlock()
+			anyAccepted = true
+			if results := resp.GetResults(); len(results) > 0 {
+				if detail == nil {
+					detail = results
+					return nil
+				}
+				// Merge: an accepting result overrides a rejecting one for the
+				// same event index; a rejection sticks only while no subscriber
+				// has accepted the event.
+				for i := range detail {
+					if i >= len(results) {
+						break
+					}
+					if detail[i].GetError() != nil && results[i].GetError() == nil {
+						detail[i] = results[i]
+					}
+				}
+			}
 			return nil
 		})
 	}
 	_ = group.Wait()
 
-	// PublishBatch callers (the node-side batch client driving the durable
-	// emitter) require one result per event to resolve delivery: an empty
-	// results array reads as RESULTS_MISMATCH and retransmits the whole
-	// stream forever. A batch the router handed to at least one subscriber
-	// counts as accepted for every event; a batch no subscriber accepted is
-	// reported failed per event so the caller retains and retries.
+	// A nil RPC error does not imply the batch was accepted: every forward
+	// can fail (or a transactional caller resolves the whole batch from the
+	// RPC outcome alone), so fail the RPC and let the caller retain and
+	// retry instead of acknowledging with per-event errors.
+	if !anyAccepted {
+		return nil, status.Error(codes.Unavailable, fmt.Sprintf("all %d subscribers failed to accept the batch", len(snapshot)))
+	}
+
 	results := make([]*chippb.PublishResult, 0, len(batch.GetEvents()))
-	for _, ev := range batch.GetEvents() {
+	for i, ev := range batch.GetEvents() {
 		result := &chippb.PublishResult{EventId: ev.GetId()}
-		if !forwarded.Load() {
-			result.Error = &chippb.PublishError{
-				ErrorCode: chippb.PublishErrorCode_PUBLISH_ERROR_CODE_UNKNOWN,
-				Reason:    "chip router could not forward the batch to any subscriber",
-			}
+		if i < len(detail) && detail[i].GetError() != nil {
+			result.Error = detail[i].GetError()
 		}
 		results = append(results, result)
 	}
