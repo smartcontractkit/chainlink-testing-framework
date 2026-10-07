@@ -166,20 +166,14 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch) (*chippb.PublishResponse, error) {
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
-		// Nothing will carry these events. Reporting an empty success here
-		// would let the caller's durable store delete them undelivered.
+		// Acking events nothing carried would let a durable store delete them undelivered.
 		return nil, status.Error(codes.Unavailable, "no subscribers registered")
 	}
 
-	// Aggregate the downstream outcomes so the per-event results reflect what
-	// actually happened to each event:
-	//   - anyAccepted: at least one subscriber's PublishBatch RPC succeeded.
-	//   - detail: merged per-event results from the subscribers that provide
-	//     them. An event is reported rejected only if every detail-providing
-	//     subscriber rejected it; subscribers that accept without per-event
-	//     detail (a nil-error response with an empty results array) count as
-	//     accepting the whole batch — the router trusts a subscriber's RPC
-	//     success at the forwarding boundary, the same as Publish does.
+	// anyAccepted: at least one subscriber's RPC succeeded. detail: merged
+	// per-event results — an event is rejected only if every detail-providing
+	// subscriber rejected it; a subscriber accepting without per-event detail
+	// counts as accepting the whole batch.
 	var mu sync.Mutex
 	anyAccepted := false
 	var detail []*chippb.PublishResult
@@ -205,9 +199,7 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 					detail = results
 					return nil
 				}
-				// Merge: an accepting result overrides a rejecting one for the
-				// same event index; a rejection sticks only while no subscriber
-				// has accepted the event.
+				// An accepting result overrides a rejection for the same event.
 				for i := range detail {
 					if i >= len(results) {
 						break
@@ -222,10 +214,8 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 	}
 	_ = group.Wait()
 
-	// A nil RPC error does not imply the batch was accepted: every forward
-	// can fail (or a transactional caller resolves the whole batch from the
-	// RPC outcome alone), so fail the RPC and let the caller retain and
-	// retry instead of acknowledging with per-event errors.
+	// Fail the RPC when nothing accepted: transactional callers resolve the
+	// whole batch from the RPC outcome alone.
 	if !anyAccepted {
 		return nil, status.Error(codes.Unavailable, fmt.Sprintf("all %d subscribers failed to accept the batch", len(snapshot)))
 	}

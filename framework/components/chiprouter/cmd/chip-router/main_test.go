@@ -89,9 +89,7 @@ func TestPublishBatchAllForwardsFailedIsUnavailable(t *testing.T) {
 		"sink": {id: "sink", client: &stubPublishClient{err: context.DeadlineExceeded}},
 	}}
 
-	// A nil RPC error with per-event errors would still acknowledge the whole
-	// batch for transactional callers (they resolve delivery from the RPC
-	// outcome alone), so the router must fail the RPC instead.
+	// Transactional callers resolve the whole batch from the RPC outcome alone.
 	_, err := r.PublishBatch(t.Context(), batchOf("e1", "e2"))
 	if err == nil {
 		t.Fatal("want error when every forward fails, got nil")
