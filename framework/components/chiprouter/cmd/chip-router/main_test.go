@@ -42,6 +42,8 @@ func (s *stubPublishClient) batchCount() int {
 	return s.batches
 }
 
+func ptr(b bool) *bool { return &b }
+
 func batchOf(ids ...string) *chippb.CloudEventBatch {
 	events := make([]*cepb.CloudEvent, 0, len(ids))
 	for _, id := range ids {
@@ -126,6 +128,75 @@ func TestPublishBatchAggregatesDownstreamRejections(t *testing.T) {
 	}
 	if resp.Results[1].Error == nil {
 		t.Error("results[1].Error = nil, want the downstream rejection passed through")
+	}
+}
+
+func TestPublishBatchTransactionalPartialRejectionFailsRPC(t *testing.T) {
+	// Transactional callers resolve the whole batch from the RPC outcome
+	// alone, so a partial rejection must fail the RPC, not ack everything.
+	r := &router{subscribers: map[string]*subscriber{
+		"sink": {id: "sink", client: &stubPublishClient{response: &chippb.PublishResponse{
+			Results: []*chippb.PublishResult{
+				{EventId: "e1"},
+				{EventId: "e2", Error: &chippb.PublishError{Reason: "rejected"}},
+			},
+		}}},
+	}}
+
+	batch := batchOf("e1", "e2")
+	batch.Options = &chippb.PublishOptions{TransactionEnabled: ptr(true)}
+	_, err := r.PublishBatch(t.Context(), batch)
+	if err == nil {
+		t.Fatal("want error for a partial rejection under transaction_enabled, got nil")
+	}
+	if status.Code(err) != codes.Unavailable {
+		t.Errorf("want Unavailable, got %v", status.Code(err))
+	}
+}
+
+func TestPublishBatchTransactionalAllRejectedByDownstreamFailsRPC(t *testing.T) {
+	// A nil downstream RPC error with every event rejected must NOT count as
+	// accepted: a transactional caller would otherwise delete them undelivered.
+	r := &router{subscribers: map[string]*subscriber{
+		"sink": {id: "sink", client: &stubPublishClient{response: &chippb.PublishResponse{
+			Results: []*chippb.PublishResult{
+				{EventId: "e1", Error: &chippb.PublishError{Reason: "rejected"}},
+				{EventId: "e2", Error: &chippb.PublishError{Reason: "rejected"}},
+			},
+		}}},
+	}}
+
+	batch := batchOf("e1", "e2")
+	batch.Options = &chippb.PublishOptions{TransactionEnabled: ptr(true)}
+	_, err := r.PublishBatch(t.Context(), batch)
+	if err == nil {
+		t.Fatal("want error when the subscriber rejected every event, got nil")
+	}
+	if status.Code(err) != codes.Unavailable {
+		t.Errorf("want Unavailable, got %v", status.Code(err))
+	}
+}
+
+func TestPublishBatchTransactionalAllAcceptedPasses(t *testing.T) {
+	r := &router{subscribers: map[string]*subscriber{
+		"sink": {id: "sink", client: &stubPublishClient{response: &chippb.PublishResponse{
+			Results: []*chippb.PublishResult{
+				{EventId: "e1"},
+				{EventId: "e2"},
+			},
+		}}},
+	}}
+
+	batch := batchOf("e1", "e2")
+	batch.Options = &chippb.PublishOptions{TransactionEnabled: ptr(true)}
+	resp, err := r.PublishBatch(t.Context(), batch)
+	if err != nil {
+		t.Fatalf("PublishBatch: %v", err)
+	}
+	for i, res := range resp.Results {
+		if res.Error != nil {
+			t.Errorf("results[%d].Error = %v, want nil", i, res.Error)
+		}
 	}
 }
 

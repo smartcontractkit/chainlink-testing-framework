@@ -170,12 +170,12 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 		return nil, status.Error(codes.Unavailable, "no subscribers registered")
 	}
 
-	// anyAccepted: at least one subscriber's RPC succeeded. detail: merged
+	// anyForwarded: at least one subscriber's RPC succeeded. detail: merged
 	// per-event results — an event is rejected only if every detail-providing
 	// subscriber rejected it; a subscriber accepting without per-event detail
 	// counts as accepting the whole batch.
 	var mu sync.Mutex
-	anyAccepted := false
+	anyForwarded := false
 	var detail []*chippb.PublishResult
 
 	var group errgroup.Group
@@ -193,7 +193,7 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 			framework.L.Debug().Msgf("chip router forwarded batch to subscriber id=%s", sub.id)
 			mu.Lock()
 			defer mu.Unlock()
-			anyAccepted = true
+			anyForwarded = true
 			if results := resp.GetResults(); len(results) > 0 {
 				if detail == nil {
 					detail = results
@@ -214,9 +214,9 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 	}
 	_ = group.Wait()
 
-	// Fail the RPC when nothing accepted: transactional callers resolve the
-	// whole batch from the RPC outcome alone.
-	if !anyAccepted {
+	// No subscriber accepted the batch: fail the RPC so every caller mode
+	// retains and retries.
+	if !anyForwarded {
 		return nil, status.Error(codes.Unavailable, fmt.Sprintf("all %d subscribers failed to accept the batch", len(snapshot)))
 	}
 
@@ -227,6 +227,16 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 			result.Error = detail[i].GetError()
 		}
 		results = append(results, result)
+	}
+
+	// Transactional callers resolve the whole batch from the RPC outcome
+	// alone, so any unaccepted event must fail the RPC (all-or-nothing).
+	if batch.GetOptions().GetTransactionEnabled() {
+		for _, result := range results {
+			if result.Error != nil {
+				return nil, status.Error(codes.Unavailable, "not all events were accepted by a subscriber")
+			}
+		}
 	}
 	return &chippb.PublishResponse{Results: results}, nil
 }
