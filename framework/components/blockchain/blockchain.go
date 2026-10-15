@@ -9,6 +9,7 @@ import (
 	"github.com/testcontainers/testcontainers-go"
 
 	"github.com/smartcontractkit/chainlink-testing-framework/framework"
+	"github.com/smartcontractkit/chainlink-testing-framework/framework/pods"
 )
 
 // Blockchain node type
@@ -114,6 +115,12 @@ func NewBlockchainNetwork(in *Input) (*Output, error) {
 
 // NewBlockchainNetwork this is an abstraction that can spin up various blockchain network simulators
 func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
+	if !pods.K8sEnabled() {
+		if err := framework.DefaultNetwork(nil); err != nil {
+			return nil, fmt.Errorf("failed to ensure default docker network %q: %w", framework.DefaultNetworkName, err)
+		}
+	}
+
 	var out *Output
 	var err error
 	switch in.Type {
