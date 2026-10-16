@@ -138,11 +138,25 @@ func run() error {
 	}
 }
 
+// Publish matches the write-service's single-event contract (atlas
+// chip-ingress internal/server): the RPC is all-or-nothing — it fails unless
+// at least one subscriber accepted the event, and returns exactly one
+// PublishResult on success.
 func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.PublishResponse, error) {
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
-		return &chippb.PublishResponse{}, nil
+		// Acking an event nothing carried would let a durable store delete it undelivered.
+		return nil, status.Error(codes.Internal, "no subscribers registered")
 	}
+
+	// anyForwarded: at least one subscriber's RPC succeeded. accepted: some
+	// subscriber accepted the event (an accepted result or a detail-less
+	// success) — sticky, so a later rejection cannot unset it. rejection:
+	// recorded only while no subscriber has accepted.
+	var mu sync.Mutex
+	anyForwarded := false
+	accepted := false
+	var rejection *chippb.PublishError
 
 	var group errgroup.Group
 	group.SetLimit(forwardParallel)
@@ -151,32 +165,58 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 			framework.L.Debug().Msgf("chip router forwarding event to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
 			forwardCtx, cancel := context.WithTimeout(ctx, forwardTimeout)
 			defer cancel()
-			_, err := sub.client.Publish(forwardCtx, event)
+			resp, err := sub.client.Publish(forwardCtx, event)
 			if err != nil {
 				framework.L.Error().Msgf("chip router failed to forward event to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
+				return nil
 			}
 			framework.L.Debug().Msgf("chip router forwarded event to subscriber id=%s", sub.id)
+			mu.Lock()
+			defer mu.Unlock()
+			anyForwarded = true
+			if results := resp.GetResults(); len(results) > 0 && results[0].GetError() != nil {
+				if !accepted && rejection == nil {
+					rejection = results[0].GetError()
+				}
+				return nil
+			}
+			accepted = true
 			return nil
 		})
 	}
 	_ = group.Wait()
-	return &chippb.PublishResponse{}, nil
+
+	if !anyForwarded {
+		return nil, status.Error(codes.Internal, fmt.Sprintf("all %d subscribers failed to accept the event", len(snapshot)))
+	}
+	if !accepted {
+		return nil, status.Error(codes.Internal, "event was not accepted by any subscriber")
+	}
+	return &chippb.PublishResponse{Results: []*chippb.PublishResult{{EventId: event.GetId()}}}, nil
 }
 
 func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch) (*chippb.PublishResponse, error) {
+	// Matches the write-service: an empty batch is a no-op success and never
+	// reaches the subscribers.
+	if len(batch.GetEvents()) == 0 {
+		return &chippb.PublishResponse{Results: []*chippb.PublishResult{}}, nil
+	}
+
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
 		// Acking events nothing carried would let a durable store delete them undelivered.
-		return nil, status.Error(codes.Unavailable, "no subscribers registered")
+		return nil, status.Error(codes.Internal, "no subscribers registered")
 	}
 
-	// anyForwarded: at least one subscriber's RPC succeeded. detail: merged
-	// per-event results — an event is rejected only if every detail-providing
-	// subscriber rejected it; a subscriber accepting without per-event detail
-	// counts as accepting the whole batch.
+	// anyForwarded: at least one subscriber's RPC succeeded. anyBatchAccepted:
+	// a subscriber accepted the whole batch without per-event detail. detail:
+	// merged per-event results, index-aligned with the batch — an acceptance
+	// always wins over a rejection, and a rejection only fills an empty slot,
+	// so the outcome does not depend on subscriber completion order.
 	var mu sync.Mutex
 	anyForwarded := false
-	var detail []*chippb.PublishResult
+	anyBatchAccepted := false
+	detail := make([]*chippb.PublishResult, len(batch.GetEvents()))
 
 	var group errgroup.Group
 	group.SetLimit(forwardParallel)
@@ -194,19 +234,20 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 			mu.Lock()
 			defer mu.Unlock()
 			anyForwarded = true
-			if results := resp.GetResults(); len(results) > 0 {
-				if detail == nil {
-					detail = results
-					return nil
+			results := resp.GetResults()
+			if len(results) == 0 {
+				// A detail-less success accepts the whole batch.
+				anyBatchAccepted = true
+				return nil
+			}
+			for i, res := range results {
+				if i >= len(detail) {
+					break
 				}
-				// An accepting result overrides a rejection for the same event.
-				for i := range detail {
-					if i >= len(results) {
-						break
-					}
-					if detail[i].GetError() != nil && results[i].GetError() == nil {
-						detail[i] = results[i]
-					}
+				if res.GetError() == nil {
+					detail[i] = res
+				} else if detail[i] == nil {
+					detail[i] = res
 				}
 			}
 			return nil
@@ -217,26 +258,24 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 	// No subscriber accepted the batch: fail the RPC so every caller mode
 	// retains and retries.
 	if !anyForwarded {
-		return nil, status.Error(codes.Unavailable, fmt.Sprintf("all %d subscribers failed to accept the batch", len(snapshot)))
+		return nil, status.Error(codes.Internal, fmt.Sprintf("all %d subscribers failed to accept the batch", len(snapshot)))
 	}
 
+	anyRejected := false
 	results := make([]*chippb.PublishResult, 0, len(batch.GetEvents()))
 	for i, ev := range batch.GetEvents() {
 		result := &chippb.PublishResult{EventId: ev.GetId()}
-		if i < len(detail) && detail[i].GetError() != nil {
+		if !anyBatchAccepted && detail[i] != nil && detail[i].GetError() != nil {
 			result.Error = detail[i].GetError()
+			anyRejected = true
 		}
 		results = append(results, result)
 	}
 
 	// Transactional callers resolve the whole batch from the RPC outcome
 	// alone, so any unaccepted event must fail the RPC (all-or-nothing).
-	if batch.GetOptions().GetTransactionEnabled() {
-		for _, result := range results {
-			if result.Error != nil {
-				return nil, status.Error(codes.Unavailable, "not all events were accepted by a subscriber")
-			}
-		}
+	if batch.GetOptions().GetTransactionEnabled() && anyRejected {
+		return nil, status.Error(codes.Internal, "not all events were accepted by a subscriber")
 	}
 	return &chippb.PublishResponse{Results: results}, nil
 }
