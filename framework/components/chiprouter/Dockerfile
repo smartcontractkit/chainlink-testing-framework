@@ -2,10 +2,16 @@ FROM golang:1.26.6 AS builder
 
 WORKDIR /src
 
-COPY go.mod go.sum ./
-RUN go mod download
-
 COPY . .
+
+# The module's go.mod replaces the parent framework module with ../../ (a
+# monorepo-dev convenience) which cannot resolve inside this build's
+# module-dir context, and the published framework does not compile against
+# this module's moby pins. The router binary no longer imports framework
+# (only the deploy-side library does, and it is not compiled into the
+# image), so drop the replace and fetch the published framework module from
+# the proxy for module-graph completeness only.
+RUN sed -i '/^replace /d' go.mod && go mod tidy && go mod download
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
