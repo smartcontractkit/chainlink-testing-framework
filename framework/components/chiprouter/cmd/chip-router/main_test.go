@@ -374,3 +374,15 @@ func TestPublishDetaillessAcceptanceOverridesARejection(t *testing.T) {
 		t.Errorf("want e1 accepted, got results=%+v", resp.Results)
 	}
 }
+
+func TestPingMatchesWriteService(t *testing.T) {
+	r := &router{subscribers: map[string]*subscriber{}}
+
+	resp, err := r.Ping(context.Background(), &chippb.EmptyRequest{})
+	if err != nil {
+		t.Fatalf("Ping: %v", err)
+	}
+	if resp.GetMessage() != "pong" {
+		t.Errorf("Ping message = %q, want %q", resp.GetMessage(), "pong")
+	}
+}

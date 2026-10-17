@@ -138,6 +138,12 @@ func run() error {
 	}
 }
 
+// Ping matches the write-service's Ping: a static health response that never
+// reaches the subscribers.
+func (r *router) Ping(context.Context, *chippb.EmptyRequest) (*chippb.PingResponse, error) {
+	return &chippb.PingResponse{Message: "pong"}, nil
+}
+
 // Publish matches the write-service's single-event contract (atlas
 // chip-ingress internal/server): the RPC is all-or-nothing — it fails unless
 // at least one subscriber accepted the event, and returns exactly one
