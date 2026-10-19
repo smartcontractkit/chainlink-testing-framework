@@ -30,7 +30,8 @@ const (
 )
 
 const (
-	DEFAULT_STACK_NAME = "cre-storage"
+	// not a prefix of other stacks' names, e.g. cre-storage-service's standalone cre-storage-local, which Stop would remove
+	DEFAULT_STACK_NAME = "ctf-cre-storage"
 
 	userServiceName   = "storage-user-service"
 	nodeServiceName   = "storage-node-service"
@@ -107,14 +108,18 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Minute)
 	defer cancel()
 
-	framework.L.Info().Str("Compose file", composeFile).Msgf("Starting CRE Storage Service stack %s", identifier)
-	if err := stack.WithEnv(env(in, os.Environ(), hostPorts)).Up(ctx, compose.Wait(true)); err != nil {
-		// without ctx's deadline, which may be what failed Up
+	// down removes the stack after a failed start, without ctx's deadline or cancellation, which may be what failed it
+	down := func() {
 		downCtx, downCancel := context.WithTimeout(context.WithoutCancel(ctx), time.Minute)
 		defer downCancel()
 		if downErr := stack.Down(downCtx, compose.RemoveOrphans(true), compose.RemoveVolumes(true)); downErr != nil {
 			framework.L.Warn().Err(downErr).Msgf("failed to remove CRE Storage Service stack %s", identifier)
 		}
+	}
+
+	framework.L.Info().Str("Compose file", composeFile).Msgf("Starting CRE Storage Service stack %s", identifier)
+	if err := stack.WithEnv(env(in, os.Environ(), hostPorts)).Up(ctx, compose.Wait(true)); err != nil {
+		down()
 		return nil, errors.Wrap(err, "failed to start stack for CRE Storage Service")
 	}
 
@@ -136,14 +141,17 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 
 	userExternal, err := external(userServiceName, UserServicePort)
 	if err != nil {
+		down()
 		return nil, err
 	}
 	nodeExternal, err := external(nodeServiceName, NodeServicePort)
 	if err != nil {
+		down()
 		return nil, err
 	}
 	storeExternal, err := external(artifactStoreName, ArtifactStorePort)
 	if err != nil {
+		down()
 		return nil, err
 	}
 
