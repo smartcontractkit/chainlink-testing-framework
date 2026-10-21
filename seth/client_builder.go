@@ -375,6 +375,24 @@ func (c *ClientBuilder) WithHooks(hooks Hooks) *ClientBuilder {
 	return c
 }
 
+// WithInsecureSkipVerify disables TLS certificate verification for RPC connections.
+// Use only in testing environments with self-signed certificates, never with production RPC endpoints.
+// It sets `insecure_skip_verify` of the selected network, SETH_INSECURE_SKIP_VERIFY=true disables verification for all networks.
+// Default value is false.
+func (c *ClientBuilder) WithInsecureSkipVerify(insecureSkipVerify bool) *ClientBuilder {
+	if !c.checkIfNetworkIsSet() {
+		return c
+	}
+	c.config.Network.InsecureSkipVerify = insecureSkipVerify
+	// defensive programming
+	if len(c.config.Networks) == 0 {
+		c.config.Networks = append(c.config.Networks, c.config.Network)
+	} else if net := c.config.findNetworkByName(c.config.Network.Name); net != nil {
+		net.InsecureSkipVerify = insecureSkipVerify
+	}
+	return c
+}
+
 // WithReadOnlyMode sets the client to read-only mode. It removes all private keys from all Networks and disables nonce protection and ephemeral addresses.
 func (c *ClientBuilder) WithReadOnlyMode() *ClientBuilder {
 	c.readonly = true

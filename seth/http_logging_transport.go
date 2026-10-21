@@ -54,10 +54,22 @@ func (t *LoggingTransport) RoundTrip(req *http.Request) (*http.Response, error) 
 // NewLoggingTransport creates a new transport for RPC HTTP connections. TLS certificates are verified
 // unless InsecureSkipVerifyEnvVar is set to "true". When SETH_LOG_LEVEL is "trace" requests and responses are logged.
 func NewLoggingTransport() http.RoundTripper {
-	transport := http.DefaultTransport.(*http.Transport).Clone()
-	if strings.EqualFold(os.Getenv(InsecureSkipVerifyEnvVar), "true") {
+	return newRPCTransport(false)
+}
+
+// newRPCTransport creates a transport for RPC HTTP connections. TLS certificate verification is disabled
+// when insecureSkipVerify is true or InsecureSkipVerifyEnvVar is set to "true".
+func newRPCTransport(insecureSkipVerify bool) http.RoundTripper {
+	var transport *http.Transport
+	if defaultTransport, ok := http.DefaultTransport.(*http.Transport); ok {
+		transport = defaultTransport.Clone()
+	} else {
+		// http.DefaultTransport was replaced with a custom RoundTripper, fall back to a transport with sane defaults
+		transport = &http.Transport{Proxy: http.ProxyFromEnvironment}
+	}
+
+	if insecureSkipVerify || strings.EqualFold(os.Getenv(InsecureSkipVerifyEnvVar), "true") {
 		L.Warn().
-			Str("EnvVar", InsecureSkipVerifyEnvVar).
 			Msg("TLS certificate verification is disabled for RPC connections. Do not use this setting outside of testing environments")
 		transport.TLSClientConfig = &tls.Config{
 			//nolint:gosec // explicit opt-in for testing environments with self-signed certificates

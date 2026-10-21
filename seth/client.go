@@ -223,7 +223,7 @@ func NewClientRaw(
 			cfg.MustFirstNetworkURL(),
 			rpc.WithHeaders(cfg.RPCHeaders),
 			rpc.WithHTTPClient(&http.Client{
-				Transport: NewLoggingTransport(),
+				Transport: newRPCTransport(cfg.Network.InsecureSkipVerify),
 			}),
 		)
 		if err != nil {

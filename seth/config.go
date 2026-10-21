@@ -114,6 +114,8 @@ type Network struct {
 	GasPriceEstimationBlocks       uint64    `toml:"gas_price_estimation_blocks"`
 	GasPriceEstimationTxPriority   string    `toml:"gas_price_estimation_tx_priority"`
 	GasPriceEstimationAttemptCount uint      `toml:"gas_price_estimation_attempt_count"`
+	// InsecureSkipVerify disables TLS certificate verification for RPC connections. Use only in testing environments.
+	InsecureSkipVerify bool `toml:"insecure_skip_verify"`
 }
 
 // DefaultClient returns a Client with reasonable default config with the specified RPC URL and private keys. You should pass at least 1 private key.
