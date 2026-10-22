@@ -411,6 +411,7 @@ export SETH_LOG_LEVEL=info # global logger level
 export SETH_CONFIG_PATH=seth.toml # path to the toml config
 export SETH_NETWORK=Geth # selected network
 export SETH_ROOT_PRIVATE_KEY=ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 # root private key
+export SETH_INSECURE_SKIP_VERIFY=false # set to true to skip TLS certificate verification for RPC connections (testing only!)
 
 alias seth="SETH_CONFIG_PATH=seth.toml go run cmd/seth/seth.go" # useful alias for CLI
 ```
@@ -973,6 +974,16 @@ You need to pass a file with a list of transaction hashes to trace. The file sho
 
 ### RPC Traffic logging
 With `SETH_LOG_LEVEL=trace` we will also log to console all traffic between Seth and RPC node. This can be useful for debugging as you can see all the requests and responses.
+
+### TLS certificate verification
+Seth verifies TLS certificates of HTTPS RPC endpoints. If you need to connect to an endpoint with a self-signed certificate in a testing environment, you can disable verification for a single network in the TOML config:
+```toml
+[[networks]]
+name = "Anvil"
+urls_secret = ["https://localhost:8545"]
+insecure_skip_verify = true
+```
+or with `WithInsecureSkipVerify(true)` when building the client with `ClientBuilder`. Setting `SETH_INSECURE_SKIP_VERIFY=true` disables verification for all networks. Never use any of these with production RPC endpoints, as it allows anyone intercepting the traffic to return fake chain state.
 
 
 ### Read-only mode
