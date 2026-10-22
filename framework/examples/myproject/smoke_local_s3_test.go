@@ -16,6 +16,7 @@ type Config struct {
 }
 
 func TestLocalS3(t *testing.T) {
+	t.Skip(`MinIO images are no longer publicly available (quay.io/minio/minio denies anonymous pulls), so this fails with "unauthorized"; disabled until we find a replacement image`)
 	in, err := framework.Load[Config](t)
 	require.NoError(t, err)
 
