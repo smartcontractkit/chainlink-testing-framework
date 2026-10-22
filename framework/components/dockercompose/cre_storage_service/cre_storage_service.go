@@ -39,7 +39,8 @@ const (
 )
 
 type Input struct {
-	// ComposeFile is local-stack/compose.yaml from cre-storage-service: a local path, or a URL readable without credentials.
+	// ComposeFile is local-stack/compose.yaml from cre-storage-service: a local path as file://<path>, or an http(s)://
+	// URL readable without credentials.
 	ComposeFile string `toml:"compose_file"`
 	// Network the stack joins; it must exist. Defaults to framework.DefaultNetworkName.
 	Network string `toml:"network"`
@@ -86,7 +87,7 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 		return nil, err
 	}
 
-	composeFile, err := utils.ComposeFilePath(in.ComposeFile, DEFAULT_STACK_NAME)
+	composeFile, err := composeFilePath(in.ComposeFile)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get compose file path")
 	}
@@ -167,6 +168,17 @@ func NewWithContext(ctx context.Context, in *Input) (*Output, error) {
 // Stop removes every CRE Storage Service stack started by New, with its volumes.
 func Stop() error {
 	return framework.RemoveTestStack(DEFAULT_STACK_NAME)
+}
+
+// composeFilePath returns a local path to the compose file, downloading it if it's a URL.
+func composeFilePath(uri string) (string, error) {
+	if path, ok := strings.CutPrefix(uri, "file://"); ok {
+		return path, nil
+	}
+	if strings.HasPrefix(uri, "http://") || strings.HasPrefix(uri, "https://") {
+		return utils.ComposeFilePath(uri, DEFAULT_STACK_NAME)
+	}
+	return "", fmt.Errorf("compose_file must start with 'file://', 'http://' or 'https://', but '%s' was found", uri)
 }
 
 func validate(in *Input) error {

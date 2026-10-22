@@ -8,8 +8,8 @@ The stack reads the nodes it authorizes from a CapabilitiesRegistry, so it needs
 
 ```toml
 [cre_storage_service]
-  # local path, or a URL readable without credentials
-  compose_file = "../cre-storage-service/local-stack/compose.yaml"
+  # file://<local path>, or an http(s):// URL readable without credentials
+  compose_file = "file://../cre-storage-service/local-stack/compose.yaml"
   # existing Docker network to join, defaults to "ctf"
   # network = "ctf"
   registry_rpc_url = "http://anvil-1337:8545"

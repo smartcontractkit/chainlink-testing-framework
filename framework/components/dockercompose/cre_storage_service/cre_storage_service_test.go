@@ -32,9 +32,22 @@ func TestEnv(t *testing.T) {
 }
 
 func TestNewRejectsIncompleteInput(t *testing.T) {
-	_, err := New(&Input{ComposeFile: "compose.yaml", RegistryChainSelector: 1})
+	_, err := New(&Input{ComposeFile: "file://compose.yaml", RegistryChainSelector: 1})
 	require.ErrorContains(t, err, "missing registry_rpc_url, registry_address, don_family")
 
 	_, err = New(nil)
 	require.ErrorContains(t, err, "input is nil")
+}
+
+func TestComposeFilePath(t *testing.T) {
+	path, err := composeFilePath("file://../cre-storage-service/local-stack/compose.yaml")
+	require.NoError(t, err)
+	require.Equal(t, "../cre-storage-service/local-stack/compose.yaml", path)
+
+	path, err = composeFilePath("file:///abs/compose.yaml")
+	require.NoError(t, err)
+	require.Equal(t, "/abs/compose.yaml", path)
+
+	_, err = composeFilePath("../cre-storage-service/local-stack/compose.yaml")
+	require.ErrorContains(t, err, "must start with 'file://', 'http://' or 'https://'")
 }
