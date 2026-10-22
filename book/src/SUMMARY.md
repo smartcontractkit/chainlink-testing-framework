@@ -50,6 +50,7 @@
     - [S3](framework/components/storage/s3.md)
   - [Chip Router](framework/components/chiprouter/chip_router.md)
   - [Chip Ingress Set](framework/components/chipingresset/chip_ingress.md)
+  - [CRE Storage Service](framework/components/crestorageservice/cre_storage_service.md)
 - [Troubleshooting](framework/components/troubleshooting.md)
 - [Mono Repository Tooling](./monorepo-tools.md)
 - [Libraries](./libraries.md)
