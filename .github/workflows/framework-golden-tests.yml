@@ -60,10 +60,12 @@ jobs:
             config: chaos.toml
             count: 1
             timeout: 10m
-          - name: TestLocalS3
-            config: local_s3.toml
-            count: 1
-            timeout: 10m
+          # MinIO images are no longer publicly available (quay.io/minio/minio denies anonymous pulls), so this fails
+          # with "unauthorized"; disabled until we find a replacement image.
+          # - name: TestLocalS3
+          #   config: local_s3.toml
+          #   count: 1
+          #   timeout: 10m
     name: ${{ matrix.test.name }}
     steps:
       - name: Checkout repo
