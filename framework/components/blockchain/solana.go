@@ -135,6 +135,7 @@ func newSolana(ctx context.Context, in *Input) (*Output, error) {
 				Target:   "/programs",
 				ReadOnly: false,
 			})
+			h.SecurityOpt = append(h.SecurityOpt, "seccomp=unconfined")
 		},
 		Files: []testcontainers.ContainerFile{
 			{
