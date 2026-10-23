@@ -215,10 +215,23 @@ func TestPublishBatchDetaillessAcceptanceOverridesRejections(t *testing.T) {
 	}
 }
 
-func TestPublishBatchMergeExtendsBeyondFirstSubscriberDetail(t *testing.T) {
-	// A returns detail for only one of two events (contract violation); B
-	// returns full detail rejecting e2. e2's rejection must survive: detail
-	// is sized to the batch, not to the first subscriber's response.
+func TestPublishBatchResultsMismatchFromOnlySubscriberFailsWithInternal(t *testing.T) {
+	// The write-service returns one result per event, so a short list cannot
+	// be aligned with the batch: it counts as a failed forward, not as an
+	// acknowledgement of the events it does not cover.
+	r := &router{subscribers: map[string]*subscriber{
+		"sink": {id: "sink", client: &stubPublishClient{response: &chippb.PublishResponse{
+			Results: []*chippb.PublishResult{{EventId: "e1"}},
+		}}},
+	}}
+
+	_, err := r.PublishBatch(t.Context(), batchOf("e1", "e2"))
+	requireCode(t, err, codes.Internal)
+}
+
+func TestPublishBatchResultsMismatchIsIgnoredInFavorOfFullDetail(t *testing.T) {
+	// A returns a short list (contract violation) and is dropped; B returns
+	// full detail rejecting e2, which must be the outcome.
 	r := &router{subscribers: map[string]*subscriber{
 		"a": {id: "a", client: &stubPublishClient{response: &chippb.PublishResponse{
 			Results: []*chippb.PublishResult{{EventId: "e1"}},
@@ -326,6 +339,28 @@ func TestPublishReturnsOneResult(t *testing.T) {
 	}
 }
 
+func TestPublishDetaillessSuccessAcceptsEvent(t *testing.T) {
+	// chainlink's chip-testsink subscriber returns an empty PublishResponse on
+	// success; the router must still acknowledge the event and echo its ID.
+	r := &router{subscribers: map[string]*subscriber{
+		"sink": {id: "sink", client: &stubPublishClient{response: &chippb.PublishResponse{}}},
+	}}
+
+	resp, err := r.Publish(t.Context(), eventOf("e1"))
+	if err != nil {
+		t.Fatalf("Publish: %v", err)
+	}
+	if len(resp.Results) != 1 {
+		t.Fatalf("want 1 result, got %d", len(resp.Results))
+	}
+	if resp.Results[0].EventId != "e1" {
+		t.Errorf("results[0].EventId = %q, want %q", resp.Results[0].EventId, "e1")
+	}
+	if resp.Results[0].Error != nil {
+		t.Errorf("results[0].Error = %v, want nil", resp.Results[0].Error)
+	}
+}
+
 func TestPublishNoSubscribersFailsWithInternal(t *testing.T) {
 	// Acks without delivery would let a durable store delete the event undelivered.
 	r := &router{subscribers: map[string]*subscriber{}}
@@ -354,16 +389,20 @@ func TestPublishAllSubscribersRejectedFailsWithInternal(t *testing.T) {
 
 	_, err := r.Publish(t.Context(), eventOf("e1"))
 	requireCode(t, err, codes.Internal)
+	if got := status.Convert(err).Message(); got != "invalid event" {
+		t.Errorf("error message = %q, want the subscriber's rejection reason %q", got, "invalid event")
+	}
 }
 
 func TestPublishDetaillessAcceptanceOverridesARejection(t *testing.T) {
-	// A rejects the event per-event; B accepts without per-event detail —
-	// the event was delivered to B, so Publish acknowledges it.
+	// A rejects the event per-event; B accepts with an empty response (no
+	// per-event detail) — the event was delivered to B, so Publish
+	// acknowledges it.
 	r := &router{subscribers: map[string]*subscriber{
 		"a": {id: "a", client: &stubPublishClient{response: &chippb.PublishResponse{
 			Results: []*chippb.PublishResult{rejected("e1", "rejected by a")},
 		}}},
-		"b": {id: "b", client: &stubPublishClient{}},
+		"b": {id: "b", client: &stubPublishClient{response: &chippb.PublishResponse{}}},
 	}}
 
 	resp, err := r.Publish(t.Context(), eventOf("e1"))

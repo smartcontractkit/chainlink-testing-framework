@@ -16,9 +16,9 @@ import (
 
 	cepb "github.com/cloudevents/sdk-go/binding/format/protobuf/v2/pb"
 	"github.com/google/uuid"
-	chippb "github.com/smartcontractkit/chainlink-common/pkg/chipingress/pb"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
+	chippb "github.com/smartcontractkit/chainlink-common/pkg/chipingress/pb"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,12 +26,12 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-// L is the router's logger. It mirrors framework.L's setup (CTF_LOG_LEVEL
+// logger is the router's logger. It mirrors framework.L's setup (CTF_LOG_LEVEL
 // env var, console writer to stderr) so output is unchanged now that the
 // binary no longer imports the framework module — the image build must stay
 // self-contained (see the Dockerfile: the monorepo-local `replace` cannot
 // resolve in its module-dir context).
-var L zerolog.Logger
+var logger zerolog.Logger
 
 func init() {
 	lvlStr := os.Getenv("CTF_LOG_LEVEL")
@@ -42,7 +42,7 @@ func init() {
 	if err != nil {
 		panic(err)
 	}
-	L = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
+	logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr}).Level(lvl)
 }
 
 const (
@@ -86,7 +86,7 @@ type healthResponse struct {
 
 func main() {
 	if err := run(); err != nil {
-		L.Error().Msgf("chip router failed: %v", err)
+		logger.Error().Msgf("chip router failed: %v", err)
 		os.Exit(1)
 	}
 }
@@ -129,7 +129,7 @@ func run() error {
 	go func() { errCh <- grpcServer.Serve(grpcLis) }()
 	go func() { errCh <- adminServer.Serve(adminLis) }()
 
-	L.Info().Msgf("chip router started: grpc=%s admin=%s", grpcAddr, adminAddr)
+	logger.Info().Msgf("chip router started: grpc=%s admin=%s", grpcAddr, adminAddr)
 
 	select {
 	case <-ctx.Done():
@@ -152,7 +152,7 @@ func run() error {
 		if err == nil || errors.Is(err, http.ErrServerClosed) {
 			return nil
 		}
-		L.Error().Msgf("chip router server error: %v", err)
+		logger.Error().Msgf("chip router server error: %v", err)
 		return err
 	}
 }
@@ -174,12 +174,10 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 		return nil, status.Error(codes.Internal, "no subscribers registered")
 	}
 
-	// anyForwarded: at least one subscriber's RPC succeeded. accepted: some
-	// subscriber accepted the event (an accepted result or a detail-less
-	// success) — sticky, so a later rejection cannot unset it. rejection:
-	// recorded only while no subscriber has accepted.
+	// accepted: some subscriber accepted the event (an accepted result or a
+	// detail-less success) — sticky, so a later rejection cannot unset it.
+	// rejection: recorded only while no subscriber has accepted.
 	var mu sync.Mutex
-	anyForwarded := false
 	accepted := false
 	var rejection *chippb.PublishError
 
@@ -187,18 +185,17 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 	group.SetLimit(forwardParallel)
 	for _, sub := range snapshot {
 		group.Go(func() error {
-			L.Debug().Msgf("chip router forwarding event to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
+			logger.Debug().Msgf("chip router forwarding event to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
 			forwardCtx, cancel := context.WithTimeout(ctx, forwardTimeout)
 			defer cancel()
 			resp, err := sub.client.Publish(forwardCtx, event)
 			if err != nil {
-				L.Error().Msgf("chip router failed to forward event to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
+				logger.Error().Msgf("chip router failed to forward event to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
 				return nil
 			}
-			L.Debug().Msgf("chip router forwarded event to subscriber id=%s", sub.id)
+			logger.Debug().Msgf("chip router forwarded event to subscriber id=%s", sub.id)
 			mu.Lock()
 			defer mu.Unlock()
-			anyForwarded = true
 			if results := resp.GetResults(); len(results) > 0 && results[0].GetError() != nil {
 				if !accepted && rejection == nil {
 					rejection = results[0].GetError()
@@ -211,11 +208,11 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 	}
 	_ = group.Wait()
 
-	if !anyForwarded {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("all %d subscribers failed to accept the event", len(snapshot)))
-	}
 	if !accepted {
-		return nil, status.Error(codes.Internal, "event was not accepted by any subscriber")
+		if rejection != nil {
+			return nil, status.Error(codes.Internal, rejection.GetReason())
+		}
+		return nil, status.Error(codes.Internal, fmt.Sprintf("all %d subscribers failed to accept the event", len(snapshot)))
 	}
 	return &chippb.PublishResponse{Results: []*chippb.PublishResult{{EventId: event.GetId()}}}, nil
 }
@@ -247,28 +244,32 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 	group.SetLimit(forwardParallel)
 	for _, sub := range snapshot {
 		group.Go(func() error {
-			L.Debug().Msgf("chip router forwarding batch to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
+			logger.Debug().Msgf("chip router forwarding batch to subscriber id=%s name=%s endpoint=%s", sub.id, sub.name, sub.endpoint)
 			forwardCtx, cancel := context.WithTimeout(ctx, forwardTimeout)
 			defer cancel()
 			resp, err := sub.client.PublishBatch(forwardCtx, batch)
 			if err != nil {
-				L.Error().Msgf("chip router failed to forward batch to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
+				logger.Error().Msgf("chip router failed to forward batch to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
 				return nil
 			}
-			L.Debug().Msgf("chip router forwarded batch to subscriber id=%s", sub.id)
+			results := resp.GetResults()
+			if len(results) > 0 && len(results) != len(batch.GetEvents()) {
+				// The write-service returns one result per event in input order, so
+				// a short or long list cannot be aligned with the batch. Treat it
+				// as a failed forward rather than guess which events it covers.
+				logger.Warn().Msgf("chip router subscriber returned %d results for %d events, ignoring response id=%s name=%s endpoint=%s", len(results), len(batch.GetEvents()), sub.id, sub.name, sub.endpoint)
+				return nil
+			}
+			logger.Debug().Msgf("chip router forwarded batch to subscriber id=%s", sub.id)
 			mu.Lock()
 			defer mu.Unlock()
 			anyForwarded = true
-			results := resp.GetResults()
 			if len(results) == 0 {
 				// A detail-less success accepts the whole batch.
 				anyBatchAccepted = true
 				return nil
 			}
 			for i, res := range results {
-				if i >= len(detail) {
-					break
-				}
 				if res.GetError() == nil {
 					detail[i] = res
 				} else if detail[i] == nil {
@@ -334,13 +335,13 @@ func (r *router) handleSubscribers(w http.ResponseWriter, req *http.Request) {
 	r.mu.Lock()
 	if existing := r.findSubscriberLocked(body.Name, body.Endpoint); existing != nil {
 		r.mu.Unlock()
-		L.Info().Msgf("chip router reused subscriber id=%s name=%s endpoint=%s", existing.id, existing.name, existing.endpoint)
+		logger.Info().Msgf("chip router reused subscriber id=%s name=%s endpoint=%s", existing.id, existing.name, existing.endpoint)
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(registerSubscriberResponse{ID: existing.id})
 		return
 	}
 
-	L.Info().Msgf("chip router attempting to register subscriber name=%s endpoint=%s", body.Name, body.Endpoint)
+	logger.Info().Msgf("chip router attempting to register subscriber name=%s endpoint=%s", body.Name, body.Endpoint)
 	conn, err := grpc.NewClient(body.Endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		r.mu.Unlock()
@@ -356,7 +357,7 @@ func (r *router) handleSubscribers(w http.ResponseWriter, req *http.Request) {
 		client:   chippb.NewChipIngressClient(conn),
 	}
 	r.mu.Unlock()
-	L.Info().Msgf("chip router registered subscriber id=%s name=%s endpoint=%s", id, body.Name, body.Endpoint)
+	logger.Info().Msgf("chip router registered subscriber id=%s name=%s endpoint=%s", id, body.Name, body.Endpoint)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(registerSubscriberResponse{ID: id})
 }
@@ -388,7 +389,7 @@ func (r *router) handleSubscriberByID(w http.ResponseWriter, req *http.Request) 
 	r.mu.Unlock()
 	if ok && sub.conn != nil {
 		_ = sub.conn.Close()
-		L.Info().Msgf("chip router unregistered subscriber id=%s name=%s endpoint=%s", id, sub.name, sub.endpoint)
+		logger.Info().Msgf("chip router unregistered subscriber id=%s name=%s endpoint=%s", id, sub.name, sub.endpoint)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
