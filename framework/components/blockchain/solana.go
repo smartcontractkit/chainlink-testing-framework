@@ -151,6 +151,9 @@ func newSolana(ctx context.Context, in *Input) (*Output, error) {
 		},
 		Entrypoint: entrypoint,
 	}
+	if in.ImagePlatform != nil {
+		req.ImagePlatform = *in.ImagePlatform
+	}
 
 	c, err := testcontainers.GenericContainer(ctx, testcontainers.GenericContainerRequest{
 		ContainerRequest: req,
