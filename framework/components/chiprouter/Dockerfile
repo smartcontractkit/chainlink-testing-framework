@@ -1,24 +1,22 @@
 FROM golang:1.26.6 AS builder
 
-WORKDIR /src
+# cmd/chip-router is its own Go module (go.mod/go.sum are checked in next to
+# main.go), so the image builds from pinned dependencies only: no `replace`
+# editing and no `go mod tidy` at build time. The router binary does not import
+# the parent chiprouter module (the deploy-side library) or `framework`.
+WORKDIR /src/cmd/chip-router
 
-COPY . .
+COPY cmd/chip-router/go.mod cmd/chip-router/go.sum ./
+RUN go mod download
 
-# The module's go.mod replaces the parent framework module with ../../ (a
-# monorepo-dev convenience) which cannot resolve inside this build's
-# module-dir context, and the published framework does not compile against
-# this module's moby pins. The router binary no longer imports framework
-# (only the deploy-side library does, and it is not compiled into the
-# image), so drop the replace and fetch the published framework module from
-# the proxy for module-graph completeness only.
-RUN sed -i '/^replace /d' go.mod && go mod tidy && go mod download
+COPY cmd/chip-router/ ./
 
 ARG TARGETOS=linux
 ARG TARGETARCH=amd64
 ARG CTF_LOG_LEVEL=info
 ENV CTF_LOG_LEVEL=${CTF_LOG_LEVEL}
 
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w" -o /out/chip-router ./cmd/chip-router
+RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -mod=readonly -trimpath -ldflags="-s -w" -o /out/chip-router .
 
 FROM gcr.io/distroless/static-debian12:nonroot
 
