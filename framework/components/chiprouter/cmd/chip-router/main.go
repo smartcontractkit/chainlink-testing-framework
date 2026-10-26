@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sort"
 	"strings"
 	"sync"
 	"syscall"
@@ -63,6 +64,78 @@ type subscriber struct {
 	endpoint string
 	conn     *grpc.ClientConn
 	client   publishClient
+}
+
+// label names a subscriber in error messages: its name (or id when unnamed)
+// and, when known, its endpoint.
+func (s *subscriber) label() string {
+	name := s.name
+	if name == "" {
+		name = s.id
+	}
+	if s.endpoint == "" {
+		return fmt.Sprintf("subscriber %q", name)
+	}
+	return fmt.Sprintf("subscriber %q (%s)", name, s.endpoint)
+}
+
+const (
+	// noSubscribersMessage is the RPC error when nothing is registered.
+	noSubscribersMessage = "no subscribers registered; register one with POST /subscribers " +
+		`{"name": "...", "endpoint": "host:port"} on the router's admin address`
+
+	// maxFailureDetails bounds how many subscribers or events an error message
+	// spells out, and maxErrTextLen how much of one downstream RPC error it
+	// quotes, so a large fan-out cannot produce an unbounded gRPC status.
+	maxFailureDetails = 5
+	maxErrTextLen     = 200
+)
+
+// forwardFailure records why one subscriber did not accept a forwarded request.
+type forwardFailure struct {
+	subscriber string
+	reason     string
+}
+
+// describeFailures renders failures for an RPC error message: sorted by
+// subscriber so the text does not depend on completion order, and bounded.
+func describeFailures(failures []forwardFailure) string {
+	sorted := append([]forwardFailure(nil), failures...)
+	sort.Slice(sorted, func(i, j int) bool { return sorted[i].subscriber < sorted[j].subscriber })
+	parts := make([]string, 0, len(sorted))
+	for i, f := range sorted {
+		if i == maxFailureDetails {
+			parts = append(parts, fmt.Sprintf("and %d more", len(sorted)-maxFailureDetails))
+			break
+		}
+		parts = append(parts, f.subscriber+" "+f.reason)
+	}
+	return strings.Join(parts, "; ")
+}
+
+// rpcFailureReason words a failed forward, quoting at most maxErrTextLen of
+// the downstream error.
+func rpcFailureReason(method string, err error) string {
+	text := err.Error()
+	if len(text) > maxErrTextLen {
+		text = text[:maxErrTextLen] + "..."
+	}
+	return fmt.Sprintf("%s RPC failed: %s", method, text)
+}
+
+// rejectionReason words a subscriber's per-event rejection, which may carry no
+// reason text.
+func rejectionReason(e *chippb.PublishError) string {
+	if e.GetReason() == "" {
+		return fmt.Sprintf("rejected (%s, no reason given)", e.GetErrorCode())
+	}
+	return e.GetReason()
+}
+
+// resultsMismatchReason words, for the caller, why a subscriber's response
+// could not be used and how to fix the subscriber.
+func resultsMismatchReason(got, events int) string {
+	return fmt.Sprintf("returned %d results for %d events; a subscriber must return exactly one PublishResult per event, in input order (results[i] for events[i]), or no results to accept the whole batch", got, events)
 }
 
 type router struct {
@@ -171,15 +244,17 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
 		// Acking an event nothing carried would let a durable store delete it undelivered.
-		return nil, status.Error(codes.Internal, "no subscribers registered")
+		return nil, status.Error(codes.Internal, noSubscribersMessage)
 	}
 
 	// accepted: some subscriber accepted the event (an accepted result or a
 	// detail-less success) — sticky, so a later rejection cannot unset it.
-	// rejection: recorded only while no subscriber has accepted.
+	// rejection: recorded only while no subscriber has accepted. failures:
+	// subscribers whose RPC failed, for the error message.
 	var mu sync.Mutex
 	accepted := false
 	var rejection *chippb.PublishError
+	var failures []forwardFailure
 
 	var group errgroup.Group
 	group.SetLimit(forwardParallel)
@@ -191,6 +266,9 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 			resp, err := sub.client.Publish(forwardCtx, event)
 			if err != nil {
 				logger.Error().Msgf("chip router failed to forward event to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
+				mu.Lock()
+				defer mu.Unlock()
+				failures = append(failures, forwardFailure{subscriber: sub.label(), reason: rpcFailureReason("Publish", err)})
 				return nil
 			}
 			logger.Debug().Msgf("chip router forwarded event to subscriber id=%s", sub.id)
@@ -210,9 +288,9 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 
 	if !accepted {
 		if rejection != nil {
-			return nil, status.Errorf(codes.Internal, "event rejected by subscribers: %s", rejection.GetReason())
+			return nil, status.Errorf(codes.Internal, "event rejected by subscribers: %s", rejectionReason(rejection))
 		}
-		return nil, status.Error(codes.Internal, fmt.Sprintf("all %d subscribers failed to accept the event", len(snapshot)))
+		return nil, status.Errorf(codes.Internal, "no subscriber accepted the event (%d registered): %s", len(snapshot), describeFailures(failures))
 	}
 	return &chippb.PublishResponse{Results: []*chippb.PublishResult{{EventId: event.GetId()}}}, nil
 }
@@ -227,18 +305,20 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 	snapshot := r.snapshotSubscribers()
 	if len(snapshot) == 0 {
 		// Acking events nothing carried would let a durable store delete them undelivered.
-		return nil, status.Error(codes.Internal, "no subscribers registered")
+		return nil, status.Error(codes.Internal, noSubscribersMessage)
 	}
 
-	// anyForwarded: at least one subscriber's RPC succeeded. anyBatchAccepted:
-	// a subscriber accepted the whole batch without per-event detail. detail:
-	// merged per-event results, index-aligned with the batch — an acceptance
-	// always wins over a rejection, and a rejection only fills an empty slot,
-	// so the outcome does not depend on subscriber completion order.
+	// anyForwarded: at least one subscriber's usable response arrived.
+	// anyBatchAccepted: a subscriber accepted the whole batch without per-event
+	// detail. detail: merged per-event results, index-aligned with the batch —
+	// an acceptance always wins over a rejection, and a rejection only fills an
+	// empty slot, so the outcome does not depend on subscriber completion order.
+	// failures: why each unusable subscriber was ignored, for the error message.
 	var mu sync.Mutex
 	anyForwarded := false
 	anyBatchAccepted := false
 	detail := make([]*chippb.PublishResult, len(batch.GetEvents()))
+	var failures []forwardFailure
 
 	var group errgroup.Group
 	group.SetLimit(forwardParallel)
@@ -250,14 +330,22 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 			resp, err := sub.client.PublishBatch(forwardCtx, batch)
 			if err != nil {
 				logger.Error().Msgf("chip router failed to forward batch to subscriber id=%s name=%s endpoint=%s err=%v", sub.id, sub.name, sub.endpoint, err)
+				mu.Lock()
+				defer mu.Unlock()
+				failures = append(failures, forwardFailure{subscriber: sub.label(), reason: rpcFailureReason("PublishBatch", err)})
 				return nil
 			}
 			results := resp.GetResults()
 			if len(results) > 0 && len(results) != len(batch.GetEvents()) {
 				// The write-service returns one result per event in input order, so
 				// a short or long list cannot be aligned with the batch. Treat it
-				// as a failed forward rather than guess which events it covers.
-				logger.Warn().Msgf("chip router subscriber returned %d results for %d events, ignoring response id=%s name=%s endpoint=%s", len(results), len(batch.GetEvents()), sub.id, sub.name, sub.endpoint)
+				// as a failed forward rather than guess which events it covers, and
+				// say so to the caller: this is a subscriber bug it can fix.
+				reason := resultsMismatchReason(len(results), len(batch.GetEvents()))
+				logger.Warn().Msgf("chip router ignoring batch response from subscriber id=%s name=%s endpoint=%s: %s", sub.id, sub.name, sub.endpoint, reason)
+				mu.Lock()
+				defer mu.Unlock()
+				failures = append(failures, forwardFailure{subscriber: sub.label(), reason: reason})
 				return nil
 			}
 			logger.Debug().Msgf("chip router forwarded batch to subscriber id=%s", sub.id)
@@ -284,24 +372,30 @@ func (r *router) PublishBatch(ctx context.Context, batch *chippb.CloudEventBatch
 	// No subscriber accepted the batch: fail the RPC so every caller mode
 	// retains and retries.
 	if !anyForwarded {
-		return nil, status.Error(codes.Internal, fmt.Sprintf("all %d subscribers failed to accept the batch", len(snapshot)))
+		return nil, status.Errorf(codes.Internal, "no subscriber accepted the batch (%d registered): %s", len(snapshot), describeFailures(failures))
 	}
 
-	anyRejected := false
+	var rejected []string
 	results := make([]*chippb.PublishResult, 0, len(batch.GetEvents()))
 	for i, ev := range batch.GetEvents() {
 		result := &chippb.PublishResult{EventId: ev.GetId()}
 		if !anyBatchAccepted && detail[i] != nil && detail[i].GetError() != nil {
 			result.Error = detail[i].GetError()
-			anyRejected = true
+			rejected = append(rejected, fmt.Sprintf("event[%d] id=%q: %s", i, ev.GetId(), rejectionReason(result.Error)))
 		}
 		results = append(results, result)
 	}
 
 	// Transactional callers resolve the whole batch from the RPC outcome
 	// alone, so any unaccepted event must fail the RPC (all-or-nothing).
-	if batch.GetOptions().GetTransactionEnabled() && anyRejected {
-		return nil, status.Error(codes.Internal, "not all events were accepted by a subscriber")
+	if batch.GetOptions().GetTransactionEnabled() && len(rejected) > 0 {
+		shown := rejected
+		if len(shown) > maxFailureDetails {
+			shown = append(append([]string(nil), shown[:maxFailureDetails]...), fmt.Sprintf("and %d more", len(rejected)-maxFailureDetails))
+		}
+		return nil, status.Errorf(codes.Internal,
+			"transaction_enabled=true and %d of %d events were rejected by subscribers (%s); fix the rejected events, or send the batch without transaction_enabled to deliver the accepted ones",
+			len(rejected), len(batch.GetEvents()), strings.Join(shown, "; "))
 	}
 	return &chippb.PublishResponse{Results: results}, nil
 }
