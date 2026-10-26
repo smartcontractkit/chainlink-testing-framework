@@ -210,7 +210,7 @@ func (r *router) Publish(ctx context.Context, event *cepb.CloudEvent) (*chippb.P
 
 	if !accepted {
 		if rejection != nil {
-			return nil, status.Error(codes.Internal, rejection.GetReason())
+			return nil, status.Errorf(codes.Internal, "event rejected by subscribers: %s", rejection.GetReason())
 		}
 		return nil, status.Error(codes.Internal, fmt.Sprintf("all %d subscribers failed to accept the event", len(snapshot)))
 	}

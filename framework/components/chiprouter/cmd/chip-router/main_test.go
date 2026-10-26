@@ -389,8 +389,24 @@ func TestPublishAllSubscribersRejectedFailsWithInternal(t *testing.T) {
 
 	_, err := r.Publish(t.Context(), eventOf("e1"))
 	requireCode(t, err, codes.Internal)
-	if got := status.Convert(err).Message(); got != "invalid event" {
-		t.Errorf("error message = %q, want the subscriber's rejection reason %q", got, "invalid event")
+	if got, want := status.Convert(err).Message(), "event rejected by subscribers: invalid event"; got != want {
+		t.Errorf("error message = %q, want %q", got, want)
+	}
+}
+
+func TestPublishRejectionWithoutReasonStillHasMessage(t *testing.T) {
+	// A subscriber may reject without a Reason; the caller must not see an
+	// empty gRPC error message.
+	r := &router{subscribers: map[string]*subscriber{
+		"sink": {id: "sink", client: &stubPublishClient{response: &chippb.PublishResponse{
+			Results: []*chippb.PublishResult{rejected("e1", "")},
+		}}},
+	}}
+
+	_, err := r.Publish(t.Context(), eventOf("e1"))
+	requireCode(t, err, codes.Internal)
+	if got := status.Convert(err).Message(); got == "" {
+		t.Error("error message is empty, want a non-empty message")
 	}
 }
 
