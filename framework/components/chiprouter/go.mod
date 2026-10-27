@@ -2,13 +2,17 @@ module github.com/smartcontractkit/chainlink-testing-framework/framework/compone
 
 go 1.26.6
 
-replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
-
 require (
+	github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.16.2
+	github.com/google/uuid v1.6.0
 	github.com/moby/moby/api v1.54.1
 	github.com/pkg/errors v0.9.1
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.8
+	github.com/rs/zerolog v1.33.0
+	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20260915184316-2730f1867c92
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.16.0
 	github.com/testcontainers/testcontainers-go v0.42.0
+	golang.org/x/sync v0.22.0
+	google.golang.org/grpc v1.83.2
 )
 
 require (
@@ -37,7 +41,6 @@ require (
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.26.0 // indirect
 	github.com/go-resty/resty/v2 v2.16.3 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20240226150601-1dcf7310316a // indirect
@@ -56,7 +59,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
@@ -73,7 +75,8 @@ require (
 	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/net v0.58.0 // indirect
-	golang.org/x/sync v0.22.0 // indirect
 	golang.org/x/sys v0.47.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260819154853-08b0e4226688 // indirect
+	google.golang.org/protobuf v1.36.12 // indirect
 )

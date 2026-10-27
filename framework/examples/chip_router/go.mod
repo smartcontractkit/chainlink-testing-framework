@@ -12,7 +12,7 @@ replace github.com/containerd/containerd/v2 => github.com/containerd/containerd/
 replace github.com/moby/go-archive => github.com/moby/go-archive v0.1.0
 
 require (
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.8
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.16.0
 	github.com/smartcontractkit/chainlink-testing-framework/framework/components/chiprouter v0.0.0-00010101000000-000000000000
 	github.com/stretchr/testify v1.12.1
 )
