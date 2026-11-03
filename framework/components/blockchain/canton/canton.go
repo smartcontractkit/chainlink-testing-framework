@@ -86,6 +86,9 @@ canton {
   features {
     enable-preview-commands = yes
     enable-testing-commands = yes
+    # Canton >=3.7 disables the participant repair service by default; keep it
+    # enabled for offline party replication / ACS export-import tooling.
+    enable-repair-commands = yes
   }
   parameters {
     manual-start = no
