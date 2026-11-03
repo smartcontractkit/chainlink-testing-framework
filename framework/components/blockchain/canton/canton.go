@@ -93,6 +93,8 @@ canton {
   parameters {
     manual-start = no
     non-standard-config = yes
+    # Canton >=3.7 disables remote private-key export by default
+    enable-key-download = yes
     # Bumping because our topology state can get very large due to
     # a large number of participants.
     timeouts.processing.verify-active = 40.seconds
