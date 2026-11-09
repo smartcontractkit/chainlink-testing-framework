@@ -42,16 +42,16 @@ func getCantonHealthCheckScript(numberOfValidators int) string {
 set -eou pipefail
 
 # SV
-echo "Checking ${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00"
-grpc-health-probe -addr="localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00"
+echo "Checking ${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}00"
+wget -Y off -q --tries=1 --timeout=5 -O /dev/null "http://localhost:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}00/health/ready"
 
 	`
 	// Add additional participants
 	for i := 1; i <= numberOfValidators; i++ {
 		script += fmt.Sprintf(`
 # Participant %02[1]d
-echo "Checking ${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d"
-grpc-health-probe -addr="localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d"
+echo "Checking ${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[1]d"
+wget -Y off -q --tries=1 --timeout=5 -O /dev/null "http://localhost:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[1]d/health/ready"
 `, i)
 	}
 
