@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/google/go-github/v72/github"
 	"github.com/pkg/errors"
@@ -175,16 +177,85 @@ func cacheFilePath(owner, repository, ref string) (string, error) {
 }
 
 func resolveRefSHA(ctx context.Context, client *github.Client, owner, repository, ref string) (string, error) {
-	if refObj, _, err := client.Git.GetRef(ctx, owner, repository, "refs/tags/"+ref); err == nil {
-		return refObj.GetObject().GetSHA(), nil
+	// These lookups are expected to 404 when ref is a commit SHA; a miss only
+	// means "try the next form of ref".
+	for _, prefix := range []string{"refs/tags/", "refs/heads/"} {
+		refObj, _, err := client.Git.GetRef(ctx, owner, repository, prefix+ref)
+		if err == nil {
+			return refObj.GetObject().GetSHA(), nil
+		}
 	}
-	if refObj, _, err := client.Git.GetRef(ctx, owner, repository, "refs/heads/"+ref); err == nil {
-		return refObj.GetObject().GetSHA(), nil
+
+	commit, err := getCommitWithRetry(ctx, client, owner, repository, ref)
+	if err != nil {
+		if isNotFound(err) {
+			return "", fmt.Errorf("ref %q not found", ref)
+		}
+		// Surface the underlying failure: a rate limit or server error is not
+		// a missing ref, and must not be reported as one.
+		return "", fmt.Errorf("resolve commit %q: %w", ref, err)
 	}
-	if commit, _, err := client.Repositories.GetCommit(ctx, owner, repository, ref, nil); err == nil {
-		return commit.GetSHA(), nil
+	return commit.GetSHA(), nil
+}
+
+const (
+	commitLookupAttempts = 4
+	commitLookupBaseWait = 500 * time.Millisecond
+)
+
+// retryWait is a variable so tests can avoid sleeping.
+var retryWait = func(ctx context.Context, d time.Duration) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(d):
+		return nil
 	}
-	return "", fmt.Errorf("ref %q not found", ref)
+}
+
+func getCommitWithRetry(ctx context.Context, client *github.Client, owner, repository, ref string) (*github.RepositoryCommit, error) {
+	var lastErr error
+	for attempt := 0; attempt < commitLookupAttempts; attempt++ {
+		commit, _, err := client.Repositories.GetCommit(ctx, owner, repository, ref, nil)
+		if err == nil {
+			return commit, nil
+		}
+		lastErr = err
+		if attempt == commitLookupAttempts-1 || !isRetryable(err) {
+			break
+		}
+		if waitErr := retryWait(ctx, time.Duration(attempt+1)*commitLookupBaseWait); waitErr != nil {
+			return nil, waitErr
+		}
+	}
+	return nil, lastErr
+}
+
+func isNotFound(err error) bool {
+	var errResponse *github.ErrorResponse
+	return errors.As(err, &errResponse) &&
+		errResponse.Response != nil &&
+		errResponse.Response.StatusCode == http.StatusNotFound
+}
+
+func isRetryable(err error) bool {
+	var errResponse *github.ErrorResponse
+	if errors.As(err, &errResponse) {
+		if errResponse.Response == nil {
+			return false
+		}
+		switch code := errResponse.Response.StatusCode; {
+		case code >= 500, code == http.StatusTooManyRequests:
+			return true
+		case code == http.StatusForbidden:
+			// Secondary rate limits come back as 403s.
+			return strings.Contains(strings.ToLower(errResponse.Message), "rate limit")
+		}
+		return false
+	}
+	// Transport failures (DNS, TLS, timeouts) are worth another attempt.
+	var netErr net.Error
+	return errors.As(err, &netErr)
 }
 
 func fetchFromGithub(ctx context.Context, clientFn func() *github.Client, owner, repository, ref string) (string, error) {
