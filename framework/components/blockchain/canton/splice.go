@@ -64,17 +64,17 @@ _storage {
 
 _validator_backend {
   latest-packages-only = true
-  domain-migration-id = 0
   storage = ${_storage}
   admin-api = {
     address = "0.0.0.0"
     port = 5003
   }
   participant-client = {
-    admin-api = {
+    admin-api.client-config = {
       address = ${CANTON_CONTAINER_NAME}
       port = 5002
     }
+    admin-api.auth-config.type = "none"
     ledger-api.client-config = {
       address = ${CANTON_CONTAINER_NAME}
       port = 5001
@@ -99,8 +99,11 @@ canton.features.enable-testing-commands = yes
 # SV
 _sv_participant_client = {
   admin-api {
-    address = ${CANTON_CONTAINER_NAME}
-    port = ${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00
+    client-config {
+      address = ${CANTON_CONTAINER_NAME}
+      port = ${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}00
+    }
+    auth-config.type = "none"
   }
   ledger-api {
     client-config {
@@ -128,7 +131,6 @@ _splice-instance-names {
 canton {
   scan-apps.scan-app {
     is-first-sv = true
-    domain-migration-id = 0
     storage = ${_storage} {
       config.properties {
         databaseName = scan
@@ -159,7 +161,6 @@ canton {
 
   sv-apps.sv {
     latest-packages-only = true
-    domain-migration-id = 0
     expected-validator-onboardings = [
     ]
     scan {
@@ -289,7 +290,7 @@ canton.validator-apps.participant%[1]d-validator_backend = ${_validator_backend}
 	storage.config.properties.databaseName = validator-%[1]d
 	admin-api.port = ${SPLICE_VALIDATOR_ADMIN_API_PORT_PREFIX}%02[1]d
 	participant-client {
-		admin-api.port = ${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}%02[1]d
+		admin-api.client-config.port = ${CANTON_PARTICIPANT_ADMIN_API_PORT_PREFIX}%02[1]d
 
 		ledger-api = {
 			client-config.port = ${CANTON_PARTICIPANT_LEDGER_API_PORT_PREFIX}%02[1]d

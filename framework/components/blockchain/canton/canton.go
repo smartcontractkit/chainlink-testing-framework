@@ -13,7 +13,7 @@ import (
 
 // Canton Defaults
 const (
-	SpliceVersion = "0.6.7"
+	SpliceVersion = "0.10.0"
 	Image         = "ghcr.io/digital-asset/decentralized-canton-sync/docker/canton"
 )
 
@@ -42,16 +42,16 @@ func getCantonHealthCheckScript(numberOfValidators int) string {
 set -eou pipefail
 
 # SV
-echo "Checking ${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00"
-grpc-health-probe -addr="localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}00"
+echo "Checking ${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}00"
+wget -Y off -q --tries=1 --timeout=5 -O /dev/null "http://localhost:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}00/health/ready"
 
 	`
 	// Add additional participants
 	for i := 1; i <= numberOfValidators; i++ {
 		script += fmt.Sprintf(`
 # Participant %02[1]d
-echo "Checking ${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d"
-grpc-health-probe -addr="localhost:${CANTON_PARTICIPANT_GRPC_HEALTHCHECK_PORT_PREFIX}%02[1]d"
+echo "Checking ${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[1]d"
+wget -Y off -q --tries=1 --timeout=5 -O /dev/null "http://localhost:${CANTON_PARTICIPANT_HTTP_HEALTHCHECK_PORT_PREFIX}%02[1]d/health/ready"
 `, i)
 	}
 
@@ -86,10 +86,15 @@ canton {
   features {
     enable-preview-commands = yes
     enable-testing-commands = yes
+    # Canton >=3.7 disables the participant repair service by default; keep it
+    # enabled for offline party replication / ACS export-import tooling.
+    enable-repair-commands = yes
   }
   parameters {
     manual-start = no
     non-standard-config = yes
+    # Canton >=3.7 disables remote private-key export by default
+    enable-key-download = yes
     # Bumping because our topology state can get very large due to
     # a large number of participants.
     timeouts.processing.verify-active = 40.seconds
