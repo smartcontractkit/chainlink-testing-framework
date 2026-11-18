@@ -1,19 +1,18 @@
 module github.com/smartcontractkit/chainlink-testing-framework/framework/components/chiprouter
 
-go 1.26.5
-
-replace github.com/smartcontractkit/chainlink-testing-framework/framework => ../../
+go 1.26.6
 
 require (
 	github.com/cloudevents/sdk-go/binding/format/protobuf/v2 v2.16.2
 	github.com/google/uuid v1.6.0
 	github.com/moby/moby/api v1.54.1
 	github.com/pkg/errors v0.9.1
-	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20251211140724-319861e514c4
-	github.com/smartcontractkit/chainlink-testing-framework/framework v0.15.8
+	github.com/rs/zerolog v1.33.0
+	github.com/smartcontractkit/chainlink-common/pkg/chipingress v0.0.11-0.20260915184316-2730f1867c92
+	github.com/smartcontractkit/chainlink-testing-framework/framework v0.16.0
 	github.com/testcontainers/testcontainers-go v0.42.0
 	golang.org/x/sync v0.22.0
-	google.golang.org/grpc v1.83.1
+	google.golang.org/grpc v1.83.2
 )
 
 require (
@@ -60,7 +59,6 @@ require (
 	github.com/opencontainers/image-spec v1.1.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
-	github.com/rs/zerolog v1.33.0 // indirect
 	github.com/shirou/gopsutil/v4 v4.26.3 // indirect
 	github.com/sirupsen/logrus v1.9.4 // indirect
 	github.com/stretchr/testify v1.12.1 // indirect
