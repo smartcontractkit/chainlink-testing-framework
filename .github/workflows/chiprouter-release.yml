@@ -1,0 +1,105 @@
+# Publishes the chip-router Docker image, following the parrot-release.yml pattern
+# (AWS OIDC -> ECR login -> push to the QA ECR registry that chainlink CRE setups
+# pull from: {{.SDLC_ECR}}/local-cre-chip-router:vX.Y.Z — chainlink's
+# cre-local-env-tests.yaml resolves SDLC_AWS_ECR to the same QA account registry).
+#
+# Triggers:
+# - tag push  framework/components/chiprouter/vX.Y.Z -> publish (same tag flow as
+#   release-go-module.yml, which independently creates the GitHub release)
+# - workflow_dispatch with a version input -> checks out that module tag and
+#   publishes it (backfill, e.g. v1.0.5)
+# - pull_request touching the chiprouter module -> build-only check, no secrets,
+#   no push (closes the gap that CI never built this image)
+name: Chip Router Release
+
+on:
+  push:
+    tags:
+      - 'framework/components/chiprouter/v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Module version tag to publish (e.g. v1.0.5; must exist as framework/components/chiprouter/<version>)'
+        required: true
+        type: string
+  pull_request:
+    paths:
+      - 'framework/components/chiprouter/**'
+      - '.github/workflows/chiprouter-release.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-check:
+    if: github.event_name == 'pull_request'
+    name: Build chip-router image (no push)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+      - name: Build image for both platforms
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -f framework/components/chiprouter/Dockerfile \
+            framework/components/chiprouter
+
+  publish:
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    name: Build and publish to ECR
+    runs-on: ubuntu-latest
+    environment: integration
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871 # v4.2.1
+        with:
+          # Dispatch builds the exact module tag for the input version; a tag
+          # push builds the pushed tag. Checkout fails if the tag is missing.
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('framework/components/chiprouter/{0}', inputs.version) || github.ref }}
+      - name: Extract version from tag
+        run: |
+          if [ "${GITHUB_EVENT_NAME}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME##*/}"
+          fi
+          case "$VERSION" in
+            v[0-9]*.[0-9]*.[0-9]*) ;;
+            *) echo "Invalid chiprouter version tag: '$VERSION' (expected vX.Y.Z)"; exit 1 ;;
+          esac
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_OIDC_PUBLISH_ECR_ROLE_ARN }}
+          role-duration-seconds: 1800
+          mask-aws-account-id: true
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076 # v2.0.1
+        with:
+          mask-password: 'true'
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f7ce87c1d6bead3e36075b2ce75da1f6cc28aaca # v3.9.0
+      - name: Build and push chip-router image
+        env:
+          REGISTRY: ${{ secrets.QA_AWS_ACCOUNT_NUMBER }}.dkr.ecr.${{ secrets.AWS_REGION }}.amazonaws.com
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -f framework/components/chiprouter/Dockerfile \
+            -t "${REGISTRY}/local-cre-chip-router:${VERSION}" \
+            -t "${REGISTRY}/local-cre-chip-router:latest" \
+            --push \
+            framework/components/chiprouter
