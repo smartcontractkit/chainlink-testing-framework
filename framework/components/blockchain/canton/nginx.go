@@ -15,7 +15,7 @@ import (
 )
 
 const (
-	DefaultNginxImage        = "nginx:1.31.9"
+	DefaultNginxImage        = "nginx:1.31.10"
 	DefaultNginxInternalPort = 8080
 )
 
