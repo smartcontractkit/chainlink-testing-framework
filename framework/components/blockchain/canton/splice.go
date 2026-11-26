@@ -161,6 +161,7 @@ canton {
 
   sv-apps.sv {
     latest-packages-only = true
+    onboarding-snapshots.directory = "/tmp/onboarding-snapshots"
     expected-validator-onboardings = [
     ]
     scan {
