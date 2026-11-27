@@ -1,4 +1,8 @@
-FROM golang:1.26.6 AS builder
+# $BUILDPLATFORM pins the builder stage to the build host's native platform, so
+# buildx multi-arch builds cross-compile via GOARCH instead of emulating the
+# builder (the distroless final stage only COPYs, so no QEMU is needed either).
+# Plain `docker build` behavior is unchanged.
+FROM --platform=$BUILDPLATFORM golang:1.26.6 AS builder
 
 # go.mod requires a published `framework` release (no `replace`), so the build
 # needs only the checked-in go.mod/go.sum: no go.mod editing and no
